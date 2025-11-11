@@ -1,0 +1,29 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Backend Service instrumentation"
+
+  instrument_patterns:
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application operations"
+
+    - pattern: "^http\\.server\\."
+      enabled: true
+      description: "HTTP server requests"
+
+    - pattern: "^GET "
+      enabled: true
+      description: "HTTP GET requests"
+
+    - pattern: "^POST "
+      enabled: true
+      description: "HTTP POST requests"
+
+  ignore_patterns:
+    - pattern: "^GET /health"
+      description: "Health check endpoint"
+
+    - pattern: "^GET /metrics"
+      description: "Metrics endpoint"

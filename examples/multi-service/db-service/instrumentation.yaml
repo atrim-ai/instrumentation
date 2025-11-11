@@ -1,0 +1,22 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Database Service instrumentation"
+
+  instrument_patterns:
+    - pattern: "^db\\."
+      enabled: true
+      description: "Database operations"
+
+    - pattern: "^http\\.server\\."
+      enabled: true
+      description: "HTTP server requests"
+
+    - pattern: "^GET "
+      enabled: true
+      description: "HTTP GET requests"
+
+  ignore_patterns:
+    - pattern: "^GET /health"
+      description: "Health check endpoint"

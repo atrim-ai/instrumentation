@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    ports:
+      - "4318:4318"   # OTLP HTTP receiver
+      - "4317:4317"   # OTLP gRPC receiver
+      - "55679:55679" # zpages extension
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    networks:
+      - tracing-network
+
+  # DB Service (Port 3102)
+  db-service:
+    build:
+      context: ./db-service
+      dockerfile: Dockerfile
+    ports:
+      - "3102:3102"
+    environment:
+      - PORT=3102
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    depends_on:
+      - otel-collector
+    networks:
+      - tracing-network
+
+  # Backend Service (Port 3101)
+  backend-service:
+    build:
+      context: ./backend-service
+      dockerfile: Dockerfile
+    ports:
+      - "3101:3101"
+    environment:
+      - PORT=3101
+      - DB_URL=http://db-service:3102
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    depends_on:
+      - db-service
+      - otel-collector
+    networks:
+      - tracing-network
+
+  # UI Service (Port 3100)
+  ui-service:
+    build:
+      context: ./ui-service
+      dockerfile: Dockerfile
+    ports:
+      - "3100:3100"
+    environment:
+      - PORT=3100
+      - BACKEND_URL=http://backend-service:3101
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    depends_on:
+      - backend-service
+      - otel-collector
+    networks:
+      - tracing-network
+
+networks:
+  tracing-network:
+    driver: bridge

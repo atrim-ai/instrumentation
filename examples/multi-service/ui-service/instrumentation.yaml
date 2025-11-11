@@ -1,0 +1,25 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "UI Service instrumentation"
+
+  instrument_patterns:
+    - pattern: "^ui\\."
+      enabled: true
+      description: "UI operations"
+
+    - pattern: "^GET "
+      enabled: true
+      description: "HTTP GET requests"
+
+    - pattern: "^POST "
+      enabled: true
+      description: "HTTP POST requests"
+
+  ignore_patterns:
+    - pattern: "^GET /favicon.ico"
+      description: "Browser favicon requests"
+
+    - pattern: "^GET /health"
+      description: "Health check endpoint"

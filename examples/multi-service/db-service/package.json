@@ -1,0 +1,23 @@
+{
+  "name": "@atrim/instrumentation-example-db-service",
+  "version": "1.0.0",
+  "description": "DB service for multi-service example",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "tsx index.ts",
+    "dev": "tsx watch index.ts"
+  },
+  "dependencies": {
+    "@atrim/instrumentation": "file:../../..",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.54.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.54.0",
+    "@opentelemetry/sdk-trace-node": "^1.28.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.52.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.7.2"
+  }
+}
