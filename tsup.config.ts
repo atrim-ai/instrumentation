@@ -1,17 +1,45 @@
 import { defineConfig } from 'tsup'
 
-export default defineConfig({
-  entry: {
-    index: 'src/index.ts',
-    'integrations/effect/index': 'src/integrations/effect/index.ts'
+export default defineConfig([
+  // Main entry (always builds with DTS)
+  {
+    entry: {
+      index: 'src/index.ts'
+    },
+    format: ['esm', 'cjs'],
+    dts: true,
+    splitting: false,
+    sourcemap: true,
+    clean: true,
+    treeshake: true,
+    minify: false,
+    target: 'es2020',
+    outDir: 'dist',
+    external: [
+      '@opentelemetry/api',
+      '@opentelemetry/sdk-trace-base'
+    ]
   },
-  format: ['esm', 'cjs'],
-  dts: true,
-  splitting: false,
-  sourcemap: true,
-  clean: true,
-  treeshake: true,
-  minify: false,
-  target: 'es2020',
-  outDir: 'dist'
-})
+  // Effect integration (builds JS but skips DTS if Effect not installed)
+  {
+    entry: {
+      'integrations/effect/index': 'src/integrations/effect/index.ts'
+    },
+    format: ['esm', 'cjs'],
+    dts: false, // Skip DTS - Effect users will have types from their Effect installation
+    splitting: false,
+    sourcemap: true,
+    clean: false, // Don't clean - main entry already did
+    treeshake: true,
+    minify: false,
+    target: 'es2020',
+    outDir: 'dist',
+    external: [
+      'effect',
+      '@effect/opentelemetry',
+      '@effect/platform',
+      '@opentelemetry/api',
+      '@opentelemetry/sdk-trace-base'
+    ]
+  }
+])
