@@ -1,0 +1,37 @@
+# Default instrumentation configuration
+# Copy this file to your project root as 'instrumentation.yaml' and customize
+
+version: "1.0"
+
+# Core instrumentation configuration (works with any framework/runtime)
+instrumentation:
+  enabled: true
+  description: "Universal OpenTelemetry span filtering"
+
+  # Patterns to instrument (applied to ALL spans)
+  instrument_patterns:
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application operations"
+    - pattern: "^http\\.server\\."
+      enabled: true
+      description: "HTTP server operations"
+    - pattern: "^http\\.client\\."
+      enabled: true
+      description: "HTTP client operations"
+
+  # Patterns to ignore (takes precedence over instrument_patterns)
+  ignore_patterns:
+    - pattern: "^test\\."
+      description: "Test utilities"
+    - pattern: "^internal\\."
+      description: "Internal operations"
+    - pattern: "^health\\."
+      description: "Health checks"
+    - pattern: "^metrics\\."
+      description: "Metrics collection"
+
+# Optional Effect-TS specific features
+# Only used if you import from '@atrim/instrumentation/effect'
+effect:
+  auto_extract_metadata: true  # Automatically extract fiber metadata
