@@ -4,8 +4,6 @@
 
 This is the `@atrim/instrumentation` library - a universal OpenTelemetry instrumentation package for Node.js applications. The library provides zero-config auto-instrumentation with flexible configuration options for centralized management.
 
-**GitHub Issue:** [atrim-ai/atrim#365](https://github.com/atrim-ai/atrim/issues/365)
-
 ## Core Principles
 
 ### Universal Design
@@ -318,36 +316,6 @@ This library works seamlessly with the **OpenTelemetry Onboarding CLI** (issue #
 - Auto-instruments Effect.withSpan() calls
 - Extracts Effect metadata automatically
 - Zero code changes required after setup
-
-## Migration from platform-introspection
-
-### Before (Current Platform-Introspection)
-
-```typescript
-import { EffectAutoTracerLive } from '../platform-introspection/effect-auto-tracer.js'
-
-const app = myOperation().pipe(
-  Effect.withSpan('rca.orchestrate'),
-  Effect.provide(EffectAutoTracerLive)
-)
-```
-
-### After (Using @atrim/instrumentation)
-
-```typescript
-import { EffectInstrumentationLive } from '@atrim/instrumentation/effect'
-
-const app = myOperation().pipe(
-  Effect.withSpan('rca.orchestrate'),
-  Effect.provide(EffectInstrumentationLive)
-)
-```
-
-**Changes:**
-1. Update import from `@atrim/platform-introspection` to `@atrim/instrumentation/effect`
-2. Rename `EffectAutoTracerLive` → `EffectInstrumentationLive`
-3. Move `config/instrumentation.yaml` to project root (or configure path)
-4. No other code changes needed!
 
 ## Testing Strategy
 

@@ -532,30 +532,6 @@ instrumentation:
     - pattern: "^app\\."
 ```
 
-### From platform-introspection (Effect-TS)
-
-**Before:**
-```typescript
-import { EffectAutoTracerLive } from '../platform-introspection/effect-auto-tracer.js'
-
-const app = myOperation().pipe(
-  Effect.withSpan('app.operation'),
-  Effect.provide(EffectAutoTracerLive)
-)
-```
-
-**After:**
-```typescript
-import { EffectInstrumentationLive } from '@atrim/instrumentation/effect'
-
-const app = myOperation().pipe(
-  Effect.withSpan('app.operation'),
-  Effect.provide(EffectInstrumentationLive)
-)
-```
-
-Move `config/instrumentation.yaml` to project root.
-
 ## Troubleshooting
 
 ### Patterns Not Matching
