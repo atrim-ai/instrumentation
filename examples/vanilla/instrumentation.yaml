@@ -1,0 +1,18 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Vanilla TypeScript example configuration"
+
+  instrument_patterns:
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application operations"
+
+    - pattern: "^demo\\."
+      enabled: true
+      description: "Demo operations"
+
+  ignore_patterns:
+    - pattern: "^internal\\."
+      description: "Internal utility operations"

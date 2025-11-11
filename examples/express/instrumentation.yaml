@@ -1,0 +1,28 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Express example configuration"
+
+  instrument_patterns:
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application operations"
+
+    - pattern: "^GET /"
+      enabled: true
+      description: "HTTP GET requests"
+
+    - pattern: "^POST /"
+      enabled: true
+      description: "HTTP POST requests"
+
+  ignore_patterns:
+    - pattern: "^GET /health"
+      description: "Health check endpoint"
+
+    - pattern: "^GET /metrics"
+      description: "Metrics endpoint"
+
+    - pattern: "^GET /favicon.ico"
+      description: "Browser favicon requests"
