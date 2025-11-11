@@ -27,14 +27,14 @@
   },
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     },
     "./effect": {
+      "types": "./dist/integrations/effect/index.d.ts",
       "import": "./dist/integrations/effect/index.js",
-      "require": "./dist/integrations/effect/index.cjs",
-      "types": "./dist/integrations/effect/index.d.ts"
+      "require": "./dist/integrations/effect/index.cjs"
     }
   },
   "main": "./dist/index.js",
