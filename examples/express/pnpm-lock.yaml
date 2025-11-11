@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@atrim/instrumentation':
         specifier: file:../..
-        version: file:../..(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))
+        version: file:../..(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-http@0.54.2(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -23,8 +23,11 @@ importers:
       '@opentelemetry/sdk-node':
         specifier: ^0.54.0
         version: 0.54.2(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base':
+        specifier: ^1.25.0
+        version: 1.30.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-node':
-        specifier: ^1.28.0
+        specifier: ^1.25.0
         version: 1.30.1(@opentelemetry/api@1.9.0)
       express:
         specifier: ^4.18.2
@@ -48,12 +51,18 @@ packages:
     peerDependencies:
       '@effect/opentelemetry': ^0.40.0
       '@opentelemetry/api': ^1.0.0
+      '@opentelemetry/exporter-trace-otlp-http': ^0.50.0
       '@opentelemetry/sdk-trace-base': ^1.0.0
+      '@opentelemetry/sdk-trace-node': ^1.0.0
       effect: ^3.0.0
     peerDependenciesMeta:
       '@effect/opentelemetry':
         optional: true
+      '@opentelemetry/exporter-trace-otlp-http':
+        optional: true
       '@opentelemetry/sdk-trace-base':
+        optional: true
+      '@opentelemetry/sdk-trace-node':
         optional: true
       effect:
         optional: true
@@ -1317,13 +1326,15 @@ packages:
 
 snapshots:
 
-  '@atrim/instrumentation@file:../..(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))':
+  '@atrim/instrumentation@file:../..(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-http@0.54.2(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@1.30.1(@opentelemetry/api@1.9.0))':
     dependencies:
       '@opentelemetry/api': 1.9.0
       yaml: 2.8.1
       zod: 3.25.76
     optionalDependencies:
+      '@opentelemetry/exporter-trace-otlp-http': 0.54.2(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 1.30.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-node': 1.30.1(@opentelemetry/api@1.9.0)
 
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
