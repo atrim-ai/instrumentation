@@ -16,74 +16,36 @@
  *    curl http://localhost:3000/health  # Will be dropped by ignore pattern
  */
 
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
-import { trace, context, SpanStatusCode } from '@opentelemetry/api'
+import { trace } from '@opentelemetry/api'
 import express from 'express'
 import {
   initializeInstrumentation,
-  PatternSpanProcessor,
   annotateHttpRequest,
   annotateDbQuery,
   markSpanSuccess,
   markSpanError,
   setSpanAttributes
 } from '@atrim/instrumentation'
-import { loadConfig } from '@atrim/instrumentation'
 
-// Setup instrumentation BEFORE importing app
+// Setup instrumentation - THAT'S IT! One line does everything:
+// - Loads instrumentation.yaml configuration
+// - Creates OTLP exporter (from OTEL_EXPORTER_OTLP_ENDPOINT or default)
+// - Sets up pattern-based span filtering
+// - Initializes NodeSDK with auto-instrumentations
+// - Registers graceful shutdown handlers
 async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation...\n')
 
-  // 1. Initialize pattern-based instrumentation
-  await initializeInstrumentation()
-
-  // 2. Create OTLP exporter
-  const exporter = new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces'
+  await initializeInstrumentation({
+    serviceName: 'express-example'
+    // That's it! Everything else is auto-detected:
+    // - OTLP endpoint from OTEL_EXPORTER_OTLP_ENDPOINT env var
+    // - Service version from package.json
+    // - Auto-instrumentation enabled by default
+    // - Pattern filtering from ./instrumentation.yaml
   })
 
-  // 3. Create batch processor
-  const batchProcessor = new BatchSpanProcessor(exporter)
-
-  // 4. Wrap with pattern processor for filtering
-  const config = await loadConfig()
-  const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
-
-  // 5. Initialize SDK with auto-instrumentations
-  const sdk = new NodeSDK({
-    spanProcessor: patternProcessor,
-    serviceName: 'express-example',
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        // HTTP instrumentation will create spans automatically
-        '@opentelemetry/instrumentation-http': {
-          enabled: true
-        },
-        '@opentelemetry/instrumentation-express': {
-          enabled: true
-        },
-        // Disable noisy instrumentations
-        '@opentelemetry/instrumentation-fs': {
-          enabled: false
-        }
-      })
-    ]
-  })
-
-  sdk.start()
-  console.log('✅ OpenTelemetry SDK initialized with auto-instrumentation\n')
-
-  // Graceful shutdown
-  process.on('SIGTERM', async () => {
-    console.log('\n👋 Shutting down...')
-    await sdk.shutdown()
-    process.exit(0)
-  })
-
-  return sdk
+  console.log('✅ Ready to trace!\n')
 }
 
 // Mock database

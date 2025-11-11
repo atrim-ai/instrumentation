@@ -1,14 +1,26 @@
 /**
  * @atrim/instrumentation - Universal OpenTelemetry instrumentation library
  *
- * Provides pattern-based span filtering and centralized configuration
- * for any Node.js application (Node.js, Bun, Deno).
+ * Provides complete OpenTelemetry SDK initialization with pattern-based
+ * span filtering and centralized configuration for any Node.js application.
  *
  * @packageDocumentation
  */
 
-// Core exports (standard OpenTelemetry)
-export { initializeInstrumentation, isInitialized, resetInitialization } from './api.js'
+// Core exports (complete OpenTelemetry initialization)
+export { initializeInstrumentation, initializePatternMatchingOnly } from './api.js'
+
+// SDK initialization types
+export type { SdkInitializationOptions } from './core/sdk-initializer.js'
+export { getSdkInstance, shutdownSdk, resetSdk } from './core/sdk-initializer.js'
+
+// OTLP exporter utilities
+export type { OtlpExporterOptions } from './core/exporter-factory.js'
+export { createOtlpExporter, getOtlpEndpoint } from './core/exporter-factory.js'
+
+// Service detection utilities
+export type { ServiceInfo } from './core/service-detector.js'
+export { detectServiceInfo, getServiceName, getServiceVersion } from './core/service-detector.js'
 
 // Configuration types and loader
 export type { InstrumentationConfig, PatternConfig } from './core/instrumentation-schema.js'

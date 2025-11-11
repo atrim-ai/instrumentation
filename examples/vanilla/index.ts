@@ -16,20 +16,15 @@ import * as http from 'node:http'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
 import { trace } from '@opentelemetry/api'
 import {
   initializeInstrumentation,
-  PatternSpanProcessor,
   annotateDbQuery,
   annotateCacheOperation,
   markSpanSuccess,
   markSpanError,
   setSpanAttributes
 } from '@atrim/instrumentation'
-import { loadConfig } from '@atrim/instrumentation'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -37,38 +32,12 @@ const __dirname = path.dirname(__filename)
 async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation...\n')
 
-  // 1. Initialize pattern-based instrumentation
-  await initializeInstrumentation()
-
-  // 2. Create OTLP exporter
-  const exporter = new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces'
-  })
-
-  // 3. Create batch processor
-  const batchProcessor = new BatchSpanProcessor(exporter)
-
-  // 4. Wrap with pattern processor for filtering
-  const config = await loadConfig()
-  const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
-
-  // 5. Initialize SDK
-  const sdk = new NodeSDK({
-    spanProcessor: patternProcessor,
+  // One line initialization - handles everything!
+  await initializeInstrumentation({
     serviceName: 'vanilla-example'
   })
 
-  sdk.start()
-  console.log('✅ OpenTelemetry SDK initialized\n')
-
-  // Graceful shutdown
-  process.on('SIGTERM', async () => {
-    console.log('\n👋 Shutting down...')
-    await sdk.shutdown()
-    process.exit(0)
-  })
-
-  return sdk
+  console.log('✅ Ready to trace!\n')
 }
 
 // Example business logic functions

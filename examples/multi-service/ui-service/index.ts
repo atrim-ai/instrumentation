@@ -6,62 +6,23 @@
  */
 
 import * as http from 'node:http'
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
-import { initializeInstrumentation, PatternSpanProcessor } from '@atrim/instrumentation'
-import { loadConfig } from '@atrim/instrumentation'
+import { initializeInstrumentation } from '@atrim/instrumentation'
 import { trace } from '@opentelemetry/api'
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3101'
-const COLLECTOR_URL = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
 const PORT = process.env.PORT || 3100
 
 async function setupInstrumentation() {
   console.log('🎨 [UI Service] Setting up instrumentation...\n')
 
-  // 1. Initialize pattern-based instrumentation
-  await initializeInstrumentation()
-
-  // 2. Create OTLP exporter
-  const exporter = new OTLPTraceExporter({
-    url: `${COLLECTOR_URL}/v1/traces`
+  // One line initialization!
+  await initializeInstrumentation({
+    serviceName: 'ui-service'
   })
 
-  // 3. Create batch processor
-  const batchProcessor = new BatchSpanProcessor(exporter)
-
-  // 4. Wrap with pattern processor
-  const config = await loadConfig()
-  const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
-
-  // 5. Initialize SDK with auto-instrumentations
-  // This will automatically propagate W3C Trace Context headers
-  const sdk = new NodeSDK({
-    spanProcessor: patternProcessor,
-    serviceName: 'ui-service',
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-http': {
-          enabled: true,
-          // This ensures trace context is propagated to backend
-          requireParentforOutgoingSpans: false
-        },
-        '@opentelemetry/instrumentation-fs': {
-          enabled: false
-        }
-      })
-    ]
-  })
-
-  sdk.start()
   console.log('✅ [UI Service] Instrumentation initialized')
-  console.log(`   📡 Collector: ${COLLECTOR_URL}`)
   console.log(`   🔗 Backend: ${BACKEND_URL}`)
   console.log(`   ✅ W3C Trace Context propagation enabled\n`)
-
-  return sdk
 }
 
 // Fetch users from backend

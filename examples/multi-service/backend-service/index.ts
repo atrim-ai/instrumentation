@@ -13,73 +13,23 @@
  */
 
 import express from 'express'
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
-import {
-  initializeInstrumentation,
-  PatternSpanProcessor,
-  setSpanAttributes,
-  markSpanSuccess,
-  markSpanError
-} from '@atrim/instrumentation'
-import { loadConfig } from '@atrim/instrumentation'
+import { initializeInstrumentation, setSpanAttributes, markSpanSuccess, markSpanError } from '@atrim/instrumentation'
 import { trace } from '@opentelemetry/api'
 
 const DB_URL = process.env.DB_URL || 'http://localhost:3102'
-const COLLECTOR_URL = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
 const PORT = process.env.PORT || 3101
 
 async function setupInstrumentation() {
   console.log('🔧 [Backend Service] Setting up instrumentation...\n')
 
-  // 1. Initialize pattern-based instrumentation
-  await initializeInstrumentation()
-
-  // 2. Create OTLP exporter
-  const exporter = new OTLPTraceExporter({
-    url: `${COLLECTOR_URL}/v1/traces`
+  // One line initialization!
+  await initializeInstrumentation({
+    serviceName: 'backend-service'
   })
 
-  // 3. Create batch processor
-  const batchProcessor = new BatchSpanProcessor(exporter)
-
-  // 4. Wrap with pattern processor
-  const config = await loadConfig()
-  const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
-
-  // 5. Initialize SDK with auto-instrumentations
-  const sdk = new NodeSDK({
-    spanProcessor: patternProcessor,
-    serviceName: 'backend-service',
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-http': {
-          enabled: true,
-          // Continue traces from UI service
-          requireParentforOutgoingSpans: false,
-          // Ensure we propagate context to DB service
-          ignoreIncomingRequestHook: undefined,
-          ignoreOutgoingRequestHook: undefined
-        },
-        '@opentelemetry/instrumentation-express': {
-          enabled: true
-        },
-        '@opentelemetry/instrumentation-fs': {
-          enabled: false
-        }
-      })
-    ]
-  })
-
-  sdk.start()
   console.log('✅ [Backend Service] Instrumentation initialized')
-  console.log(`   📡 Collector: ${COLLECTOR_URL}`)
   console.log(`   🔗 DB Service: ${DB_URL}`)
   console.log(`   ✅ W3C Trace Context propagation enabled (incoming & outgoing)\n`)
-
-  return sdk
 }
 
 // Query database service

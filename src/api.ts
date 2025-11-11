@@ -1,23 +1,24 @@
 /**
  * Public API for standard OpenTelemetry usage
  *
- * This module provides the main entry point for initializing pattern-based
- * span filtering in any Node.js application.
+ * This module provides the main entry point for complete OpenTelemetry
+ * initialization including NodeSDK, OTLP export, and pattern-based filtering.
  */
 
-import { loadConfig, type ConfigLoaderOptions } from './core/config-loader.js'
+import type { NodeSDK } from '@opentelemetry/sdk-node'
+import { initializeSdk, type SdkInitializationOptions } from './core/sdk-initializer.js'
 import { initializePatternMatcher } from './core/pattern-matcher.js'
+import { loadConfig } from './core/config-loader.js'
 
 /**
- * Global initialization state
- */
-let initialized = false
-
-/**
- * Initialize pattern-based instrumentation
+ * Initialize OpenTelemetry instrumentation with complete SDK setup
  *
- * This function loads the configuration and sets up the global pattern matcher.
- * Call this once at application startup before creating any spans.
+ * This function provides a single-line initialization for OpenTelemetry:
+ * - Loads instrumentation.yaml configuration
+ * - Creates and configures OTLP exporter
+ * - Sets up pattern-based span filtering
+ * - Initializes NodeSDK with auto-instrumentations
+ * - Registers graceful shutdown handlers
  *
  * Configuration priority (highest to lowest):
  * 1. Explicit config object (options.config)
@@ -26,90 +27,104 @@ let initialized = false
  * 4. Project root file (./instrumentation.yaml)
  * 5. Default config (built-in defaults)
  *
- * @param options - Configuration options
+ * OTLP endpoint priority:
+ * 1. options.otlp.endpoint
+ * 2. OTEL_EXPORTER_OTLP_TRACES_ENDPOINT environment variable
+ * 3. OTEL_EXPORTER_OTLP_ENDPOINT environment variable
+ * 4. Default: http://localhost:4318/v1/traces
+ *
+ * Service name priority:
+ * 1. options.serviceName
+ * 2. OTEL_SERVICE_NAME environment variable
+ * 3. package.json name field
+ * 4. Default: 'unknown-service'
+ *
+ * @param options - Initialization options
+ * @returns The initialized NodeSDK instance
  *
  * @example
  * ```typescript
- * // Zero-config (looks for ./instrumentation.yaml)
- * initializeInstrumentation()
+ * // Zero-config initialization (recommended)
+ * await initializeInstrumentation()
+ * // Auto-detects everything from env vars and package.json
  *
- * // With explicit config file
- * initializeInstrumentation({
+ * // With custom OTLP endpoint
+ * await initializeInstrumentation({
+ *   otlp: {
+ *     endpoint: 'https://otel-collector.company.com:4318'
+ *   }
+ * })
+ *
+ * // With custom service name
+ * await initializeInstrumentation({
+ *   serviceName: 'my-api-service',
+ *   serviceVersion: '2.0.0'
+ * })
+ *
+ * // Disable auto-instrumentation (manual spans only)
+ * await initializeInstrumentation({
+ *   autoInstrument: false
+ * })
+ *
+ * // With custom config file
+ * await initializeInstrumentation({
  *   configPath: './config/custom-instrumentation.yaml'
  * })
  *
  * // With remote config URL
- * initializeInstrumentation({
+ * await initializeInstrumentation({
  *   configUrl: 'https://config.company.com/instrumentation.yaml',
  *   cacheTimeout: 300_000 // 5 minutes
  * })
  *
- * // With programmatic config
- * initializeInstrumentation({
- *   config: {
- *     version: '1.0',
- *     instrumentation: {
- *       enabled: true,
- *       instrument_patterns: [{ pattern: '^app\\.' }],
- *       ignore_patterns: [{ pattern: '^test\\.' }]
- *     }
+ * // Advanced: Full control
+ * await initializeInstrumentation({
+ *   otlp: {
+ *     endpoint: process.env.CUSTOM_ENDPOINT,
+ *     headers: { 'x-api-key': 'secret' }
+ *   },
+ *   serviceName: 'my-service',
+ *   autoInstrument: true,
+ *   instrumentations: [], // custom instrumentations
+ *   sdk: {
+ *     // Additional NodeSDK configuration
  *   }
  * })
  * ```
  */
-export async function initializeInstrumentation(options: ConfigLoaderOptions = {}): Promise<void> {
-  if (initialized) {
-    console.warn('@atrim/instrumentation: Already initialized. Skipping re-initialization.')
-    return
-  }
+export async function initializeInstrumentation(
+  options: SdkInitializationOptions = {}
+): Promise<NodeSDK | null> {
+  // Initialize the complete SDK with all features
+  // Returns null if OpenTelemetry is already initialized elsewhere
+  const sdk = await initializeSdk(options)
 
-  try {
-    // Load configuration
+  // If SDK was initialized, also set up pattern matcher for backwards compatibility
+  // (in case users are using shouldInstrumentSpan directly)
+  // Note: If SDK was skipped, initializeSdk already initialized the pattern matcher
+  if (sdk) {
     const config = await loadConfig(options)
-
-    // Initialize pattern matcher
     initializePatternMatcher(config)
-
-    // Mark as initialized
-    initialized = true
-
-    // Log initialization
-    if (config.instrumentation.enabled) {
-      const instrumentCount = config.instrumentation.instrument_patterns.filter(
-        (p) => p.enabled !== false
-      ).length
-      const ignoreCount = config.instrumentation.ignore_patterns.length
-
-      console.log('@atrim/instrumentation: Initialized successfully')
-      console.log(`  - Enabled: true`)
-      console.log(`  - Instrument patterns: ${instrumentCount}`)
-      console.log(`  - Ignore patterns: ${ignoreCount}`)
-
-      if (config.instrumentation.description) {
-        console.log(`  - Description: ${config.instrumentation.description}`)
-      }
-    } else {
-      console.log('@atrim/instrumentation: Initialized (disabled via config)')
-    }
-  } catch (error) {
-    console.error(
-      '@atrim/instrumentation: Failed to initialize:',
-      error instanceof Error ? error.message : String(error)
-    )
-    throw error
   }
+
+  return sdk
 }
 
 /**
- * Check if instrumentation has been initialized
+ * Legacy initialization function for pattern-only mode
+ *
+ * This function only initializes pattern matching without setting up the NodeSDK.
+ * Use this if you want to manually configure OpenTelemetry while still using
+ * pattern-based filtering.
+ *
+ * @deprecated Use initializeInstrumentation() instead for complete setup
  */
-export function isInitialized(): boolean {
-  return initialized
-}
+export async function initializePatternMatchingOnly(
+  options: SdkInitializationOptions = {}
+): Promise<void> {
+  const config = await loadConfig(options)
+  initializePatternMatcher(config)
 
-/**
- * Reset initialization state (useful for testing)
- */
-export function resetInitialization(): void {
-  initialized = false
+  console.log('@atrim/instrumentation: Pattern matching initialized (legacy mode)')
+  console.log('  Note: NodeSDK is not initialized. Use initializeInstrumentation() for complete setup.')
 }
