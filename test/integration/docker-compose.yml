@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  # OpenTelemetry Collector with debug exporter
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: atrim-otel-collector-test
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4320:4318"   # OTLP HTTP receiver (host:4320 -> container:4318)
+      - "4319:4317"   # OTLP gRPC receiver (host:4319 -> container:4317)
+      - "13134:13133" # Health check (host:13134 -> container:13133)
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
