@@ -35,7 +35,10 @@ export interface SdkInitializationOptions extends ConfigLoaderOptions {
 
   /**
    * Enable auto-instrumentation
-   * Default: true (enables Express, HTTP, and other common instrumentations)
+   * Default: auto-detected based on your runtime and framework
+   * - true: Enables Express, HTTP, and other common instrumentations
+   * - false: Disables all auto-instrumentation (manual spans only)
+   * - undefined: Smart detection (checks for Effect-TS usage)
    */
   autoInstrument?: boolean
 
@@ -62,6 +65,73 @@ export interface SdkInitializationOptions extends ConfigLoaderOptions {
  * Global SDK instance
  */
 let sdkInstance: NodeSDK | null = null
+
+/**
+ * Detect if Effect-TS is being used in the project
+ *
+ * Checks if the 'effect' package is installed
+ */
+function isEffectProject(): boolean {
+  try {
+    // Try to resolve the effect package
+    require.resolve('effect')
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Determine if auto-instrumentation should be enabled
+ *
+ * Smart defaults:
+ * - If explicitly set, use that value
+ * - If Effect-TS is detected AND no web framework detected, default to false
+ * - Otherwise, default to true
+ */
+function shouldEnableAutoInstrumentation(
+  explicitValue: boolean | undefined,
+  hasWebFramework: boolean
+): boolean {
+  // If explicitly set, honor that
+  if (explicitValue !== undefined) {
+    return explicitValue
+  }
+
+  // Smart detection: Effect-only projects (no web framework) don't need auto-instrumentation
+  // Effect with Express/Fastify/etc DOES benefit from auto-instrumentation
+  const isEffect = isEffectProject()
+
+  if (isEffect && !hasWebFramework) {
+    console.log('@atrim/instrumentation: Detected Effect-TS without web framework')
+    console.log('  - Auto-instrumentation disabled by default')
+    console.log('  - Effect.withSpan() will create spans')
+    return false
+  }
+
+  // Default: enable auto-instrumentation
+  return true
+}
+
+/**
+ * Detect if a web framework is likely being used
+ *
+ * Checks for common web framework packages
+ */
+function hasWebFrameworkInstalled(): boolean {
+  const frameworks = ['express', 'fastify', 'koa', '@hono/node-server', 'restify']
+
+  for (const framework of frameworks) {
+    try {
+      require.resolve(framework)
+      return true
+    } catch {
+      // Framework not found, continue
+    }
+  }
+
+  return false
+}
 
 /**
  * Check if OpenTelemetry tracing is already initialized
@@ -141,8 +211,15 @@ export async function initializeSdk(options: SdkInitializationOptions = {}): Pro
   // 5. Prepare instrumentations
   const instrumentations: Instrumentation[] = []
 
-  // Add auto-instrumentations if enabled (default: true)
-  if (options.autoInstrument !== false) {
+  // Determine if auto-instrumentation should be enabled
+  const hasWebFramework = hasWebFrameworkInstalled()
+  const enableAutoInstrumentation = shouldEnableAutoInstrumentation(
+    options.autoInstrument,
+    hasWebFramework
+  )
+
+  // Add auto-instrumentations if enabled
+  if (enableAutoInstrumentation) {
     instrumentations.push(
       ...getNodeAutoInstrumentations({
         // Enable common instrumentations
@@ -185,7 +262,7 @@ export async function initializeSdk(options: SdkInitializationOptions = {}): Pro
   }
 
   // 9. Log initialization details
-  logInitialization(config, serviceName, serviceVersion, options)
+  logInitialization(config, serviceName, serviceVersion, options, enableAutoInstrumentation)
 
   return sdk
 }
@@ -260,7 +337,8 @@ function logInitialization(
   config: any,
   serviceName: string,
   serviceVersion: string | undefined,
-  options: SdkInitializationOptions
+  options: SdkInitializationOptions,
+  autoInstrumentEnabled: boolean
 ): void {
   console.log('@atrim/instrumentation: SDK initialized successfully')
   console.log(`  - Service: ${serviceName}${serviceVersion ? ` v${serviceVersion}` : ''}`)
@@ -278,7 +356,10 @@ function logInitialization(
     console.log(`  - Pattern filtering: disabled`)
   }
 
-  console.log(`  - Auto-instrumentation: ${options.autoInstrument !== false ? 'enabled' : 'disabled'}`)
+  // Show auto-instrumentation status
+  const autoInstrumentLabel = autoInstrumentEnabled ? 'enabled' : 'disabled'
+  const autoDetected = options.autoInstrument === undefined ? ' (auto-detected)' : ''
+  console.log(`  - Auto-instrumentation: ${autoInstrumentLabel}${autoDetected}`)
 
   if (options.instrumentations && options.instrumentations.length > 0) {
     console.log(`  - Custom instrumentations: ${options.instrumentations.length}`)

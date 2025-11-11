@@ -315,11 +315,13 @@ function complexUserWorkflow(userId: string): Effect.Effect<
 async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation...\n')
 
-  // One line initialization for Effect-TS!
-  // This sets up the OpenTelemetry NodeSDK which works seamlessly with Effect's tracing
+  // One line initialization for Effect-TS with Express!
+  // Auto-instrumentation is enabled by default since we're using Express
+  // - Express HTTP auto-instrumentation will trace incoming requests
+  // - Effect.withSpan() will trace business logic inside those requests
+  // - They work together perfectly!
   await initializeInstrumentation({
-    serviceName: 'effect-ts-example',
-    autoInstrument: false // Effect handles its own instrumentation
+    serviceName: 'effect-ts-example'
   })
 
   console.log('✅ Ready to trace with Effect!\n')
