@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Effect-TS Advanced Patterns Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      color: white;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    }
+
+    .card h2 {
+      font-size: 1.3rem;
+      margin-bottom: 0.5rem;
+      color: #667eea;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card p {
+      color: #666;
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    .pattern-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background: #f0f0f0;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #764ba2;
+      margin-bottom: 1rem;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .response {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+      display: none;
+    }
+
+    .response.show {
+      display: block;
+    }
+
+    .response.error {
+      border-left-color: #e74c3c;
+      background: #fee;
+    }
+
+    .response.success {
+      border-left-color: #2ecc71;
+      background: #efe;
+    }
+
+    .response pre {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: white;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+    }
+
+    .trace-info {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      color: #856404;
+    }
+
+    .trace-info h3 {
+      margin-bottom: 0.5rem;
+      color: #856404;
+    }
+
+    .trace-info ul {
+      margin-left: 1.5rem;
+      line-height: 1.8;
+    }
+
+    .input-group {
+      margin-bottom: 1rem;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .emoji {
+      font-size: 1.5rem;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid #ffffff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-left: 0.5rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⚡ Effect-TS Advanced Patterns</h1>
+      <p class="subtitle">Interactive demo of Effect-TS patterns with OpenTelemetry tracing</p>
+    </header>
+
+    <div class="trace-info">
+      <h3>🔍 What to observe in your traces:</h3>
+      <ul>
+        <li><strong>Effect.race:</strong> Two parallel spans competing (cache vs database)</li>
+        <li><strong>Effect.retry:</strong> Multiple retry spans with exponential backoff</li>
+        <li><strong>Effect.timeout:</strong> Spans with timeout annotations</li>
+        <li><strong>Effect.all:</strong> Multiple parallel child spans</li>
+        <li><strong>Context propagation:</strong> Express HTTP spans → Effect spans</li>
+      </ul>
+    </div>
+
+    <div class="grid">
+      <!-- Pattern 1: Effect.race -->
+      <div class="card">
+        <h2><span class="emoji">🏁</span> Effect.race</h2>
+        <span class="pattern-badge">Concurrent Operations</span>
+        <p>Fetch a user using cache and database simultaneously. First successful result wins!</p>
+        <div class="input-group">
+          <label>User ID:</label>
+          <input type="text" id="race-user-id" value="1" placeholder="Enter user ID">
+        </div>
+        <button onclick="demoRace()">Race: Cache vs Database</button>
+        <div class="response" id="race-response"></div>
+      </div>
+
+      <!-- Pattern 2: Effect.retry -->
+      <div class="card">
+        <h2><span class="emoji">🔄</span> Effect.retry</h2>
+        <span class="pattern-badge">Exponential Backoff</span>
+        <p>Fetch all users with automatic retry logic. Database failures trigger exponential backoff retries.</p>
+        <button onclick="demoRetry()">Fetch with Retry Logic</button>
+        <div class="response" id="retry-response"></div>
+      </div>
+
+      <!-- Pattern 3: Effect.timeout -->
+      <div class="card">
+        <h2><span class="emoji">⏱️</span> Effect.timeout</h2>
+        <span class="pattern-badge">Operation Timeout</span>
+        <p>Cache operations with 200ms timeout. Slow operations will fail gracefully.</p>
+        <div class="input-group">
+          <label>Cache Key:</label>
+          <input type="text" id="timeout-key" value="test-key" placeholder="Enter cache key">
+        </div>
+        <button onclick="demoTimeout()">Test Cache Timeout</button>
+        <div class="response" id="timeout-response"></div>
+      </div>
+
+      <!-- Pattern 4: Effect.all -->
+      <div class="card">
+        <h2><span class="emoji">⚡</span> Effect.all</h2>
+        <span class="pattern-badge">Parallel Execution</span>
+        <p>Fetch and cache all users in parallel with concurrency limit of 5.</p>
+        <button onclick="demoParallel()">Parallel Bulk Operation</button>
+        <div class="response" id="parallel-response"></div>
+      </div>
+
+      <!-- Pattern 5: Complex Workflow -->
+      <div class="card">
+        <h2><span class="emoji">🎯</span> Complex Workflow</h2>
+        <span class="pattern-badge">Combined Patterns</span>
+        <p>Demonstrates race, retry, timeout, and parallel execution all working together in one workflow.</p>
+        <div class="input-group">
+          <label>User ID:</label>
+          <input type="text" id="workflow-user-id" value="1" placeholder="Enter user ID">
+        </div>
+        <button onclick="demoWorkflow()">Run Complex Workflow</button>
+        <div class="response" id="workflow-response"></div>
+      </div>
+
+      <!-- Pattern 6: Create User -->
+      <div class="card">
+        <h2><span class="emoji">➕</span> Create User</h2>
+        <span class="pattern-badge">Validation & Error Handling</span>
+        <p>Create a new user with validation. Demonstrates Effect.either for graceful error handling.</p>
+        <div class="input-group">
+          <label>Name:</label>
+          <input type="text" id="create-name" value="Diana" placeholder="Enter name">
+        </div>
+        <div class="input-group">
+          <label>Email:</label>
+          <input type="text" id="create-email" value="diana@example.com" placeholder="Enter email">
+        </div>
+        <button onclick="demoCreate()">Create User</button>
+        <div class="response" id="create-response"></div>
+      </div>
+    </div>
+
+    <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+      <h2 style="color: white;">💡 Pro Tips</h2>
+      <ul style="margin-left: 1.5rem; line-height: 2;">
+        <li>Open your OpenTelemetry collector UI to see real-time traces</li>
+        <li>Try clicking the same button multiple times to see different retry behaviors</li>
+        <li>Clear cache between tests for consistent race conditions</li>
+        <li>Look for span attributes like db.statement, cache.hit, and retry.count</li>
+      </ul>
+      <button onclick="clearCache()" style="margin-top: 1rem; background: white; color: #667eea;">Clear Cache</button>
+    </div>
+  </div>
+
+  <script>
+    async function makeRequest(url, options = {}) {
+      const btn = event?.target;
+      if (btn) {
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.innerHTML = originalText + '<span class="loading"></span>';
+      }
+
+      try {
+        const response = await fetch(url, options);
+        const data = await response.json();
+        return { success: response.ok, data };
+      } catch (error) {
+        return { success: false, error: error.message };
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = btn.textContent.replace('⠀', '');
+        }
+      }
+    }
+
+    function showResponse(elementId, result) {
+      const el = document.getElementById(elementId);
+      el.className = 'response show ' + (result.success ? 'success' : 'error');
+
+      const statusText = result.success ? '✅ Success' : '❌ Error';
+      const content = result.error || JSON.stringify(result.data, null, 2);
+
+      el.innerHTML = `
+        <strong>${statusText}</strong>
+        <pre>${content}</pre>
+      `;
+    }
+
+    async function demoRace() {
+      const userId = document.getElementById('race-user-id').value;
+      const result = await makeRequest(`/users/${userId}`);
+      showResponse('race-response', result);
+    }
+
+    async function demoRetry() {
+      const result = await makeRequest('/users');
+      showResponse('retry-response', result);
+    }
+
+    async function demoTimeout() {
+      const userId = document.getElementById('race-user-id').value;
+      const result = await makeRequest(`/users/${userId}`);
+      showResponse('timeout-response', result);
+    }
+
+    async function demoParallel() {
+      const result = await makeRequest('/users');
+      showResponse('parallel-response', result);
+    }
+
+    async function demoWorkflow() {
+      const userId = document.getElementById('workflow-user-id').value;
+      const result = await makeRequest(`/workflow/${userId}`);
+      showResponse('workflow-response', result);
+    }
+
+    async function demoCreate() {
+      const name = document.getElementById('create-name').value;
+      const email = document.getElementById('create-email').value;
+
+      const result = await makeRequest('/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email })
+      });
+
+      showResponse('create-response', result);
+    }
+
+    async function clearCache() {
+      const result = await makeRequest('/cache/clear', { method: 'POST' });
+      if (result.success) {
+        alert('✅ Cache cleared successfully!');
+      } else {
+        alert('❌ Failed to clear cache');
+      }
+    }
+
+    // Auto-focus first input
+    document.getElementById('race-user-id').focus();
+  </script>
+</body>
+</html>

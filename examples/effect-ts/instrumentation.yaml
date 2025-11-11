@@ -1,0 +1,66 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Effect-TS example with advanced patterns"
+
+  instrument_patterns:
+    # Application operations
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application business logic"
+
+    # Effect-specific operations
+    - pattern: "^effect\\."
+      enabled: true
+      description: "Effect runtime operations"
+
+    # User management operations
+    - pattern: "^user\\."
+      enabled: true
+      description: "User management operations"
+
+    # Database operations
+    - pattern: "^db\\."
+      enabled: true
+      description: "Database operations"
+
+    # Cache operations
+    - pattern: "^cache\\."
+      enabled: true
+      description: "Cache operations"
+
+    # HTTP operations (Express auto-instrumentation)
+    - pattern: "^GET /"
+      enabled: true
+      description: "HTTP GET requests"
+
+    - pattern: "^POST /"
+      enabled: true
+      description: "HTTP POST requests"
+
+  ignore_patterns:
+    # Health and metrics
+    - pattern: "^GET /health"
+      description: "Health check endpoint"
+
+    - pattern: "^GET /metrics"
+      description: "Metrics endpoint"
+
+    # Static assets
+    - pattern: "^GET /favicon.ico"
+      description: "Browser favicon requests"
+
+    - pattern: "^GET /index.html"
+      description: "Static HTML page"
+
+    # Internal utilities
+    - pattern: "^internal\\."
+      description: "Internal utility functions"
+
+    - pattern: "^test\\."
+      description: "Test utilities"
+
+# Effect-TS specific configuration
+effect:
+  auto_extract_metadata: true
