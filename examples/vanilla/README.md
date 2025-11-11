@@ -1,6 +1,6 @@
 # Vanilla TypeScript Example
 
-This example demonstrates using `@atrim/instrumentation` in a plain Node.js/TypeScript application without any web framework.
+This example demonstrates using `@atrim/instrumentation` in a plain Node.js/TypeScript application without any web framework - just the built-in `http` module with an interactive UI.
 
 ## What This Example Shows
 
@@ -36,6 +36,18 @@ pnpm install
 cd examples/vanilla
 pnpm start
 ```
+
+The server will start on `http://localhost:3001`
+
+**Open the UI:** Visit http://localhost:3001 in your browser for an interactive demo!
+
+## Using the Web UI
+
+Open http://localhost:3001 in your browser to:
+- Run the complete demo workflow (generates multiple traces)
+- Test individual operations (user fetch, cache, etc.)
+- Run filtered operations that don't generate traces (internal.*, test.*)
+- See real-time activity logs with trace information
 
 ## Expected Output
 

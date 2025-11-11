@@ -10,9 +10,10 @@
 // Core exports (standard OpenTelemetry)
 export { initializeInstrumentation, isInitialized, resetInitialization } from './api.js'
 
-// Configuration types
+// Configuration types and loader
 export type { InstrumentationConfig, PatternConfig } from './core/instrumentation-schema.js'
 export type { ConfigLoaderOptions } from './core/config-loader.js'
+export { loadConfig } from './core/config-loader.js'
 
 // Pattern matching utilities
 export { shouldInstrumentSpan, PatternMatcher, getPatternMatcher } from './core/pattern-matcher.js'

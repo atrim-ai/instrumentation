@@ -26,3 +26,6 @@ instrumentation:
 
     - pattern: "^GET /favicon.ico"
       description: "Browser favicon requests"
+
+    - pattern: "^GET /index.html"
+      description: "Static HTML page"

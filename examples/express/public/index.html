@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@atrim/instrumentation - Express Example</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .users-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .user-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.2s;
+    }
+
+    .user-card:hover {
+      transform: translateX(4px);
+    }
+
+    .user-info {
+      flex: 1;
+    }
+
+    .user-name {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .user-email {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: 100%;
+    }
+
+    button:hover {
+      background: #5568d3;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+
+    .status {
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+
+    .trace-info {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+    }
+
+    .trace-info h3 {
+      font-size: 14px;
+      color: #856404;
+      margin-bottom: 8px;
+    }
+
+    .trace-info ul {
+      list-style: none;
+      font-size: 13px;
+      color: #856404;
+    }
+
+    .trace-info li {
+      padding: 4px 0;
+    }
+
+    .trace-info li:before {
+      content: "✓ ";
+      color: #28a745;
+      font-weight: bold;
+      margin-right: 4px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+
+    .loading.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>@atrim/instrumentation</h1>
+      <p class="subtitle">Express Example - Pattern-Based Tracing Demo</p>
+      <span class="badge">OpenTelemetry Instrumented</span>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="card">
+      <h2>👥 Users</h2>
+      <div class="loading" id="loading">Loading users...</div>
+      <div id="users-list" class="users-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>➕ Add New User</h2>
+      <form id="add-user-form">
+        <div class="form-group">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" required placeholder="Enter user name">
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required placeholder="user@example.com">
+        </div>
+        <button type="submit">Create User (Traced)</button>
+      </form>
+
+      <div class="trace-info">
+        <h3>Traces Generated:</h3>
+        <ul>
+          <li>GET /users → Creates traced spans (app.users.list, app.db.query)</li>
+          <li>POST /users → Creates traced spans (app.users.create)</li>
+          <li>GET /health → Filtered out (ignore pattern)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🔍 Test Endpoints</h2>
+      <div style="display: grid; gap: 10px;">
+        <button onclick="testHealth()" class="btn-secondary">Test /health (Filtered - No Trace)</button>
+        <button onclick="testMetrics()" class="btn-secondary">Test /metrics (Filtered - No Trace)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let users = [];
+
+    // Load users on page load
+    async function loadUsers() {
+      const loading = document.getElementById('loading');
+      const usersList = document.getElementById('users-list');
+
+      loading.classList.add('active');
+
+      try {
+        const response = await fetch('/users');
+        if (!response.ok) throw new Error('Failed to load users');
+
+        users = await response.json();
+        renderUsers();
+        showStatus('Users loaded successfully', 'success');
+      } catch (error) {
+        showStatus('Error loading users: ' + error.message, 'error');
+      } finally {
+        loading.classList.remove('active');
+      }
+    }
+
+    function renderUsers() {
+      const usersList = document.getElementById('users-list');
+
+      if (users.length === 0) {
+        usersList.innerHTML = '<div class="empty-state">No users yet. Add one above!</div>';
+        return;
+      }
+
+      usersList.innerHTML = users.map(user => `
+        <div class="user-card">
+          <div class="user-info">
+            <div class="user-name">${escapeHtml(user.name)}</div>
+            <div class="user-email">${escapeHtml(user.email)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Add user form handler
+    document.getElementById('add-user-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+
+      try {
+        const response = await fetch('/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, email })
+        });
+
+        if (!response.ok) throw new Error('Failed to create user');
+
+        const newUser = await response.json();
+        users.push(newUser);
+        renderUsers();
+
+        // Clear form
+        document.getElementById('name').value = '';
+        document.getElementById('email').value = '';
+
+        showStatus(`User "${name}" created successfully! (Trace generated)`, 'success');
+      } catch (error) {
+        showStatus('Error creating user: ' + error.message, 'error');
+      }
+    });
+
+    // Test health endpoint (should be filtered)
+    async function testHealth() {
+      try {
+        const response = await fetch('/health');
+        const data = await response.json();
+        showStatus('Health check OK (no trace generated - filtered by pattern)', 'success');
+      } catch (error) {
+        showStatus('Health check failed: ' + error.message, 'error');
+      }
+    }
+
+    // Test metrics endpoint (should be filtered)
+    async function testMetrics() {
+      try {
+        const response = await fetch('/metrics');
+        const data = await response.json();
+        showStatus(`Metrics: ${data.requests} requests (no trace generated - filtered by pattern)`, 'success');
+      } catch (error) {
+        showStatus('Metrics check failed: ' + error.message, 'error');
+      }
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = `status ${type}`;
+
+      setTimeout(() => {
+        status.className = 'status';
+      }, 5000);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Initialize
+    loadUsers();
+  </script>
+</body>
+</html>

@@ -119,6 +119,9 @@ function createApp() {
   const app = express()
   app.use(express.json())
 
+  // Serve static files from public directory
+  app.use(express.static('public'))
+
   const tracer = trace.getTracer('express-example')
 
   // Health check endpoint (will be DROPPED by ignore pattern)
@@ -243,7 +246,9 @@ async function main() {
     app.listen(PORT, () => {
       console.log(`🌐 Express server listening on http://localhost:${PORT}`)
       console.log('\n' + '='.repeat(60))
-      console.log('📊 Try these requests:')
+      console.log('🎨 Interactive UI:')
+      console.log(`   👉 Open http://localhost:${PORT} in your browser`)
+      console.log('\n📊 Or try these curl requests:')
       console.log(`   curl http://localhost:${PORT}/users`)
       console.log(`   curl http://localhost:${PORT}/users/1`)
       console.log(`   curl http://localhost:${PORT}/health  # Will be dropped`)

@@ -2,7 +2,7 @@
  * Vanilla TypeScript Example for @atrim/instrumentation
  *
  * This example shows how to use @atrim/instrumentation in a plain Node.js/TypeScript application
- * without any web framework.
+ * without any web framework - just the built-in http module.
  *
  * To run this example:
  * 1. Make sure you have an OpenTelemetry collector running:
@@ -12,6 +12,10 @@
  *    npm start
  */
 
+import * as http from 'node:http'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { NodeSDK } from '@opentelemetry/sdk-node'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
@@ -26,6 +30,9 @@ import {
   setSpanAttributes
 } from '@atrim/instrumentation'
 import { loadConfig } from '@atrim/instrumentation'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation...\n')
@@ -119,8 +126,20 @@ async function internalOperation() {
   const span = tracer.startSpan('internal.utility.operation')
 
   try {
-    console.log('  📌 Internal operation (span will be dropped)')
     await simulateAsync(30)
+    span.end()
+  } catch (error) {
+    span.end()
+  }
+}
+
+async function testOperation() {
+  // This span will be dropped by ignore pattern (^test\.)
+  const tracer = trace.getTracer('vanilla-example')
+  const span = tracer.startSpan('test.utility.operation')
+
+  try {
+    await simulateAsync(20)
     span.end()
   } catch (error) {
     span.end()
@@ -132,28 +151,25 @@ async function demoWorkflow() {
   const rootSpan = tracer.startSpan('demo.workflow')
 
   try {
-    console.log('🔄 Starting demo workflow...\n')
-
     // 1. Fetch user (will be instrumented)
-    console.log('  📊 Fetching user data...')
     const userData = await fetchUserData('user-123')
-    console.log(`  ✅ Fetched user: ${userData.name}\n`)
 
     // 2. Cache operation (will be instrumented)
-    console.log('  💾 Caching user data...')
     await cacheOperation('user:123', JSON.stringify(userData))
-    console.log('  ✅ Cached successfully\n')
 
     // 3. Internal operation (will be DROPPED by ignore pattern)
-    console.log('  🔧 Running internal operation...')
     await internalOperation()
-    console.log('  ✅ Internal operation complete\n')
 
     markSpanSuccess(rootSpan)
-    console.log('✅ Demo workflow completed!\n')
+
+    return {
+      userData,
+      cached: true,
+      tracesGenerated: 4 // demo.workflow, app.user.fetch, app.db.query, app.cache.set
+    }
   } catch (error) {
     markSpanError(rootSpan, 'Workflow failed')
-    console.error('❌ Error:', error)
+    throw error
   } finally {
     rootSpan.end()
   }
@@ -163,31 +179,127 @@ function simulateAsync(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+// HTTP Server
+function createServer() {
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url || '/', `http://${req.headers.host}`)
+
+    // Serve static files
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
+      const filePath = path.join(__dirname, 'public', 'index.html')
+      const content = fs.readFileSync(filePath, 'utf-8')
+      res.writeHead(200, { 'Content-Type': 'text/html' })
+      res.end(content)
+      return
+    }
+
+    // API: Run complete workflow
+    if (req.method === 'POST' && url.pathname === '/api/workflow') {
+      try {
+        const result = await demoWorkflow()
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(result))
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Workflow failed' }))
+      }
+      return
+    }
+
+    // API: Fetch user
+    if (req.method === 'GET' && url.pathname.startsWith('/api/user/')) {
+      const userId = url.pathname.split('/').pop()
+      try {
+        const user = await fetchUserData(userId || 'unknown')
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(user))
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Failed to fetch user' }))
+      }
+      return
+    }
+
+    // API: Cache operation
+    if (req.method === 'POST' && url.pathname === '/api/cache') {
+      let body = ''
+      req.on('data', (chunk) => (body += chunk))
+      req.on('end', async () => {
+        try {
+          const { key, value } = JSON.parse(body)
+          await cacheOperation(key, value)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ success: true }))
+        } catch (error) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Cache operation failed' }))
+        }
+      })
+      return
+    }
+
+    // API: Internal operation (filtered)
+    if (req.method === 'GET' && url.pathname === '/api/internal') {
+      try {
+        await internalOperation()
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true, traced: false }))
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Internal operation failed' }))
+      }
+      return
+    }
+
+    // API: Test operation (filtered)
+    if (req.method === 'GET' && url.pathname === '/api/test') {
+      try {
+        await testOperation()
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true, traced: false }))
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Test operation failed' }))
+      }
+      return
+    }
+
+    // 404
+    res.writeHead(404, { 'Content-Type': 'text/plain' })
+    res.end('Not Found')
+  })
+
+  return server
+}
+
 // Main
 async function main() {
   console.log('📦 @atrim/instrumentation - Vanilla TypeScript Example\n')
-  console.log('=' .repeat(60) + '\n')
+  console.log('='.repeat(60) + '\n')
 
   try {
     // Setup instrumentation
-    const sdk = await setupInstrumentation()
+    await setupInstrumentation()
 
-    // Run demo workflow
-    await demoWorkflow()
+    // Create and start HTTP server
+    const server = createServer()
+    const PORT = process.env.PORT || 3001
 
-    // Give time for spans to be exported
-    console.log('⏳ Waiting for spans to be exported...')
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    // Shutdown
-    console.log('👋 Shutting down gracefully...')
-    await sdk.shutdown()
-
-    console.log('\n' + '='.repeat(60))
-    console.log('📊 Check your OpenTelemetry collector for traces!')
-    console.log('   - Service: vanilla-example')
-    console.log('   - Spans created: app.*, demo.* (matching patterns)')
-    console.log('   - Spans dropped: internal.* (ignore pattern)\n')
+    server.listen(PORT, () => {
+      console.log(`🌐 HTTP server listening on http://localhost:${PORT}`)
+      console.log('\n' + '='.repeat(60))
+      console.log('🎨 Interactive UI:')
+      console.log(`   👉 Open http://localhost:${PORT} in your browser`)
+      console.log('\n📊 Or try these curl requests:')
+      console.log(`   curl -X POST http://localhost:${PORT}/api/workflow`)
+      console.log(`   curl http://localhost:${PORT}/api/user/user-123`)
+      console.log(`   curl http://localhost:${PORT}/api/internal  # Filtered`)
+      console.log('\n' + '='.repeat(60))
+      console.log('💡 Check your OpenTelemetry collector for traces!')
+      console.log('   - Service: vanilla-example')
+      console.log('   - Spans created: app.*, demo.* (matching patterns)')
+      console.log('   - Spans dropped: internal.*, test.* (ignore patterns)\n')
+    })
   } catch (error) {
     console.error('❌ Fatal error:', error)
     process.exit(1)

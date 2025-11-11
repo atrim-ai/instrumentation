@@ -34,7 +34,21 @@ cd examples/express
 pnpm start
 ```
 
+The server will start on `http://localhost:3000`
+
+**Open the UI:** Visit http://localhost:3000 in your browser for an interactive demo!
+
 ## Testing the Endpoints
+
+### Using the Web UI
+
+Open http://localhost:3000 in your browser to:
+- View the list of users (generates traces)
+- Add new users (generates traces)
+- Test filtered endpoints (/health, /metrics)
+- See real-time trace information
+
+### Using curl
 
 ```bash
 # Users list (instrumented)
