@@ -26,7 +26,7 @@ export function annotateHttpRequest(_method: string, _url: string, _statusCode: 
   // TODO: Implement
 }
 
-export function annotateError(_error: Error, _context?: Record<string, unknown>): any {
+export function annotateError(_error: Error, _context?: Record<string, string | number | boolean>): any {
   // TODO: Implement
 }
 

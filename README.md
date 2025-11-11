@@ -7,7 +7,7 @@ Universal OpenTelemetry instrumentation library for Node.js applications with ze
 
 ## Status: 🚧 Under Development
 
-This library is currently in active development. See [Issue #365](https://github.com/atrim-ai/atrim/issues/365) for implementation progress.
+This library is currently in active development.  YMMV
 
 ## Features
 

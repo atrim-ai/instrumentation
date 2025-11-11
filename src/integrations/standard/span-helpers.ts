@@ -15,12 +15,12 @@ export function setSpanAttributes(
 export function recordException(
   span: Span,
   error: Error,
-  context?: Record<string, unknown>
+  context?: Record<string, string | number | boolean>
 ): void {
   span.recordException(error)
   if (context) {
     for (const [key, value] of Object.entries(context)) {
-      span.setAttribute(`error.${key}`, String(value))
+      span.setAttribute(`error.${key}`, value)
     }
   }
 }

@@ -161,7 +161,7 @@ export function setSpanAttributes(
 export function recordException(
   span: Span,
   error: Error,
-  context?: Record<string, unknown>
+  context?: Record<string, string | number | boolean>
 ): void
 ```
 
@@ -299,11 +299,11 @@ const compiledPattern = new RegExp(pattern.pattern)
 - ✅ Cache configs to reduce requests
 - ✅ Fallback to default config on errors
 
-## Integration with OpenTelemetry Onboarding CLI
+## Integration with Atrim Onboarding CLI
 
-This library works seamlessly with the **OpenTelemetry Onboarding CLI** (issue #301):
+This library works seamlessly with the **Atrim Onboarding CLI**:
 
-**CLI (#301):** Analyzes codebases and generates setup code
+**Atrim CLI:** Analyzes codebases and generates setup code
 - Detects architecture (Express-first, Effect-first, hybrid)
 - Identifies gotchas and anti-patterns
 - Recommends instrumentation strategy
@@ -446,13 +446,8 @@ initializeInstrumentation({
 - ✅ 4+ example projects
 - ✅ Migration guide
 
-## Related Issues
-
-- **#316** - Phase 7: Library Preparation (parent issue)
-- **#301** - OpenTelemetry Onboarding CLI (companion tool)
-
 ## Additional Resources
 
 - [OpenTelemetry Specification](https://opentelemetry.io/docs/specs/otel/)
-- [Effect-TS Documentation](https://effect.website/)
+- [Effect-TS Tracing Documentation](https://effect.website/docs/observability/tracing/)
 - [OpenTelemetry JavaScript SDK](https://github.com/open-telemetry/opentelemetry-js)
