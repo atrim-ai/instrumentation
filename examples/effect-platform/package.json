@@ -1,0 +1,23 @@
+{
+  "name": "effect-platform-example",
+  "version": "1.0.0",
+  "description": "Pure Effect-TS example using @effect/platform HTTP server",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "tsx index.ts",
+    "dev": "tsx watch index.ts"
+  },
+  "dependencies": {
+    "@atrim/instrumentation": "workspace:*",
+    "effect": "^3.19.0",
+    "@effect/platform": "^0.93.0",
+    "@effect/platform-node": "^0.84.0",
+    "@effect/opentelemetry": "^0.59.0",
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.6.2",
+    "typescript": "^5.7.2"
+  }
+}
