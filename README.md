@@ -21,11 +21,19 @@ await initializeInstrumentation()
 
 **3. Done!** Your app is now sending traces to OpenTelemetry.
 
+By default, traces go to `http://localhost:4318`. To send to a remote collector:
+
+```typescript
+await initializeInstrumentation({
+  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+})
+```
+
 ### What just happened?
 
 Auto-detected and configured:
 - ✅ Service name from `package.json`
-- ✅ OTLP endpoint from environment or `http://localhost:4318`
+- ✅ OTLP endpoint (local or remote)
 - ✅ Auto-instrumentation for Express, HTTP, Fastify, etc.
 - ✅ Graceful shutdown on SIGTERM/SIGINT
 
