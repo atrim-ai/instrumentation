@@ -1,0 +1,14 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Development environment configuration - trace everything"
+
+  instrument_patterns:
+    - pattern: ".*"
+      enabled: true
+      description: "Trace all operations in development"
+
+  ignore_patterns:
+    - pattern: "^test\\."
+      description: "Test utility operations"
