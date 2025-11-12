@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@atrim/instrumentation - Bun Runtime Example</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #fbf8cc 0%, #fde4cf 50%, #ffcfd2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #fde4cf;
+      color: #8b5e34;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 10px;
+      margin-right: 8px;
+    }
+
+    .badge-bun {
+      background: #fbf8cc;
+      color: #7f6b3e;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .operations {
+      display: grid;
+      gap: 12px;
+    }
+
+    .operation-card {
+      background: #fff8f0;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #fde4cf;
+    }
+
+    .operation-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .operation-desc {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      background: #fde4cf;
+      color: #8b5e34;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    button:hover {
+      background: #fcd5b5;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-workflow {
+      background: linear-gradient(135deg, #fbf8cc 0%, #fde4cf 100%);
+      color: #7f6b3e;
+      font-size: 16px;
+      padding: 16px 32px;
+    }
+
+    .btn-workflow:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(253, 228, 207, 0.6);
+    }
+
+    .status {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+      display: block;
+    }
+
+    .log-container {
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 15px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #d4d4d4;
+      line-height: 1.6;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .log-entry.success {
+      color: #4ec9b0;
+    }
+
+    .log-entry.error {
+      color: #f48771;
+    }
+
+    .log-entry.info {
+      color: #569cd6;
+    }
+
+    .log-entry.trace {
+      color: #ce9178;
+    }
+
+    .trace-info {
+      background: #fff8dc;
+      border: 1px solid #ffeaa7;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+    }
+
+    .trace-info h3 {
+      font-size: 14px;
+      color: #856404;
+      margin-bottom: 8px;
+    }
+
+    .trace-info ul {
+      list-style: none;
+      font-size: 13px;
+      color: #856404;
+    }
+
+    .trace-info li {
+      padding: 4px 0;
+    }
+
+    .trace-info li:before {
+      content: "✓ ";
+      color: #28a745;
+      font-weight: bold;
+      margin-right: 4px;
+    }
+
+    .trace-info li.dropped:before {
+      content: "✗ ";
+      color: #dc3545;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #8b5e34;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.8s linear infinite;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>@atrim/instrumentation</h1>
+      <p class="subtitle">Bun Runtime Example - Lightning Fast JavaScript Runtime</p>
+      <span class="badge">Pattern-Based Tracing</span>
+      <span class="badge badge-bun">Bun Runtime</span>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="card">
+      <h2>🔄 Demo Workflow</h2>
+      <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+        Run a complete workflow that demonstrates pattern-based span filtering with multiple operations using Bun's native APIs.
+      </p>
+      <button id="run-workflow" class="btn-workflow" onclick="runWorkflow()">
+        Run Complete Workflow
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>⚡ Individual Operations</h2>
+      <div class="operations grid-2">
+        <div class="operation-card">
+          <div class="operation-title">👤 Fetch User</div>
+          <div class="operation-desc">Simulates user data fetch with DB query</div>
+          <button onclick="fetchUser()">Run Operation (Traced)</button>
+        </div>
+
+        <div class="operation-card">
+          <div class="operation-title">💾 Cache Data</div>
+          <div class="operation-desc">Simulates cache set operation</div>
+          <button onclick="cacheData()">Run Operation (Traced)</button>
+        </div>
+
+        <div class="operation-card">
+          <div class="operation-title">🔧 Internal Utility</div>
+          <div class="operation-desc">Internal operation (filtered out)</div>
+          <button onclick="internalOp()">Run Operation (Filtered)</button>
+        </div>
+
+        <div class="operation-card">
+          <div class="operation-title">🧪 Test Operation</div>
+          <div class="operation-desc">Test utility (filtered out)</div>
+          <button onclick="testOp()">Run Operation (Filtered)</button>
+        </div>
+      </div>
+
+      <div class="trace-info">
+        <h3>Trace Patterns:</h3>
+        <ul>
+          <li>app.* → Creates traced spans (user fetch, cache, db queries)</li>
+          <li>demo.* → Creates traced spans (workflow operations)</li>
+          <li class="dropped">internal.* → Filtered out (no traces created)</li>
+          <li class="dropped">test.* → Filtered out (no traces created)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Activity Log</h2>
+      <div class="log-container" id="log-container">
+        <div class="log-entry info">Ready to run operations on Bun...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isRunning = false;
+
+    function addLog(message, type = 'info') {
+      const logContainer = document.getElementById('log-container');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = `status ${type}`;
+
+      setTimeout(() => {
+        status.className = 'status';
+      }, 5000);
+    }
+
+    async function runWorkflow() {
+      if (isRunning) return;
+
+      const button = document.getElementById('run-workflow');
+      button.disabled = true;
+      button.innerHTML = 'Running Workflow <span class="loading"></span>';
+      isRunning = true;
+
+      try {
+        addLog('🔄 Starting complete demo workflow on Bun...', 'info');
+
+        const response = await fetch('/api/workflow', {
+          method: 'POST'
+        });
+
+        if (!response.ok) throw new Error('Workflow failed');
+
+        const data = await response.json();
+        addLog('✅ Workflow completed successfully!', 'success');
+        addLog(`   User: ${data.userData.name}`, 'success');
+        addLog(`   Runtime: ${data.runtime}`, 'success');
+        addLog(`   Cache: ${data.cached ? 'Success' : 'Failed'}`, 'success');
+        addLog(`   Internal: Completed (filtered from traces)`, 'info');
+        addLog(`   Traces generated: ${data.tracesGenerated} spans`, 'trace');
+
+        showStatus('Workflow completed on Bun! Check your collector for traces.', 'success');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Workflow failed: ' + error.message, 'error');
+      } finally {
+        button.disabled = false;
+        button.innerHTML = 'Run Complete Workflow';
+        isRunning = false;
+      }
+    }
+
+    async function fetchUser() {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        addLog('👤 Fetching user data...', 'info');
+
+        const response = await fetch('/api/user/user-456');
+        if (!response.ok) throw new Error('Failed to fetch user');
+
+        const data = await response.json();
+        addLog(`✅ User fetched: ${data.name} (${data.email})`, 'success');
+        addLog(`   Runtime: ${data.runtime}`, 'success');
+        addLog('   Traces: app.user.fetch, app.db.query', 'trace');
+
+        showStatus('User fetched successfully! Traces generated.', 'success');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Operation failed: ' + error.message, 'error');
+      } finally {
+        isRunning = false;
+      }
+    }
+
+    async function cacheData() {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        addLog('💾 Setting cache data...', 'info');
+
+        const response = await fetch('/api/cache', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'demo-key', value: 'demo-value' })
+        });
+
+        if (!response.ok) throw new Error('Cache operation failed');
+
+        addLog('✅ Cache set successfully', 'success');
+        addLog('   Traces: app.cache.set', 'trace');
+
+        showStatus('Cache operation completed! Trace generated.', 'success');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Operation failed: ' + error.message, 'error');
+      } finally {
+        isRunning = false;
+      }
+    }
+
+    async function internalOp() {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        addLog('🔧 Running internal utility...', 'info');
+
+        const response = await fetch('/api/internal');
+        if (!response.ok) throw new Error('Internal operation failed');
+
+        addLog('✅ Internal operation completed', 'success');
+        addLog('   Traces: NONE (filtered by ignore pattern)', 'info');
+
+        showStatus('Internal operation completed (no trace generated - filtered)', 'info');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Operation failed: ' + error.message, 'error');
+      } finally {
+        isRunning = false;
+      }
+    }
+
+    async function testOp() {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        addLog('🧪 Running test operation...', 'info');
+
+        const response = await fetch('/api/test');
+        if (!response.ok) throw new Error('Test operation failed');
+
+        addLog('✅ Test operation completed', 'success');
+        addLog('   Traces: NONE (filtered by ignore pattern)', 'info');
+
+        showStatus('Test operation completed (no trace generated - filtered)', 'info');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Operation failed: ' + error.message, 'error');
+      } finally {
+        isRunning = false;
+      }
+    }
+  </script>
+</body>
+</html>
