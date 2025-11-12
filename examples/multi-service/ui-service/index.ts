@@ -6,92 +6,54 @@
  */
 
 import * as http from 'node:http'
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
-import { initializeInstrumentation, PatternSpanProcessor } from '@atrim/instrumentation'
-import { loadConfig } from '@atrim/instrumentation'
+import { initializeInstrumentation } from '@atrim/instrumentation'
 import { trace } from '@opentelemetry/api'
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3101'
-const COLLECTOR_URL = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
 const PORT = process.env.PORT || 3100
 
 async function setupInstrumentation() {
   console.log('🎨 [UI Service] Setting up instrumentation...\n')
 
-  // 1. Initialize pattern-based instrumentation
-  await initializeInstrumentation()
-
-  // 2. Create OTLP exporter
-  const exporter = new OTLPTraceExporter({
-    url: `${COLLECTOR_URL}/v1/traces`
+  // One line initialization!
+  await initializeInstrumentation({
+    serviceName: 'ui-service'
   })
 
-  // 3. Create batch processor
-  const batchProcessor = new BatchSpanProcessor(exporter)
-
-  // 4. Wrap with pattern processor
-  const config = await loadConfig()
-  const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
-
-  // 5. Initialize SDK with auto-instrumentations
-  // This will automatically propagate W3C Trace Context headers
-  const sdk = new NodeSDK({
-    spanProcessor: patternProcessor,
-    serviceName: 'ui-service',
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-http': {
-          enabled: true,
-          // This ensures trace context is propagated to backend
-          requireParentforOutgoingSpans: false
-        },
-        '@opentelemetry/instrumentation-fs': {
-          enabled: false
-        }
-      })
-    ]
-  })
-
-  sdk.start()
   console.log('✅ [UI Service] Instrumentation initialized')
-  console.log(`   📡 Collector: ${COLLECTOR_URL}`)
   console.log(`   🔗 Backend: ${BACKEND_URL}`)
   console.log(`   ✅ W3C Trace Context propagation enabled\n`)
-
-  return sdk
 }
 
 // Fetch users from backend
 async function fetchUsers(): Promise<any> {
   const tracer = trace.getTracer('ui-service')
-  const span = tracer.startSpan('ui.fetch.users')
 
-  try {
-    // Make HTTP request to backend
-    // NodeSDK will automatically:
-    // 1. Create http.client span
-    // 2. Add traceparent header with current trace ID
-    // 3. Backend will continue this trace
-    const response = await fetch(`${BACKEND_URL}/api/users`)
+  return await tracer.startActiveSpan('ui.fetch.users', async (span) => {
+    try {
+      // Make HTTP request to backend
+      // NodeSDK will automatically:
+      // 1. Create http.client span
+      // 2. Add traceparent header with current trace ID
+      // 3. Backend will continue this trace
+      const response = await fetch(`${BACKEND_URL}/api/users`)
 
-    if (!response.ok) {
-      throw new Error(`Backend returned ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`Backend returned ${response.status}`)
+      }
+
+      const data = await response.json()
+      span.setStatus({ code: 1 }) // OK
+      span.end()
+
+      return data
+    } catch (error) {
+      span.setStatus({ code: 2, message: error instanceof Error ? error.message : 'Error' })
+      span.recordException(error instanceof Error ? error : new Error(String(error)))
+      span.end()
+      throw error
     }
-
-    const data = await response.json()
-    span.setStatus({ code: 1 }) // OK
-    span.end()
-
-    return data
-  } catch (error) {
-    span.setStatus({ code: 2, message: error instanceof Error ? error.message : 'Error' })
-    span.recordException(error instanceof Error ? error : new Error(String(error)))
-    span.end()
-    throw error
-  }
+  })
 }
 
 // Create HTTP server

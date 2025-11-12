@@ -14,6 +14,7 @@ export const InstrumentationConfigSchema = z.object({
   instrumentation: z.object({
     enabled: z.boolean(),
     description: z.string().optional(),
+    logging: z.enum(['on', 'off', 'minimal']).optional().default('on'),
     instrument_patterns: z.array(PatternConfigSchema),
     ignore_patterns: z.array(PatternConfigSchema)
   }),

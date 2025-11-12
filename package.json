@@ -52,6 +52,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "playwright test",
+    "test:integration:ui": "playwright test --ui",
+    "test:integration:debug": "playwright test --debug",
+    "test:integration:headed": "playwright test --headed",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
@@ -60,6 +64,11 @@
     "prepublishOnly": "pnpm run build && pnpm run test && pnpm run typecheck"
   },
   "dependencies": {
+    "@opentelemetry/sdk-node": "^0.54.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.52.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.54.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.1",
+    "@opentelemetry/instrumentation": "^0.54.0",
     "yaml": "^2.3.0",
     "zod": "^3.22.0"
   },
@@ -69,6 +78,7 @@
     "@eslint/js": "^9.0.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/sdk-trace-base": "^1.28.0",
+    "@playwright/test": "^1.40.0",
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
@@ -77,7 +87,9 @@
     "eslint": "^9.0.0",
     "globals": "^15.0.0",
     "prettier": "^3.1.1",
+    "testcontainers": "^11.8.1",
     "tsup": "^8.0.1",
+    "tsx": "^4.7.0",
     "typescript": "^5.7.2",
     "vitest": "^1.0.4"
   },

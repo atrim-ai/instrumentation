@@ -13,6 +13,9 @@ build/
 # Testing
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
+test-results.json
 
 # Environment
 .env
@@ -40,3 +43,4 @@ lerna-debug.log*
 *.tmp
 *.temp
 .cache/
+test/temp/

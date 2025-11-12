@@ -16,20 +16,15 @@ import * as http from 'node:http'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
 import { trace } from '@opentelemetry/api'
 import {
   initializeInstrumentation,
-  PatternSpanProcessor,
   annotateDbQuery,
   annotateCacheOperation,
   markSpanSuccess,
   markSpanError,
   setSpanAttributes
 } from '@atrim/instrumentation'
-import { loadConfig } from '@atrim/instrumentation'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -37,142 +32,122 @@ const __dirname = path.dirname(__filename)
 async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation...\n')
 
-  // 1. Initialize pattern-based instrumentation
-  await initializeInstrumentation()
-
-  // 2. Create OTLP exporter
-  const exporter = new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces'
-  })
-
-  // 3. Create batch processor
-  const batchProcessor = new BatchSpanProcessor(exporter)
-
-  // 4. Wrap with pattern processor for filtering
-  const config = await loadConfig()
-  const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
-
-  // 5. Initialize SDK
-  const sdk = new NodeSDK({
-    spanProcessor: patternProcessor,
+  // One line initialization - handles everything!
+  await initializeInstrumentation({
     serviceName: 'vanilla-example'
   })
 
-  sdk.start()
-  console.log('✅ OpenTelemetry SDK initialized\n')
-
-  // Graceful shutdown
-  process.on('SIGTERM', async () => {
-    console.log('\n👋 Shutting down...')
-    await sdk.shutdown()
-    process.exit(0)
-  })
-
-  return sdk
+  console.log('✅ Ready to trace!\n')
 }
 
 // Example business logic functions
 async function fetchUserData(userId: string) {
   const tracer = trace.getTracer('vanilla-example')
-  const span = tracer.startSpan('app.user.fetch')
 
-  try {
-    setSpanAttributes(span, {
-      'user.id': userId,
-      'operation.type': 'fetch'
-    })
+  return await tracer.startActiveSpan('app.user.fetch', async (span) => {
+    try {
+      setSpanAttributes(span, {
+        'user.id': userId,
+        'operation.type': 'fetch'
+      })
 
-    // Simulate database query
-    await simulateAsync(100)
+      // Simulate database query
+      await simulateAsync(100)
 
-    const dbSpan = tracer.startSpan('app.db.query')
-    annotateDbQuery(dbSpan, 'postgresql', `SELECT * FROM users WHERE id = '${userId}'`, 'users')
+      await tracer.startActiveSpan('app.db.query', async (dbSpan) => {
+        annotateDbQuery(dbSpan, 'postgresql', `SELECT * FROM users WHERE id = '${userId}'`, 'users')
 
-    await simulateAsync(50)
-    dbSpan.end()
+        await simulateAsync(50)
+        dbSpan.end()
+      })
 
-    markSpanSuccess(span)
-    return { id: userId, name: 'John Doe', email: 'john@example.com' }
-  } catch (error) {
-    markSpanError(span, 'Failed to fetch user')
-    throw error
-  } finally {
-    span.end()
-  }
+      markSpanSuccess(span)
+      return { id: userId, name: 'John Doe', email: 'john@example.com' }
+    } catch (error) {
+      markSpanError(span, 'Failed to fetch user')
+      throw error
+    } finally {
+      span.end()
+    }
+  })
 }
 
 async function cacheOperation(key: string, value: string) {
   const tracer = trace.getTracer('vanilla-example')
-  const span = tracer.startSpan('app.cache.set')
 
-  try {
-    annotateCacheOperation(span, 'set', key, undefined)
+  return await tracer.startActiveSpan('app.cache.set', async (span) => {
+    try {
+      annotateCacheOperation(span, 'set', key, undefined)
 
-    // Simulate cache operation
-    await simulateAsync(20)
+      // Simulate cache operation
+      await simulateAsync(20)
 
-    markSpanSuccess(span)
-  } catch (error) {
-    markSpanError(span, 'Cache operation failed')
-    throw error
-  } finally {
-    span.end()
-  }
+      markSpanSuccess(span)
+    } catch (error) {
+      markSpanError(span, 'Cache operation failed')
+      throw error
+    } finally {
+      span.end()
+    }
+  })
 }
 
 async function internalOperation() {
   // This span will be dropped by ignore pattern (^internal\.)
   const tracer = trace.getTracer('vanilla-example')
-  const span = tracer.startSpan('internal.utility.operation')
 
-  try {
-    await simulateAsync(30)
-    span.end()
-  } catch (error) {
-    span.end()
-  }
+  return await tracer.startActiveSpan('internal.utility.operation', async (span) => {
+    try {
+      await simulateAsync(30)
+      span.end()
+    } catch (error) {
+      span.end()
+    }
+  })
 }
 
 async function testOperation() {
   // This span will be dropped by ignore pattern (^test\.)
   const tracer = trace.getTracer('vanilla-example')
-  const span = tracer.startSpan('test.utility.operation')
 
-  try {
-    await simulateAsync(20)
-    span.end()
-  } catch (error) {
-    span.end()
-  }
+  return await tracer.startActiveSpan('test.utility.operation', async (span) => {
+    try {
+      await simulateAsync(20)
+      span.end()
+    } catch (error) {
+      span.end()
+    }
+  })
 }
 
 async function demoWorkflow() {
   const tracer = trace.getTracer('vanilla-example')
-  const rootSpan = tracer.startSpan('demo.workflow')
 
-  try {
-    // 1. Fetch user (will be instrumented)
-    const userData = await fetchUserData('user-123')
+  return await tracer.startActiveSpan('demo.workflow', async (rootSpan) => {
+    try {
+      // 1. Fetch user (will be instrumented)
+      const userData = await fetchUserData('user-123')
 
-    // 2. Cache operation (will be instrumented)
-    await cacheOperation('user:123', JSON.stringify(userData))
+      // 2. Cache operation (will be instrumented)
+      await cacheOperation('user:123', JSON.stringify(userData))
 
-    // 3. Internal operation (will be DROPPED by ignore pattern)
-    await internalOperation()
+      // 3. Internal operation (will be DROPPED by ignore pattern)
+      await internalOperation()
 
-    markSpanSuccess(rootSpan)
+      markSpanSuccess(rootSpan)
 
-    return {
-      userData,
-      cached: true,
-      tracesGenerated: 4 // demo.workflow, app.user.fetch, app.db.query, app.cache.set
+      return {
+        userData,
+        cached: true,
+        tracesGenerated: 4 // demo.workflow, app.user.fetch, app.db.query, app.cache.set
+      }
+    } catch (error) {
+      markSpanError(rootSpan, 'Workflow failed')
+      throw error
+    } finally {
+      rootSpan.end()
     }
-  } catch (error) {
-    markSpanError(rootSpan, 'Workflow failed')
-    throw error
-  } finally {
-    rootSpan.end()
-  }
+  })
 }
 
 function simulateAsync(ms: number): Promise<void> {
@@ -206,7 +181,21 @@ function createServer() {
       return
     }
 
-    // API: Fetch user
+    // API: Fetch user by ID (new route for test compatibility)
+    if (req.method === 'GET' && url.pathname.match(/^\/users\/\d+$/)) {
+      const userId = url.pathname.split('/').pop()
+      try {
+        const user = await fetchUserData(userId || 'unknown')
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(user))
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Failed to fetch user' }))
+      }
+      return
+    }
+
+    // API: Fetch user (legacy route)
     if (req.method === 'GET' && url.pathname.startsWith('/api/user/')) {
       const userId = url.pathname.split('/').pop()
       try {
@@ -261,6 +250,13 @@ function createServer() {
         res.writeHead(500, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Test operation failed' }))
       }
+      return
+    }
+
+    // Health check endpoint
+    if (req.method === 'GET' && url.pathname === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ status: 'ok' }))
       return
     }
 

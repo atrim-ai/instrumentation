@@ -5,6 +5,8 @@
  * This provides valuable context about the Effect execution environment.
  */
 
+import { logger } from '../../core/logger.js'
+
 /**
  * Metadata extracted from Effect fibers
  */
@@ -57,7 +59,7 @@ export function extractEffectMetadata(fiber?: any): EffectMetadata {
     metadata['effect.operation.interrupted'] = false
   } catch (error) {
     // Silently fail - metadata extraction is best-effort
-    console.warn('Failed to extract Effect metadata:', error)
+    logger.warn('Failed to extract Effect metadata:', error)
   }
 
   return metadata

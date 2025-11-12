@@ -151,9 +151,10 @@ Trace: abc123-def456
 
 ```typescript
 app.get('/api/products', async (req, res) => {
-  const span = tracer.startSpan('app.products.list')
-  // Your logic...
-  span.end()
+  await tracer.startActiveSpan('app.products.list', async (span) => {
+    // Your logic...
+    span.end()
+  })
 })
 ```
 

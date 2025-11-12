@@ -1,0 +1,34 @@
+# Pure Effect-TS instrumentation configuration
+# This example uses @effect/platform HTTP server (no Express/Fastify)
+
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Pure Effect-TS application with @effect/platform HTTP server"
+
+  # Instrument Effect operations
+  instrument_patterns:
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application business logic"
+    - pattern: "^http\\."
+      enabled: true
+      description: "HTTP handling"
+    - pattern: "^db\\."
+      enabled: true
+      description: "Database operations"
+    - pattern: "^cache\\."
+      enabled: true
+      description: "Cache operations"
+
+  # Ignore internal operations
+  ignore_patterns:
+    - pattern: "^internal\\."
+      description: "Internal utilities"
+    - pattern: "^test\\."
+      description: "Test operations"
+
+# Effect-specific configuration
+effect:
+  auto_extract_metadata: true
