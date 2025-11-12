@@ -67,6 +67,11 @@ export interface SdkInitializationOptions extends ConfigLoaderOptions {
 let sdkInstance: NodeSDK | null = null
 
 /**
+ * Ongoing initialization promise (prevents race conditions)
+ */
+let initializationPromise: Promise<NodeSDK | null> | null = null
+
+/**
  * Detect if Effect-TS is being used in the project
  *
  * Checks if the 'effect' package is installed
@@ -141,9 +146,27 @@ function hasWebFrameworkInstalled(): boolean {
 function isTracingAlreadyInitialized(): boolean {
   try {
     const provider = trace.getTracerProvider()
-    // Check if the provider has been explicitly set (not the default NoopTracerProvider)
-    // The name property exists on registered providers but not on NoopTracerProvider
-    return (provider as any).resource !== undefined
+
+    // The default uninitialized state is a ProxyTracerProvider that wraps NoopTracerProvider
+    // After NodeSDK.start(), it becomes a ProxyTracerProvider that wraps a real provider
+    // We can detect this by checking for the _delegate property
+    const delegate = (provider as any)._delegate || (provider as any).getDelegate?.()
+
+    if (delegate) {
+      // Check if the delegate is not a NoopTracerProvider
+      const delegateName = delegate.constructor.name
+      if (!delegateName.includes('Noop')) {
+        return true
+      }
+    }
+
+    // Also check for direct TracerProvider properties (resource, activeSpanProcessor, etc.)
+    // These exist on real providers but not on NoopTracerProvider
+    const hasResource = (provider as any).resource !== undefined
+    const hasActiveSpanProcessor = (provider as any).activeSpanProcessor !== undefined
+    const hasTracers = (provider as any)._tracers !== undefined
+
+    return hasResource || hasActiveSpanProcessor || hasTracers
   } catch {
     return false
   }
@@ -168,10 +191,32 @@ function isTracingAlreadyInitialized(): boolean {
 export async function initializeSdk(options: SdkInitializationOptions = {}): Promise<NodeSDK | null> {
   // Check if we already initialized via this library
   if (sdkInstance) {
-    console.warn('@atrim/instrumentation: SDK already initialized by this library. Returning existing instance.')
+    console.warn('@atrim/instrumentation: SDK already initialized. Returning existing instance.')
     return sdkInstance
   }
 
+  // Check if initialization is already in progress (prevents race conditions)
+  if (initializationPromise) {
+    console.log('@atrim/instrumentation: SDK already initialized, waiting for initialization to complete...')
+    return initializationPromise
+  }
+
+  // Start initialization and track the promise
+  initializationPromise = performInitialization(options)
+
+  try {
+    const result = await initializationPromise
+    return result
+  } finally {
+    // Clear the promise once initialization is complete
+    initializationPromise = null
+  }
+}
+
+/**
+ * Internal initialization implementation
+ */
+async function performInitialization(options: SdkInitializationOptions): Promise<NodeSDK | null> {
   // Check if OpenTelemetry is already initialized elsewhere
   const alreadyInitialized = isTracingAlreadyInitialized()
 
@@ -291,6 +336,7 @@ export async function shutdownSdk(): Promise<void> {
  */
 export function resetSdk(): void {
   sdkInstance = null
+  initializationPromise = null
 }
 
 /**

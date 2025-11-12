@@ -208,7 +208,7 @@ Promise.all([
 ]).then(([sdk1, sdk2]) => {
   console.log('First SDK:', sdk1 ? 'created' : 'null')
   console.log('Second SDK:', sdk2 ? 'created' : 'null')
-  console.log('Same instance:', sdk1 === sdk2)
+  console.log('Same instance:', String(sdk1 === sdk2))
 })
 `
     )
@@ -242,7 +242,7 @@ sdk.start()
 initializeInstrumentation().then(() => {
   // Test pattern matching works
   const shouldInstrument = shouldInstrumentSpan('app.test.span')
-  console.log('Pattern matching works:', shouldInstrument)
+  console.log('Pattern matching works:', String(shouldInstrument))
 })
 `
     )

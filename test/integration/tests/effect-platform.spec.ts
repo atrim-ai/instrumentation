@@ -24,7 +24,8 @@ const PORT = 3103
 
 let server: TestServer
 
-test.describe('Pure Effect-TS Example', () => {
+// Use serial mode for trace collection tests to avoid race conditions
+test.describe.serial('Pure Effect-TS Example', () => {
   test.beforeAll(async () => {
     server = await startExample('Effect-Platform', EXAMPLE_DIR, PORT)
     await clearCollectorLogs()
@@ -49,7 +50,7 @@ test.describe('Pure Effect-TS Example', () => {
 
     // Make request to trigger Effect spans
     await page.goto(`http://localhost:${PORT}/users`)
-    await page.waitForTimeout(3000)
+    await page.waitForTimeout(6000) // Wait for batch processor export (default 5s interval)
 
     // Verify traces were received
     const receivedTraces = await waitFor(collectorReceivedTraces, 10000, 1000)

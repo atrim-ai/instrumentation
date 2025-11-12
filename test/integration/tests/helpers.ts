@@ -4,7 +4,7 @@
 
 import { exec, spawn, ChildProcess } from 'child_process'
 import { promisify } from 'util'
-import { setTimeout } from 'timers/promises'
+import { setTimeout as sleep } from 'timers/promises'
 
 const execAsync = promisify(exec)
 
@@ -22,29 +22,27 @@ export async function startCollector(): Promise<void> {
 
   try {
     // Stop any existing collector
-    await execAsync('docker-compose -f test/integration/docker-compose.yml down -v').catch(() => {})
+    await execAsync('docker-compose -f docker-compose.yml down -v').catch(() => {})
 
     // Start collector
-    await execAsync('docker-compose -f test/integration/docker-compose.yml up -d')
+    await execAsync('docker-compose -f docker-compose.yml up -d')
 
-    // Wait for health check
+    // Wait for health check - test from host using exposed port 14133
     let attempts = 0
     while (attempts < 30) {
       try {
-        const { stdout } = await execAsync(
-          'docker exec atrim-otel-collector-test wget --spider -q http://localhost:13133/ 2>&1'
-        )
-        if (stdout === '' || stdout.includes('200')) {
+        const response = await fetch('http://localhost:14133/')
+        if (response.ok) {
           console.log('✅ Collector is ready')
           // Give it a moment to fully initialize
-          await setTimeout(2000)
+          await sleep(2000)
           return
         }
       } catch {
         // Health check not ready yet
       }
       attempts++
-      await setTimeout(1000)
+      await sleep(1000)
     }
 
     throw new Error('Collector failed to become healthy')
@@ -60,7 +58,7 @@ export async function startCollector(): Promise<void> {
 export async function stopCollector(): Promise<void> {
   console.log('🛑 Stopping OTEL Collector...')
   try {
-    await execAsync('docker-compose -f test/integration/docker-compose.yml down -v')
+    await execAsync('docker-compose -f docker-compose.yml down -v')
     console.log('✅ Collector stopped')
   } catch (error) {
     console.error('⚠️  Error stopping collector:', error)
@@ -69,10 +67,36 @@ export async function stopCollector(): Promise<void> {
 
 /**
  * Get collector logs
+ * If clearCollectorLogs was called, only returns logs after that timestamp
  */
-export async function getCollectorLogs(lines: number = 100): Promise<string> {
+export async function getCollectorLogs(lines: number = 1000): Promise<string> {
   try {
     const { stdout } = await execAsync(`docker logs atrim-otel-collector-test 2>&1 | tail -${lines}`)
+
+    // If we have a clear timestamp, filter logs to only those after it
+    if (logClearTimestamp) {
+      const logLines = stdout.split('\n')
+      const filteredLines: string[] = []
+      let foundStartMarker = false
+
+      for (const line of logLines) {
+        // Look for timestamp in line (format: 2025-11-12 01:05:24.285Z or similar)
+        const timestampMatch = line.match(/(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)/)
+        if (timestampMatch) {
+          const lineTimestamp = new Date(timestampMatch[1])
+          if (lineTimestamp >= logClearTimestamp) {
+            foundStartMarker = true
+          }
+        }
+
+        if (foundStartMarker) {
+          filteredLines.push(line)
+        }
+      }
+
+      return filteredLines.join('\n')
+    }
+
     return stdout
   } catch (error) {
     return 'Failed to get logs'
@@ -80,10 +104,10 @@ export async function getCollectorLogs(lines: number = 100): Promise<string> {
 }
 
 /**
- * Check if collector received traces
+ * Check if collector received traces (after last clearCollectorLogs call)
  */
 export async function collectorReceivedTraces(): Promise<boolean> {
-  const logs = await getCollectorLogs(200)
+  const logs = await getCollectorLogs()
 
   // Look for trace data in debug exporter output
   const hasTraces =
@@ -96,14 +120,17 @@ export async function collectorReceivedTraces(): Promise<boolean> {
 }
 
 /**
- * Clear collector logs
+ * Track when logs were last "cleared" (timestamp marker)
+ */
+let logClearTimestamp: Date | null = null
+
+/**
+ * Clear collector logs (sets a timestamp marker)
  */
 export async function clearCollectorLogs(): Promise<void> {
-  try {
-    await execAsync('docker logs atrim-otel-collector-test 2>&1 | tail -0')
-  } catch {
-    // Ignore errors
-  }
+  logClearTimestamp = new Date()
+  // Give the timestamp a moment to settle
+  await sleep(100)
 }
 
 /**
@@ -213,7 +240,7 @@ export async function waitFor(
     if (await condition()) {
       return true
     }
-    await setTimeout(interval)
+    await sleep(interval)
   }
 
   return false

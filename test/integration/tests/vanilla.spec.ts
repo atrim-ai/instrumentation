@@ -19,7 +19,8 @@ const PORT = 3101
 
 let server: TestServer
 
-test.describe('Vanilla TypeScript Example', () => {
+// Use serial mode for trace collection tests to avoid race conditions
+test.describe.serial('Vanilla TypeScript Example', () => {
   test.beforeAll(async () => {
     server = await startExample('Vanilla', EXAMPLE_DIR, PORT)
     await clearCollectorLogs()
@@ -44,7 +45,7 @@ test.describe('Vanilla TypeScript Example', () => {
 
     // Trigger operation that creates spans
     await page.goto(`http://localhost:${PORT}/users/1`)
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(6000)
 
     // Verify traces were received
     const receivedTraces = await waitFor(collectorReceivedTraces, 10000, 1000)
@@ -65,7 +66,7 @@ test.describe('Vanilla TypeScript Example', () => {
     await clearCollectorLogs()
 
     await page.goto(`http://localhost:${PORT}/users/1`)
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(6000)
 
     const logs = await getCollectorLogs(100)
 

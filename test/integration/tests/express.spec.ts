@@ -19,7 +19,8 @@ const PORT = 3100
 
 let server: TestServer
 
-test.describe('Express Example', () => {
+// Use serial mode for trace collection tests to avoid race conditions
+test.describe.serial('Express Example', () => {
   test.beforeAll(async () => {
     // Start the Express example server
     server = await startExample('Express', EXAMPLE_DIR, PORT)
@@ -47,7 +48,7 @@ test.describe('Express Example', () => {
 
     // Make a request that should create traces
     await page.goto(`http://localhost:${PORT}/users`)
-    await page.waitForTimeout(2000) // Wait for traces to be sent
+    await page.waitForTimeout(6000) // Wait for traces to be sent (batch processor exports every 5s)
 
     // Check if collector received traces
     const receivedTraces = await waitFor(collectorReceivedTraces, 10000, 1000)
@@ -96,8 +97,8 @@ test.describe('Express Example', () => {
 
     expect(response.status()).toBe(201)
 
-    // Wait for traces
-    await page.waitForTimeout(2000)
+    // Wait for traces (batch processor exports every 5s by default)
+    await page.waitForTimeout(6000)
 
     // Verify traces were sent
     const receivedTraces = await collectorReceivedTraces()
