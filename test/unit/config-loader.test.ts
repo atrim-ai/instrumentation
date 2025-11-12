@@ -26,6 +26,7 @@ describe('config-loader', () => {
         version: '1.0',
         instrumentation: {
           enabled: true,
+          logging: 'on',
           instrument_patterns: [{ pattern: '^test\\.', enabled: true }],
           ignore_patterns: []
         }
