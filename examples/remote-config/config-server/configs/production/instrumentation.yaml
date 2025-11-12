@@ -1,0 +1,31 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Production environment configuration - optimized for performance"
+
+  instrument_patterns:
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application operations"
+
+    - pattern: "^api\\."
+      enabled: true
+      description: "API operations"
+
+    - pattern: "^storage\\."
+      enabled: true
+      description: "Storage operations"
+
+  ignore_patterns:
+    - pattern: "^internal\\."
+      description: "Internal utility operations"
+
+    - pattern: "^test\\."
+      description: "Test utility operations"
+
+    - pattern: "^debug\\."
+      description: "Debug operations (production only)"
+
+    - pattern: "^dev\\."
+      description: "Development operations (production only)"
