@@ -25,8 +25,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
 
   // Global setup/teardown
-  globalSetup: require.resolve('./tests/global-setup.ts'),
-  globalTeardown: require.resolve('./tests/global-teardown.ts'),
+  globalSetup: './tests/global-setup.ts',
+  globalTeardown: './tests/global-teardown.ts',
 
   // Reporter
   reporter: [
