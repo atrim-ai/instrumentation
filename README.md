@@ -1,149 +1,83 @@
 # @atrim/instrumentation
 
-**Single-line OpenTelemetry setup for Node.js** - Auto-detects your architecture and configures itself.
+**One-line OpenTelemetry for Node.js**
 
 [![npm version](https://badge.fury.io/js/%40atrim%2Finstrumentation.svg)](https://www.npmjs.com/package/@atrim/instrumentation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Quick Start
 
+**1. Install**
 ```bash
 npm install @atrim/instrumentation
 ```
 
-**That's it - one line to initialize:**
-
+**2. Initialize** (at the top of your app)
 ```typescript
 import { initializeInstrumentation } from '@atrim/instrumentation'
 
 await initializeInstrumentation()
 ```
 
-Auto-detects and configures:
-- ✅ OTLP endpoint (from `OTEL_EXPORTER_OTLP_ENDPOINT` or default)
-- ✅ Service name (from `OTEL_SERVICE_NAME` or `package.json`)
-- ✅ Auto-instrumentation (Express, HTTP, Fastify, etc.)
-- ✅ Pattern-based filtering (from `instrumentation.yaml`)
-- ✅ Graceful shutdown handling
+**3. Done!** Your app is now sending traces to OpenTelemetry.
 
-## What You Get
+### What just happened?
 
-```typescript
-// Before: 50+ lines of boilerplate
-const exporter = new OTLPTraceExporter({...})
-const processor = new BatchSpanProcessor(exporter)
-const sdk = new NodeSDK({...})
-sdk.start()
-// + shutdown handlers, pattern filtering, etc.
+Auto-detected and configured:
+- ✅ Service name from `package.json`
+- ✅ OTLP endpoint from environment or `http://localhost:4318`
+- ✅ Auto-instrumentation for Express, HTTP, Fastify, etc.
+- ✅ Graceful shutdown on SIGTERM/SIGINT
 
-// After: 1 line
-await initializeInstrumentation()
-```
+## Optional: Control What Gets Traced
 
-## Pattern-Based Filtering
-
-Create `instrumentation.yaml` to control which operations are traced:
+Create `instrumentation.yaml` in your project root:
 
 ```yaml
 version: "1.0"
-
 instrumentation:
   enabled: true
-
   instrument_patterns:
-    - pattern: "^app\\."      # ✅ Trace
-    - pattern: "^db\\."       # ✅ Trace
-
+    - pattern: "^app\\."      # ✅ Trace application operations
   ignore_patterns:
-    - pattern: "^health\\."   # ❌ Skip
-    - pattern: "^internal\\." # ❌ Skip
+    - pattern: "^health\\."   # ❌ Skip health checks
 ```
 
-## Works With Everything
-
-- **Frameworks**: Express, Fastify, Koa, Hono, vanilla Node.js
-- **Runtimes**: Node.js 18+, Bun 1.0+, Deno 1.40+
-- **Effect-TS**: Optional integration with auto-metadata extraction
-- **Existing setups**: Detects and works alongside your OpenTelemetry code
+That's it!
 
 ## Examples
 
-| Example | What It Shows |
-|---------|---------------|
-| [express](./examples/express) | Express + auto-instrumentation |
-| [vanilla](./examples/vanilla) | Pure Node.js HTTP server |
-| [effect-ts](./examples/effect-ts) | Effect + Express hybrid |
-| [effect-platform](./examples/effect-platform) | Pure Effect (@effect/platform) |
+See working code in [`/examples`](./examples):
+- **[express](./examples/express)** - Express server
+- **[vanilla](./examples/vanilla)** - Pure Node.js
+- **[effect-ts](./examples/effect-ts)** - Effect + Express
+- **[effect-platform](./examples/effect-platform)** - Pure Effect
 
-## Configuration Options
+## Configuration
+
+Need more control? Pass options:
 
 ```typescript
 await initializeInstrumentation({
-  // Service identification
-  serviceName: 'my-api',      // Default: from OTEL_SERVICE_NAME or package.json
-  serviceVersion: '1.0.0',    // Default: from package.json
-
-  // OTLP configuration
-  otlp: {
-    endpoint: 'http://custom:4318',  // Default: OTEL_EXPORTER_OTLP_ENDPOINT
-    headers: { 'x-api-key': 'secret' }
-  },
-
-  // Auto-instrumentation
-  autoInstrument: true,       // Default: auto-detected
-
-  // Pattern config
-  configPath: './config.yaml', // Default: ./instrumentation.yaml
-  configUrl: 'https://...',   // For centralized config
+  serviceName: 'my-api',
+  otlp: { endpoint: 'http://collector:4318' }
 })
 ```
 
+See [Configuration Guide](./docs/CONFIGURATION.md) for all options.
+
 ## Documentation
 
-- 📚 [Getting Started Guide](./docs/GETTING_STARTED.md) - Detailed setup instructions
-- 🔧 [Configuration Reference](./docs/CONFIGURATION.md) - All options explained
-- 🐛 [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues and solutions
-- ⚡ [Effect-TS Integration](./docs/EFFECT_INTEGRATION.md) - Using with Effect
-- 🧪 [Testing](./test/integration/README.md) - Integration test suite
+- **[Getting Started](./docs/GETTING_STARTED.md)** - Detailed setup guide
+- **[Configuration](./docs/CONFIGURATION.md)** - All configuration options
+- **[Troubleshooting](./docs/TROUBLESHOOTING.md)** - Common issues & solutions
+- **[Effect Integration](./docs/EFFECT_INTEGRATION.md)** - Using with Effect-TS
+- **[API Reference](./docs/API.md)** - Complete API docs
 
-## Smart Auto-Detection
+## Requirements
 
-The library automatically detects your architecture:
-
-**Pure Effect** (no web framework)
-```typescript
-await initializeInstrumentation()
-// → Auto-instrumentation: disabled (auto-detected)
-// → Effect.withSpan() creates all spans
-```
-
-**Express/Fastify + Effect**
-```typescript
-await initializeInstrumentation()
-// → Auto-instrumentation: enabled (auto-detected)
-// → HTTP layer auto-instrumented + Effect spans
-```
-
-**Existing NodeSDK**
-```typescript
-// Your existing code
-const sdk = new NodeSDK({...})
-sdk.start()
-
-// Add pattern filtering
-await initializeInstrumentation()
-// → Detected existing setup
-// → Skips NodeSDK initialization
-// → Only adds pattern filtering
-```
-
-## Quick Links
-
-- [Examples](./examples) - Working code samples
-- [Integration Tests](./test/integration) - Verification suite
-- [API Reference](./docs/API.md) - Complete API documentation
-- [Migration Guide](./docs/MIGRATION.md) - From manual setup
-- [Contributing](./CONTRIBUTING.md) - How to contribute
+- Node.js 18+, Bun 1.0+, or Deno 1.40+
+- OpenTelemetry collector (local or remote)
 
 ## License
 
@@ -151,4 +85,4 @@ MIT © Atrim AI
 
 ---
 
-**Need help?** Check [Troubleshooting](./docs/TROUBLESHOOTING.md) or [open an issue](https://github.com/atrim-ai/instrumentation/issues).
+**Need help?** [Troubleshooting Guide](./docs/TROUBLESHOOTING.md) • [Open an Issue](https://github.com/atrim-ai/instrumentation/issues)
