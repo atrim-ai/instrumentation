@@ -76,6 +76,11 @@ export default defineConfig({
       name: 'detection-tests',
       use: { ...devices['Desktop Chrome'] },
       testMatch: '**/detection.spec.ts'
+    },
+    {
+      name: 'fiberset-context-leak',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/fiberset-context-leak.spec.ts'
     }
   ],
 
