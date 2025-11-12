@@ -23,13 +23,9 @@
  */
 
 import express from 'express'
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
 import { Effect, Schedule, Duration, Exit, Layer } from 'effect'
 import { EffectInstrumentationLive } from '../../src/integrations/effect/index.js'
-import { initializeInstrumentation, PatternSpanProcessor } from '../../src/index.js'
-import { loadConfig } from '../../src/index.js'
+import { initializeInstrumentation } from '../../src/index.js'
 
 // ============================================================================
 // Domain Types
@@ -319,38 +315,16 @@ function complexUserWorkflow(userId: string): Effect.Effect<
 async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation...\n')
 
-  // 1. Initialize pattern-based instrumentation
-  await initializeInstrumentation()
-
-  // 2. Create OTLP exporter
-  const exporter = new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces'
-  })
-
-  // 3. Create batch processor
-  const batchProcessor = new BatchSpanProcessor(exporter)
-
-  // 4. Wrap with pattern processor for filtering
-  const config = await loadConfig()
-  const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
-
-  // 5. Initialize SDK (minimal setup - Effect handles its own tracing)
-  const sdk = new NodeSDK({
-    spanProcessor: patternProcessor,
+  // One line initialization for Effect-TS with Express!
+  // Auto-instrumentation is enabled by default since we're using Express
+  // - Express HTTP auto-instrumentation will trace incoming requests
+  // - Effect.withSpan() will trace business logic inside those requests
+  // - They work together perfectly!
+  await initializeInstrumentation({
     serviceName: 'effect-ts-example'
   })
 
-  sdk.start()
-  console.log('✅ OpenTelemetry SDK initialized\n')
-
-  // Graceful shutdown
-  process.on('SIGTERM', async () => {
-    console.log('\n👋 Shutting down...')
-    await sdk.shutdown()
-    process.exit(0)
-  })
-
-  return sdk
+  console.log('✅ Ready to trace with Effect!\n')
 }
 
 // ============================================================================

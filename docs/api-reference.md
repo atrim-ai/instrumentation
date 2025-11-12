@@ -183,9 +183,10 @@ function shouldInstrumentSpan(spanName: string): boolean
 import { shouldInstrumentSpan } from '@atrim/instrumentation'
 
 if (shouldInstrumentSpan('app.operation')) {
-  const span = tracer.startSpan('app.operation')
-  // ... use span
-  span.end()
+  await tracer.startActiveSpan('app.operation', async (span) => {
+    // ... use span
+    span.end()
+  })
 }
 ```
 
@@ -421,9 +422,10 @@ function annotateHttpRequest(
 ```typescript
 import { annotateHttpRequest } from '@atrim/instrumentation'
 
-const span = tracer.startSpan('http.client.request')
-annotateHttpRequest(span, 'GET', '/api/users', 200)
-span.end()
+await tracer.startActiveSpan('http.client.request', async (span) => {
+  annotateHttpRequest(span, 'GET', '/api/users', 200)
+  span.end()
+})
 ```
 
 ---
@@ -446,14 +448,15 @@ function annotateDbQuery(
 ```typescript
 import { annotateDbQuery } from '@atrim/instrumentation'
 
-const span = tracer.startSpan('db.query')
-annotateDbQuery(
-  span,
-  'postgresql',
-  'SELECT * FROM users WHERE id = $1',
-  'users'
-)
-span.end()
+await tracer.startActiveSpan('db.query', async (span) => {
+  annotateDbQuery(
+    span,
+    'postgresql',
+    'SELECT * FROM users WHERE id = $1',
+    'users'
+  )
+  span.end()
+})
 ```
 
 ---
@@ -476,9 +479,10 @@ function annotateCacheOperation(
 ```typescript
 import { annotateCacheOperation } from '@atrim/instrumentation'
 
-const span = tracer.startSpan('cache.get')
-annotateCacheOperation(span, 'get', 'user:123', true) // cache hit
-span.end()
+await tracer.startActiveSpan('cache.get', async (span) => {
+  annotateCacheOperation(span, 'get', 'user:123', true) // cache hit
+  span.end()
+})
 ```
 
 ---

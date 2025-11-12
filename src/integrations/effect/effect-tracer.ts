@@ -27,6 +27,7 @@ import { context, trace, type SpanContext, TraceFlags } from '@opentelemetry/api
 import { loadConfig, type ConfigLoaderOptions } from '../../core/config-loader.js'
 import { initializePatternMatcher } from '../../core/pattern-matcher.js'
 import { extractEffectMetadata } from './metadata-extractor.js'
+import { logger } from '../../core/logger.js'
 
 /**
  * Configuration options for Effect instrumentation
@@ -118,10 +119,16 @@ export function createEffectInstrumentation(
         })
       })
 
-      // 2. Initialize pattern matcher
+      // 2. Configure logger based on config
+      yield* Effect.sync(() => {
+        const loggingLevel = config.instrumentation.logging || 'on'
+        logger.setLevel(loggingLevel)
+      })
+
+      // 3. Initialize pattern matcher
       yield* Effect.sync(() => initializePatternMatcher(config))
 
-      // 3. Extract options with defaults
+      // 4. Extract options with defaults
       const otlpEndpoint =
         options.otlpEndpoint ||
         process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
@@ -137,13 +144,13 @@ export function createEffectInstrumentation(
 
       const continueExistingTraces = options.continueExistingTraces ?? true
 
-      console.log('🔍 Effect OpenTelemetry instrumentation')
-      console.log(`   📡 Endpoint: ${otlpEndpoint}`)
-      console.log(`   🏷️  Service: ${serviceName}`)
-      console.log(`   ✅ Auto metadata extraction: ${autoExtractMetadata}`)
-      console.log(`   ✅ Continue existing traces: ${continueExistingTraces}`)
+      logger.log('🔍 Effect OpenTelemetry instrumentation')
+      logger.log(`   📡 Endpoint: ${otlpEndpoint}`)
+      logger.log(`   🏷️  Service: ${serviceName}`)
+      logger.log(`   ✅ Auto metadata extraction: ${autoExtractMetadata}`)
+      logger.log(`   ✅ Continue existing traces: ${continueExistingTraces}`)
 
-      // 4. Create Otlp layer for Effect operations
+      // 5. Create Otlp layer for Effect operations
       // CRITICAL: Uses tracerContext callback to bridge Effect spans to OpenTelemetry context
       // This allows bidirectional context propagation:
       // - NodeSDK spans → Effect spans (child relationship)
@@ -182,7 +189,7 @@ export function createEffectInstrumentation(
         }
       }).pipe(Layer.provide(FetchHttpClient.layer))
 
-      // 5. If auto-metadata extraction is enabled, add a layer that extracts
+      // 6. If auto-metadata extraction is enabled, add a layer that extracts
       // Effect fiber metadata for each span
       if (autoExtractMetadata) {
         // TODO: Implement metadata extraction layer
@@ -226,9 +233,9 @@ export const EffectInstrumentationLive: Layer.Layer<never, never, never> =
     const serviceName = process.env.OTEL_SERVICE_NAME || 'effect-service'
     const serviceVersion = process.env.npm_package_version || '1.0.0'
 
-    console.log('🔍 Effect OpenTelemetry tracer (Otlp.layer)')
-    console.log(`   📡 Endpoint: ${endpoint}`)
-    console.log(`   🏷️  Service: ${serviceName}`)
+    logger.log('🔍 Effect OpenTelemetry tracer (Otlp.layer)')
+    logger.log(`   📡 Endpoint: ${endpoint}`)
+    logger.log(`   🏷️  Service: ${serviceName}`)
 
     // Use Otlp.layer() like atrim platform
     // This creates Effect-specific spans that get exported via OTLP

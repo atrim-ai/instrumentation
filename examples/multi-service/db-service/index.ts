@@ -10,22 +10,15 @@
  */
 
 import * as http from 'node:http'
-import { NodeSDK } from '@opentelemetry/sdk-node'
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
 import {
   initializeInstrumentation,
-  PatternSpanProcessor,
   annotateDbQuery,
   setSpanAttributes,
   markSpanSuccess,
   markSpanError
 } from '@atrim/instrumentation'
-import { loadConfig } from '@atrim/instrumentation'
 import { trace } from '@opentelemetry/api'
 
-const COLLECTOR_URL = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
 const PORT = process.env.PORT || 3102
 
 // Mock database
@@ -41,86 +34,55 @@ const mockDb = {
 async function setupInstrumentation() {
   console.log('💾 [DB Service] Setting up instrumentation...\n')
 
-  // 1. Initialize pattern-based instrumentation
-  await initializeInstrumentation()
-
-  // 2. Create OTLP exporter
-  const exporter = new OTLPTraceExporter({
-    url: `${COLLECTOR_URL}/v1/traces`
+  // One line initialization!
+  await initializeInstrumentation({
+    serviceName: 'db-service'
   })
 
-  // 3. Create batch processor
-  const batchProcessor = new BatchSpanProcessor(exporter)
-
-  // 4. Wrap with pattern processor
-  const config = await loadConfig()
-  const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
-
-  // 5. Initialize SDK with auto-instrumentations
-  const sdk = new NodeSDK({
-    spanProcessor: patternProcessor,
-    serviceName: 'db-service',
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-http': {
-          enabled: true,
-          // Important: Accept incoming trace context from backend
-          ignoreIncomingRequestHook: undefined
-        },
-        '@opentelemetry/instrumentation-fs': {
-          enabled: false
-        }
-      })
-    ]
-  })
-
-  sdk.start()
   console.log('✅ [DB Service] Instrumentation initialized')
-  console.log(`   📡 Collector: ${COLLECTOR_URL}`)
   console.log(`   ✅ W3C Trace Context propagation enabled (incoming)\n`)
-
-  return sdk
 }
 
 // Simulate database query
 async function executeQuery(table: string, query: string): Promise<any[]> {
   const tracer = trace.getTracer('db-service')
-  const span = tracer.startSpan('db.query')
 
-  try {
-    // Annotate with database-specific attributes
-    annotateDbQuery(span, 'mock-database', query, table)
+  return await tracer.startActiveSpan('db.query', async (span) => {
+    try {
+      // Annotate with database-specific attributes
+      annotateDbQuery(span, 'mock-database', query, table)
 
-    setSpanAttributes(span, {
-      'db.operation': query.split(' ')[0], // SELECT, INSERT, etc.
-      'db.rows_affected': 0
-    })
+      setSpanAttributes(span, {
+        'db.operation': query.split(' ')[0], // SELECT, INSERT, etc.
+        'db.rows_affected': 0
+      })
 
-    // Simulate query execution time
-    await new Promise((resolve) => setTimeout(resolve, Math.random() * 100 + 50))
+      // Simulate query execution time
+      await new Promise((resolve) => setTimeout(resolve, Math.random() * 100 + 50))
 
-    // Execute mock query
-    let results: any[] = []
+      // Execute mock query
+      let results: any[] = []
 
-    if (table === 'users') {
-      results = mockDb.users
+      if (table === 'users') {
+        results = mockDb.users
+      }
+
+      setSpanAttributes(span, {
+        'db.rows_affected': results.length,
+        'db.result_count': results.length
+      })
+
+      markSpanSuccess(span)
+      span.end()
+
+      return results
+    } catch (error) {
+      markSpanError(span, error instanceof Error ? error.message : 'Query failed')
+      span.recordException(error instanceof Error ? error : new Error(String(error)))
+      span.end()
+      throw error
     }
-
-    setSpanAttributes(span, {
-      'db.rows_affected': results.length,
-      'db.result_count': results.length
-    })
-
-    markSpanSuccess(span)
-    span.end()
-
-    return results
-  } catch (error) {
-    markSpanError(span, error instanceof Error ? error.message : 'Query failed')
-    span.recordException(error instanceof Error ? error : new Error(String(error)))
-    span.end()
-    throw error
-  }
+  })
 }
 
 // Create HTTP server

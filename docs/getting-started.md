@@ -75,16 +75,19 @@ import { trace } from '@opentelemetry/api'
 const tracer = trace.getTracer('my-service')
 
 // ✅ This span will be created (matches ^app\.)
-const span1 = tracer.startSpan('app.user.login')
-span1.end()
+await tracer.startActiveSpan('app.user.login', async (span1) => {
+  span1.end()
+})
 
 // ❌ This span will be dropped (matches ^health\.)
-const span2 = tracer.startSpan('health.check')
-span2.end()
+await tracer.startActiveSpan('health.check', async (span2) => {
+  span2.end()
+})
 
 // ✅ This span will be created (fail-open: no pattern matches)
-const span3 = tracer.startSpan('database.query')
-span3.end()
+await tracer.startActiveSpan('database.query', async (span3) => {
+  span3.end()
+})
 ```
 
 That's it! You now have centralized, pattern-based span filtering.
@@ -143,23 +146,23 @@ import { annotateHttpRequest, markSpanSuccess } from '@atrim/instrumentation'
 const tracer = trace.getTracer('my-service')
 
 async function handleRequest(req, res) {
-  const span = tracer.startSpan('app.http.request')
+  await tracer.startActiveSpan('app.http.request', async (span) => {
+    try {
+      // Add HTTP attributes
+      annotateHttpRequest(span, req.method, req.url, 200)
 
-  try {
-    // Add HTTP attributes
-    annotateHttpRequest(span, req.method, req.url, 200)
+      // Your business logic...
+      await processRequest(req)
 
-    // Your business logic...
-    await processRequest(req)
-
-    markSpanSuccess(span)
-    res.json({ success: true })
-  } catch (error) {
-    span.recordException(error)
-    res.status(500).json({ error: 'Internal error' })
-  } finally {
-    span.end()
-  }
+      markSpanSuccess(span)
+      res.json({ success: true })
+    } catch (error) {
+      span.recordException(error)
+      res.status(500).json({ error: 'Internal error' })
+    } finally {
+      span.end()
+    }
+  })
 }
 ```
 
@@ -237,23 +240,24 @@ import {
   annotateCacheOperation
 } from '@atrim/instrumentation'
 
-const span = tracer.startSpan('app.operation')
+await tracer.startActiveSpan('app.operation', async (span) => {
+  // Set multiple attributes at once
+  setSpanAttributes(span, {
+    'user.id': '123',
+    'operation.type': 'create',
+    'request.size': 1024
+  })
 
-// Set multiple attributes at once
-setSpanAttributes(span, {
-  'user.id': '123',
-  'operation.type': 'create',
-  'request.size': 1024
+  // HTTP requests
+  annotateHttpRequest(span, 'GET', '/api/users', 200)
+
+  // Database queries
+  annotateDbQuery(span, 'postgresql', 'SELECT * FROM users WHERE id = $1', 'users')
+
+  // Cache operations
+  annotateCacheOperation(span, 'get', 'user:123', true) // hit=true
 })
 
-// HTTP requests
-annotateHttpRequest(span, 'GET', '/api/users', 200)
-
-// Database queries
-annotateDbQuery(span, 'postgresql', 'SELECT * FROM users WHERE id = $1', 'users')
-
-// Cache operations
-annotateCacheOperation(span, 'get', 'user:123', true) // hit=true
 
 // Error handling
 try {
