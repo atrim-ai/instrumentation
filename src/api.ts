@@ -9,6 +9,7 @@ import type { NodeSDK } from '@opentelemetry/sdk-node'
 import { initializeSdk, type SdkInitializationOptions } from './core/sdk-initializer.js'
 import { initializePatternMatcher } from './core/pattern-matcher.js'
 import { loadConfig } from './core/config-loader.js'
+import { logger } from './core/logger.js'
 
 /**
  * Initialize OpenTelemetry instrumentation with complete SDK setup
@@ -125,6 +126,6 @@ export async function initializePatternMatchingOnly(
   const config = await loadConfig(options)
   initializePatternMatcher(config)
 
-  console.log('@atrim/instrumentation: Pattern matching initialized (legacy mode)')
-  console.log('  Note: NodeSDK is not initialized. Use initializeInstrumentation() for complete setup.')
+  logger.log('@atrim/instrumentation: Pattern matching initialized (legacy mode)')
+  logger.log('  Note: NodeSDK is not initialized. Use initializeInstrumentation() for complete setup.')
 }

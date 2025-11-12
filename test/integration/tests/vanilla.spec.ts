@@ -16,7 +16,7 @@ import {
 } from './helpers.js'
 import path from 'path'
 
-const EXAMPLE_DIR = path.join(process.cwd(), '../../examples/vanilla')
+const EXAMPLE_DIR = path.join(process.cwd(), './examples/vanilla')
 const BASE_PORT = 3101
 
 let server: TestServer

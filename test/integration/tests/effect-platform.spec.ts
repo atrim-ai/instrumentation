@@ -21,7 +21,7 @@ import {
 } from './helpers.js'
 import path from 'path'
 
-const EXAMPLE_DIR = path.join(process.cwd(), '../../examples/effect-platform')
+const EXAMPLE_DIR = path.join(process.cwd(), './examples/effect-platform')
 const BASE_PORT = 3103
 
 let server: TestServer
@@ -92,7 +92,8 @@ test.describe('Pure Effect-TS Example', () => {
     const response = await page.request.get(`http://localhost:${port}/users/999`)
     expect(response.status()).toBe(404)
 
-    await page.waitForTimeout(2000)
+    // Wait for batch processor to export (default 5s interval)
+    await page.waitForTimeout(6000)
 
     // Should still have traces even for errors
     const receivedTraces = await collectorReceivedTraces(collector)

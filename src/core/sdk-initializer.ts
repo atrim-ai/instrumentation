@@ -14,6 +14,7 @@ import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory
 import { detectServiceInfo } from './service-detector.js'
 import { loadConfig, type ConfigLoaderOptions } from './config-loader.js'
 import { initializePatternMatcher } from './pattern-matcher.js'
+import { logger } from './logger.js'
 
 export interface SdkInitializationOptions extends ConfigLoaderOptions {
   /**
@@ -108,9 +109,9 @@ function shouldEnableAutoInstrumentation(
   const isEffect = isEffectProject()
 
   if (isEffect && !hasWebFramework) {
-    console.log('@atrim/instrumentation: Detected Effect-TS without web framework')
-    console.log('  - Auto-instrumentation disabled by default')
-    console.log('  - Effect.withSpan() will create spans')
+    logger.log('@atrim/instrumentation: Detected Effect-TS without web framework')
+    logger.log('  - Auto-instrumentation disabled by default')
+    logger.log('  - Effect.withSpan() will create spans')
     return false
   }
 
@@ -191,13 +192,13 @@ function isTracingAlreadyInitialized(): boolean {
 export async function initializeSdk(options: SdkInitializationOptions = {}): Promise<NodeSDK | null> {
   // Check if we already initialized via this library
   if (sdkInstance) {
-    console.warn('@atrim/instrumentation: SDK already initialized. Returning existing instance.')
+    logger.warn('@atrim/instrumentation: SDK already initialized. Returning existing instance.')
     return sdkInstance
   }
 
   // Check if initialization is already in progress (prevents race conditions)
   if (initializationPromise) {
-    console.log('@atrim/instrumentation: SDK already initialized, waiting for initialization to complete...')
+    logger.log('@atrim/instrumentation: SDK already initialized, waiting for initialization to complete...')
     return initializationPromise
   }
 
@@ -217,43 +218,46 @@ export async function initializeSdk(options: SdkInitializationOptions = {}): Pro
  * Internal initialization implementation
  */
 async function performInitialization(options: SdkInitializationOptions): Promise<NodeSDK | null> {
+  // 1. Load configuration first (including logging level)
+  const config = await loadConfig(options)
+
+  // 2. Configure logger based on config
+  const loggingLevel = config.instrumentation.logging || 'on'
+  logger.setLevel(loggingLevel)
+
   // Check if OpenTelemetry is already initialized elsewhere
   const alreadyInitialized = isTracingAlreadyInitialized()
 
   if (alreadyInitialized) {
-    console.log('@atrim/instrumentation: Detected existing OpenTelemetry initialization.')
-    console.log('  - Skipping NodeSDK setup')
-    console.log('  - Setting up pattern-based filtering only')
-    console.log('')
+    logger.log('@atrim/instrumentation: Detected existing OpenTelemetry initialization.')
+    logger.log('  - Skipping NodeSDK setup')
+    logger.log('  - Setting up pattern-based filtering only')
+    logger.log('')
 
-    // Still load config and initialize pattern matcher for filtering
-    const config = await loadConfig(options)
+    // Initialize pattern matcher for filtering
     initializePatternMatcher(config)
 
-    console.log('@atrim/instrumentation: Pattern filtering initialized')
-    console.log('  ⚠️  Note: Pattern filtering will only work with manual spans')
-    console.log('  ⚠️  Auto-instrumentation must be configured separately')
-    console.log('')
+    logger.log('@atrim/instrumentation: Pattern filtering initialized')
+    logger.log('  ⚠️  Note: Pattern filtering will only work with manual spans')
+    logger.log('  ⚠️  Auto-instrumentation must be configured separately')
+    logger.log('')
 
     return null
   }
 
-  // 1. Load configuration for pattern matching
-  const config = await loadConfig(options)
-
-  // 2. Detect service info
+  // 3. Detect service info
   const serviceInfo = await detectServiceInfo()
   const serviceName = options.serviceName || serviceInfo.name
   const serviceVersion = options.serviceVersion || serviceInfo.version
 
-  // 3. Create OTLP exporter
+  // 4. Create OTLP exporter
   const exporter = createOtlpExporter(options.otlp)
 
-  // 4. Create span processor chain
+  // 5. Create span processor chain
   const batchProcessor = new BatchSpanProcessor(exporter)
   const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
 
-  // 5. Prepare instrumentations
+  // 6. Prepare instrumentations
   const instrumentations: Instrumentation[] = []
 
   // Determine if auto-instrumentation should be enabled
@@ -285,7 +289,29 @@ async function performInitialization(options: SdkInitializationOptions): Promise
     instrumentations.push(...options.instrumentations)
   }
 
-  // 6. Create NodeSDK configuration
+  // For pure Effect apps (no auto-instrumentation), skip NodeSDK entirely
+  // This prevents any default instrumentations (like undici) from interfering with Effect layer
+  if (!enableAutoInstrumentation && instrumentations.length === 0) {
+    const wasExplicit = options.autoInstrument === false
+    const detectionMessage = wasExplicit
+      ? '@atrim/instrumentation: Auto-instrumentation: disabled'
+      : '@atrim/instrumentation: Pure Effect-TS app detected (auto-detected)'
+
+    logger.log(detectionMessage)
+    logger.log('  - Skipping NodeSDK setup')
+    logger.log('  - Pattern matching configured from instrumentation.yaml')
+    if (!wasExplicit) {
+      logger.log('  - Use EffectInstrumentationLive for tracing')
+    }
+    logger.log('')
+
+    // Initialize pattern matcher so filtering works with Effect spans
+    initializePatternMatcher(config)
+
+    return null
+  }
+
+  // 7. Create NodeSDK configuration
   // Type cast to handle OpenTelemetry version mismatches
   const sdkConfig = {
     spanProcessor: patternProcessor,
@@ -296,17 +322,17 @@ async function performInitialization(options: SdkInitializationOptions): Promise
     ...options.sdk
   } as NodeSDKConfiguration
 
-  // 7. Initialize SDK
+  // 8. Initialize SDK
   const sdk = new NodeSDK(sdkConfig)
   sdk.start()
   sdkInstance = sdk
 
-  // 8. Register shutdown handlers (unless disabled)
+  // 9. Register shutdown handlers (unless disabled)
   if (!options.disableAutoShutdown) {
     registerShutdownHandlers(sdk)
   }
 
-  // 9. Log initialization details
+  // 10. Log initialization details
   logInitialization(config, serviceName, serviceVersion, options, enableAutoInstrumentation)
 
   return sdk
@@ -344,13 +370,13 @@ export function resetSdk(): void {
  */
 function registerShutdownHandlers(sdk: NodeSDK): void {
   const shutdown = async (signal: string) => {
-    console.log(`\n@atrim/instrumentation: Received ${signal}, shutting down gracefully...`)
+    logger.log(`\n@atrim/instrumentation: Received ${signal}, shutting down gracefully...`)
     try {
       await sdk.shutdown()
-      console.log('@atrim/instrumentation: Shutdown complete')
+      logger.log('@atrim/instrumentation: Shutdown complete')
       process.exit(0)
     } catch (error) {
-      console.error(
+      logger.error(
         '@atrim/instrumentation: Error during shutdown:',
         error instanceof Error ? error.message : String(error)
       )
@@ -364,13 +390,13 @@ function registerShutdownHandlers(sdk: NodeSDK): void {
 
   // Handle uncaught errors
   process.on('uncaughtException', async (error) => {
-    console.error('@atrim/instrumentation: Uncaught exception:', error)
+    logger.error('@atrim/instrumentation: Uncaught exception:', error)
     await sdk.shutdown()
     process.exit(1)
   })
 
   process.on('unhandledRejection', async (reason) => {
-    console.error('@atrim/instrumentation: Unhandled rejection:', reason)
+    logger.error('@atrim/instrumentation: Unhandled rejection:', reason)
     await sdk.shutdown()
     process.exit(1)
   })
@@ -386,8 +412,11 @@ function logInitialization(
   options: SdkInitializationOptions,
   autoInstrumentEnabled: boolean
 ): void {
-  console.log('@atrim/instrumentation: SDK initialized successfully')
-  console.log(`  - Service: ${serviceName}${serviceVersion ? ` v${serviceVersion}` : ''}`)
+  // Use minimal() for the main initialization message (shown in minimal mode)
+  logger.minimal('@atrim/instrumentation: SDK initialized successfully')
+
+  // All other details are only shown in full logging mode
+  logger.log(`  - Service: ${serviceName}${serviceVersion ? ` v${serviceVersion}` : ''}`)
 
   if (config.instrumentation.enabled) {
     const instrumentCount = config.instrumentation.instrument_patterns.filter(
@@ -395,20 +424,20 @@ function logInitialization(
     ).length
     const ignoreCount = config.instrumentation.ignore_patterns.length
 
-    console.log(`  - Pattern filtering: enabled`)
-    console.log(`    - Instrument patterns: ${instrumentCount}`)
-    console.log(`    - Ignore patterns: ${ignoreCount}`)
+    logger.log(`  - Pattern filtering: enabled`)
+    logger.log(`    - Instrument patterns: ${instrumentCount}`)
+    logger.log(`    - Ignore patterns: ${ignoreCount}`)
   } else {
-    console.log(`  - Pattern filtering: disabled`)
+    logger.log(`  - Pattern filtering: disabled`)
   }
 
   // Show auto-instrumentation status
   const autoInstrumentLabel = autoInstrumentEnabled ? 'enabled' : 'disabled'
   const autoDetected = options.autoInstrument === undefined ? ' (auto-detected)' : ''
-  console.log(`  - Auto-instrumentation: ${autoInstrumentLabel}${autoDetected}`)
+  logger.log(`  - Auto-instrumentation: ${autoInstrumentLabel}${autoDetected}`)
 
   if (options.instrumentations && options.instrumentations.length > 0) {
-    console.log(`  - Custom instrumentations: ${options.instrumentations.length}`)
+    logger.log(`  - Custom instrumentations: ${options.instrumentations.length}`)
   }
 
   // Log OTLP endpoint (helpful for debugging)
@@ -417,7 +446,7 @@ function logInitialization(
     process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ||
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
     'http://localhost:4318/v1/traces'
-  console.log(`  - OTLP endpoint: ${endpoint}`)
+  logger.log(`  - OTLP endpoint: ${endpoint}`)
 
-  console.log('')
+  logger.log('')
 }

@@ -184,6 +184,7 @@ function getDefaultConfig(): InstrumentationConfig {
     version: '1.0',
     instrumentation: {
       enabled: true,
+      logging: 'on',
       description: 'Default instrumentation configuration',
       instrument_patterns: [
         { pattern: '^app\\.', enabled: true, description: 'Application operations' },

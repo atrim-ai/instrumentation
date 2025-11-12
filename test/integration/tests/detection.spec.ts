@@ -17,7 +17,7 @@ import { writeFile, mkdir } from 'fs/promises'
 const execAsync = promisify(exec)
 
 test.describe('Auto-Detection', () => {
-  const tempDir = path.join(process.cwd(), '../../test/temp')
+  const tempDir = path.join(process.cwd(), './test/temp')
 
   test.beforeAll(async () => {
     // Create temp directory for test fixtures
@@ -59,7 +59,7 @@ initializeInstrumentation().then((result) => {
 
     // Run the test file
     const { stdout, stderr } = await execAsync(`tsx ${testFile}`, {
-      cwd: path.join(process.cwd(), '../..')
+      cwd: process.cwd()
     })
 
     const output = stdout + stderr
@@ -126,7 +126,7 @@ initializeInstrumentation({
     )
 
     const { stdout, stderr } = await execAsync(`tsx ${testFile}`, {
-      cwd: path.join(process.cwd(), '../../examples/effect-ts')
+      cwd: path.join(process.cwd(), './examples/effect-ts')
     })
 
     const output = stdout + stderr
@@ -261,7 +261,7 @@ initializeInstrumentation().then(() => {
 
 test.describe('Configuration Priority', () => {
   test('should prioritize explicit config over environment', async () => {
-    const testFile = path.join(process.cwd(), '../../test/temp/config-priority.ts')
+    const testFile = path.join(process.cwd(), './test/temp/config-priority.ts')
 
     await writeFile(
       testFile,
@@ -292,7 +292,7 @@ initializeInstrumentation({
   })
 
   test('should use environment when no explicit config', async () => {
-    const testFile = path.join(process.cwd(), '../../test/temp/env-config.ts')
+    const testFile = path.join(process.cwd(), './test/temp/env-config.ts')
 
     await writeFile(
       testFile,

@@ -5,7 +5,7 @@ import { defineConfig, devices } from '@playwright/test'
  * Tests each example to ensure traces are sent to OTEL collector
  */
 export default defineConfig({
-  testDir: './tests',
+  testDir: './test/integration/tests',
 
   // Test timeout
   timeout: 60000,
@@ -25,8 +25,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
 
   // Global setup/teardown
-  globalSetup: './tests/global-setup.ts',
-  globalTeardown: './tests/global-teardown.ts',
+  globalSetup: './test/integration/tests/global-setup.ts',
+  globalTeardown: './test/integration/tests/global-teardown.ts',
 
   // Reporter
   reporter: [

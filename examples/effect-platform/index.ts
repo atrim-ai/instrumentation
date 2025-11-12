@@ -28,7 +28,6 @@ import * as HttpServerResponse from '@effect/platform/HttpServerResponse'
 import * as NodeHttp from '@effect/platform-node/NodeHttpServer'
 import { createServer } from 'node:http'
 import { EffectInstrumentationLive } from '../../src/integrations/effect/index.js'
-import { initializeInstrumentation } from '../../src/index.js'
 
 // ============================================================================
 // Domain Types
@@ -163,29 +162,11 @@ const HttpLive = HttpServer.serve(router).pipe(
 )
 
 // ============================================================================
-// OpenTelemetry Setup
-// ============================================================================
-
-async function setupInstrumentation() {
-  console.log('🚀 Setting up OpenTelemetry for pure Effect-TS...\n')
-
-  // Set service name in environment so both NodeSDK and Effect layer use the same name
-  process.env.OTEL_SERVICE_NAME = 'effect-platform-example'
-
-  // Zero-config initialization!
-  // Since we're NOT using Express/Fastify, auto-instrumentation
-  // will be automatically DISABLED (smart detection)
-  // Only Effect.withSpan() will create spans
-  await initializeInstrumentation({
-    serviceName: 'effect-platform-example'
-  })
-
-  console.log('✅ Ready to trace pure Effect!\n')
-}
-
-// ============================================================================
 // Main Application
 // ============================================================================
+
+// Set service name in environment (used by EffectInstrumentationLive)
+process.env.OTEL_SERVICE_NAME = 'effect-platform-example'
 
 const program = Effect.gen(function* () {
   const port = Number(process.env.PORT) || 3003
@@ -202,9 +183,8 @@ const program = Effect.gen(function* () {
   yield* Console.log('')
   yield* Console.log('='.repeat(60))
   yield* Console.log('💡 All spans created via Effect.withSpan()')
-  yield* Console.log('   - No Express/Fastify auto-instrumentation')
-  yield* Console.log('   - Pure Effect-TS tracing')
-  yield* Console.log('   - Pattern filtering from instrumentation.yaml')
+  yield* Console.log('   - Pure Effect-TS tracing via EffectInstrumentationLive')
+  yield* Console.log('   - Direct OTLP export from Effect layer')
   yield* Console.log('')
 
   // Keep the server running
@@ -214,15 +194,8 @@ const program = Effect.gen(function* () {
   Effect.provide(EffectInstrumentationLive)
 )
 
-// Initialize OpenTelemetry, then run the Effect program
-setupInstrumentation()
-  .then(() => {
-    Effect.runPromise(program).catch((error) => {
-      console.error('❌ Fatal error:', error)
-      process.exit(1)
-    })
-  })
-  .catch((error) => {
-    console.error('❌ Failed to initialize instrumentation:', error)
-    process.exit(1)
-  })
+// Run the Effect program directly
+Effect.runPromise(program).catch((error) => {
+  console.error('❌ Fatal error:', error)
+  process.exit(1)
+})
