@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@atrim/instrumentation - Remote Configuration Example</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 10px;
+      margin-right: 8px;
+    }
+
+    .badge-env {
+      background: #764ba2;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .config-info {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #667eea;
+    }
+
+    .config-info h3 {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .config-info dl {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .config-info dt {
+      font-weight: 600;
+      color: #666;
+    }
+
+    .config-info dd {
+      color: #333;
+    }
+
+    .operations {
+      display: grid;
+      gap: 12px;
+    }
+
+    .operation-card {
+      background: #f0f2ff;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .operation-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .operation-desc {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    button:hover {
+      background: #5568d3;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-workflow {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-size: 16px;
+      padding: 16px 32px;
+    }
+
+    .btn-workflow:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .status {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+      display: block;
+    }
+
+    .log-container {
+      background: #1e1e1e;
+      border-radius: 6px;
+      padding: 15px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #d4d4d4;
+      line-height: 1.6;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .log-entry.success {
+      color: #4ec9b0;
+    }
+
+    .log-entry.error {
+      color: #f48771;
+    }
+
+    .log-entry.info {
+      color: #569cd6;
+    }
+
+    .log-entry.trace {
+      color: #ce9178;
+    }
+
+    .trace-info {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+    }
+
+    .trace-info h3 {
+      font-size: 14px;
+      color: #856404;
+      margin-bottom: 8px;
+    }
+
+    .trace-info ul {
+      list-style: none;
+      font-size: 13px;
+      color: #856404;
+    }
+
+    .trace-info li {
+      padding: 4px 0;
+    }
+
+    .trace-info li:before {
+      content: "✓ ";
+      color: #28a745;
+      font-weight: bold;
+      margin-right: 4px;
+    }
+
+    .trace-info li.dropped:before {
+      content: "✗ ";
+      color: #dc3545;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.8s linear infinite;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>@atrim/instrumentation</h1>
+      <p class="subtitle">Remote Configuration Example - Centralized Config Management</p>
+      <span class="badge">Remote Configuration</span>
+      <span class="badge badge-env" id="env-badge">Loading...</span>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="card">
+      <h2>📡 Configuration Details</h2>
+      <div class="config-info">
+        <h3>Current Configuration:</h3>
+        <dl>
+          <dt>Environment:</dt>
+          <dd id="environment">Loading...</dd>
+
+          <dt>Config Source:</dt>
+          <dd id="config-source">Remote URL</dd>
+
+          <dt>Config Server:</dt>
+          <dd id="config-server">http://localhost:3100</dd>
+
+          <dt>Cache Timeout:</dt>
+          <dd>5 minutes</dd>
+        </dl>
+      </div>
+      <p style="color: #666; font-size: 14px;">
+        This example loads instrumentation configuration from a remote HTTP endpoint.
+        Different environments use different tracing patterns without code changes.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>🔄 Demo Workflow</h2>
+      <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+        Run a complete workflow that uses environment-specific tracing patterns loaded from remote config.
+      </p>
+      <button id="run-workflow" class="btn-workflow" onclick="runWorkflow()">
+        Run Complete Workflow
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>⚡ Individual Operations</h2>
+      <div class="operations grid-2">
+        <div class="operation-card">
+          <div class="operation-title">👤 Fetch User</div>
+          <div class="operation-desc">Simulates user data fetch (always traced)</div>
+          <button onclick="fetchUser()">Run Operation</button>
+        </div>
+
+        <div class="operation-card">
+          <div class="operation-title">💾 Storage Op</div>
+          <div class="operation-desc">Storage operation (traced in prod/staging)</div>
+          <button onclick="storageOp()">Run Operation</button>
+        </div>
+
+        <div class="operation-card">
+          <div class="operation-title">🌐 API Call</div>
+          <div class="operation-desc">External API call (traced in prod/staging)</div>
+          <button onclick="apiCall()">Run Operation</button>
+        </div>
+
+        <div class="operation-card">
+          <div class="operation-title">🐛 Debug Op</div>
+          <div class="operation-desc">Debug operation (only staging/dev)</div>
+          <button onclick="debugOp()">Run Operation</button>
+        </div>
+
+        <div class="operation-card">
+          <div class="operation-title">🔧 Internal Op</div>
+          <div class="operation-desc">Internal utility (always filtered)</div>
+          <button onclick="internalOp()">Run Operation</button>
+        </div>
+      </div>
+
+      <div class="trace-info">
+        <h3>Environment-Specific Patterns:</h3>
+        <ul id="patterns-list">
+          <li>Loading patterns...</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Activity Log</h2>
+      <div class="log-container" id="log-container">
+        <div class="log-entry info">Ready to run operations with remote config...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isRunning = false;
+
+    // Load environment info on page load
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const response = await fetch('/health');
+        const data = await response.json();
+        const env = data.environment || 'default';
+
+        document.getElementById('environment').textContent = env;
+        document.getElementById('env-badge').textContent = env.toUpperCase();
+
+        updatePatternsList(env);
+        addLog(`Environment: ${env}`, 'info');
+      } catch (error) {
+        addLog('Failed to load environment info', 'error');
+      }
+    });
+
+    function updatePatternsList(env) {
+      const patternsList = document.getElementById('patterns-list');
+
+      const patterns = {
+        'default': [
+          { text: 'app.* → Traced', traced: true },
+          { text: 'demo.* → Traced', traced: true },
+          { text: 'internal.* → Filtered', traced: false },
+          { text: 'test.* → Filtered', traced: false }
+        ],
+        'production': [
+          { text: 'app.* → Traced', traced: true },
+          { text: 'api.* → Traced', traced: true },
+          { text: 'storage.* → Traced', traced: true },
+          { text: 'debug.* → Filtered (production)', traced: false },
+          { text: 'internal.* → Filtered', traced: false }
+        ],
+        'staging': [
+          { text: 'app.* → Traced', traced: true },
+          { text: 'api.* → Traced', traced: true },
+          { text: 'storage.* → Traced', traced: true },
+          { text: 'debug.* → Traced (staging only)', traced: true },
+          { text: 'internal.* → Filtered', traced: false }
+        ],
+        'development': [
+          { text: '.* → Trace EVERYTHING', traced: true },
+          { text: 'test.* → Filtered only', traced: false }
+        ]
+      };
+
+      const envPatterns = patterns[env] || patterns['default'];
+
+      patternsList.innerHTML = envPatterns.map(p =>
+        `<li class="${p.traced ? '' : 'dropped'}">${p.text}</li>`
+      ).join('');
+    }
+
+    function addLog(message, type = 'info') {
+      const logContainer = document.getElementById('log-container');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = `status ${type}`;
+
+      setTimeout(() => {
+        status.className = 'status';
+      }, 5000);
+    }
+
+    async function runWorkflow() {
+      if (isRunning) return;
+
+      const button = document.getElementById('run-workflow');
+      button.disabled = true;
+      button.innerHTML = 'Running Workflow <span class="loading"></span>';
+      isRunning = true;
+
+      try {
+        addLog('🔄 Starting complete demo workflow...', 'info');
+
+        const response = await fetch('/api/workflow', {
+          method: 'POST'
+        });
+
+        if (!response.ok) throw new Error('Workflow failed');
+
+        const data = await response.json();
+        addLog('✅ Workflow completed successfully!', 'success');
+        addLog(`   Environment: ${data.environment}`, 'success');
+        addLog(`   Config: ${data.configSource}`, 'success');
+        addLog(`   User: ${data.userData.name}`, 'success');
+
+        showStatus('Workflow completed! Check your collector for traces.', 'success');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Workflow failed: ' + error.message, 'error');
+      } finally {
+        button.disabled = false;
+        button.innerHTML = 'Run Complete Workflow';
+        isRunning = false;
+      }
+    }
+
+    async function fetchUser() {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        addLog('👤 Fetching user data...', 'info');
+
+        const response = await fetch('/api/user/user-789');
+        if (!response.ok) throw new Error('Failed to fetch user');
+
+        const data = await response.json();
+        addLog(`✅ User fetched: ${data.name} (${data.email})`, 'success');
+        addLog('   Traces: app.user.fetch, app.db.query', 'trace');
+
+        showStatus('User fetched successfully! Traces generated.', 'success');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Operation failed: ' + error.message, 'error');
+      } finally {
+        isRunning = false;
+      }
+    }
+
+    async function storageOp() {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        addLog('💾 Running storage operation...', 'info');
+
+        const response = await fetch('/api/storage/write');
+        if (!response.ok) throw new Error('Storage operation failed');
+
+        addLog('✅ Storage operation completed', 'success');
+        addLog('   Traces: storage.operation', 'trace');
+
+        showStatus('Storage operation completed!', 'success');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Operation failed: ' + error.message, 'error');
+      } finally {
+        isRunning = false;
+      }
+    }
+
+    async function apiCall() {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        addLog('🌐 Making external API call...', 'info');
+
+        const response = await fetch('/api/external');
+        if (!response.ok) throw new Error('API call failed');
+
+        const data = await response.json();
+        addLog(`✅ API call completed (status: ${data.status})`, 'success');
+        addLog('   Traces: api.call', 'trace');
+
+        showStatus('API call completed!', 'success');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Operation failed: ' + error.message, 'error');
+      } finally {
+        isRunning = false;
+      }
+    }
+
+    async function debugOp() {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        addLog('🐛 Running debug operation...', 'info');
+
+        const response = await fetch('/api/debug');
+        if (!response.ok) throw new Error('Debug operation failed');
+
+        const data = await response.json();
+        addLog('✅ Debug operation completed', 'success');
+        addLog(`   Traces: ${data.traced ? 'debug.operation' : 'NONE (filtered in production)'}`, data.traced ? 'trace' : 'info');
+
+        showStatus(`Debug operation completed! ${data.traced ? 'Trace generated.' : 'Filtered in this environment.'}`, 'success');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Operation failed: ' + error.message, 'error');
+      } finally {
+        isRunning = false;
+      }
+    }
+
+    async function internalOp() {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        addLog('🔧 Running internal utility...', 'info');
+
+        const response = await fetch('/api/internal');
+        if (!response.ok) throw new Error('Internal operation failed');
+
+        addLog('✅ Internal operation completed', 'success');
+        addLog('   Traces: NONE (filtered by ignore pattern)', 'info');
+
+        showStatus('Internal operation completed (no trace generated - filtered)', 'info');
+      } catch (error) {
+        addLog(`❌ Error: ${error.message}`, 'error');
+        showStatus('Operation failed: ' + error.message, 'error');
+      } finally {
+        isRunning = false;
+      }
+    }
+  </script>
+</body>
+</html>

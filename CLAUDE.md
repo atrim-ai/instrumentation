@@ -395,6 +395,39 @@ initializeInstrumentation({
 5. **Standard compliance** - Uses standard OpenTelemetry APIs throughout
 6. **Zero breaking changes** - Works alongside existing OpenTelemetry setup
 
+## AI Assistant Workflow Guidelines
+
+### Review-Before-Implementation Process
+
+**IMPORTANT:** Before making any major changes, creating PR descriptions, or making significant design/implementation decisions, you MUST:
+
+1. **Create a proposal file** in `./tmp/` directory with a descriptive name (e.g., `./tmp/fiberset-tracing-fix-proposal.md`, `./tmp/pr-body-draft.md`)
+2. **Document the proposal** including:
+   - Problem statement
+   - Proposed solution(s)
+   - Files to be changed
+   - Design decisions and trade-offs
+   - Examples of changes
+3. **Wait for user approval** before proceeding with implementation
+4. **Only after approval** should you implement changes or take next steps
+
+**Examples of what requires review:**
+- Adding new documentation sections (e.g., to TROUBLESHOOTING.md)
+- Creating PR descriptions or commit messages
+- Major refactoring or architectural changes
+- New features or significant bug fixes
+- Changes affecting public API
+- Documentation structure changes
+
+**Examples of what does NOT require review:**
+- Reading files for investigation
+- Running tests
+- Searching codebase
+- Small typo fixes
+- Formatting changes
+
+This workflow ensures alignment on design decisions before implementation and prevents wasted effort on unapproved approaches.
+
 ## Gotchas and Common Issues
 
 ### Pattern Escaping

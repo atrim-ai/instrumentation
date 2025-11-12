@@ -1,0 +1,29 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Staging environment configuration - more verbose tracing"
+
+  instrument_patterns:
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application operations"
+
+    - pattern: "^api\\."
+      enabled: true
+      description: "API operations"
+
+    - pattern: "^storage\\."
+      enabled: true
+      description: "Storage operations"
+
+    - pattern: "^debug\\."
+      enabled: true
+      description: "Debug operations (enabled in staging)"
+
+  ignore_patterns:
+    - pattern: "^internal\\."
+      description: "Internal utility operations"
+
+    - pattern: "^test\\."
+      description: "Test utility operations"
