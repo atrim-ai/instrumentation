@@ -7,43 +7,47 @@ Integration tests for `@atrim/instrumentation` that verify traces are actually s
 ```
 ┌─────────────────────────┐
 │  Playwright Tests       │
-│  (Browser automation)   │
+│  (8 parallel workers)   │
 └────────┬────────────────┘
          │
-         │ HTTP Requests
-         ▼
-┌─────────────────────────┐
-│  Example Servers        │
-│  - Express              │
-│  - Vanilla              │
-│  - Effect-TS            │
-│  - Pure Effect          │
-└────────┬────────────────┘
-         │
-         │ OTLP (port 4320)
-         ▼
-┌─────────────────────────┐
-│  OTEL Collector         │
-│  (Docker container)     │
-│  - Debug exporter       │
-│  - Ports: 4319/4320     │
-└─────────────────────────┘
+         │ Each test suite gets:
+         ├─────────────────────────┐
+         │                         │
+         ▼                         ▼
+┌──────────────────┐      ┌──────────────────┐
+│  Test Suite 1    │      │  Test Suite 2    │
+│  ├─ Collector    │      │  ├─ Collector    │
+│  │  (isolated)   │      │  │  (isolated)   │
+│  └─ App Server   │      │  └─ App Server   │
+│     (unique port)│      │     (unique port)│
+└──────────────────┘      └──────────────────┘
 ```
 
-## Ports Used
+**Key Features:**
+- ✅ **Isolated collectors** - Each test suite runs with its own OTEL collector container
+- ✅ **Parallel execution** - Tests run simultaneously across 8 workers
+- ✅ **No cross-contamination** - Test suites can't interfere with each other
+- ✅ **Dynamic ports** - Automatically assigned unique ports for each container
+- ✅ **Testcontainers** - Automatic container lifecycle management
 
-- **14318**: OTLP HTTP receiver (test collector)
-- **14317**: OTLP gRPC receiver (test collector)
-- **14133**: Health check endpoint
-- **3100-3199**: Example application ports
+## Ports
 
-These non-standard ports (14317/14318 instead of 4317/4318) are used to avoid conflicts with local collectors and other Atrim services.
+Ports are **dynamically assigned** to avoid conflicts:
+
+- **Collector HTTP**: Randomly assigned (e.g., 55928, 55931, etc.)
+- **Collector gRPC**: Randomly assigned
+- **Collector Health**: Randomly assigned
+- **App Servers**: BASE_PORT + (workerIndex * 10)
+  - Express: 3100, 3110, 3120, 3130...
+  - Vanilla: 3101, 3111, 3121, 3131...
+  - Effect-TS: 3102, 3112, 3122, 3132...
+  - Effect-Platform: 3103, 3113, 3123, 3133...
 
 ## Running Tests
 
 ### Prerequisites
 
-1. **Docker** - Required for running OTEL collector
+1. **Docker** - Required for testcontainers
 2. **pnpm** - For package management
 3. **Node.js 18+** - Runtime
 
@@ -64,14 +68,20 @@ pnpm test:integration
 pnpm test
 ```
 
-### Run Specific Test
+Tests run in **parallel** by default (8 workers):
+```bash
+Running 31 tests using 8 workers
+✅ 29 passed in ~20s
+```
+
+### Run Specific Project
 
 ```bash
 # Run only Express tests
-pnpm test express.spec.ts
+pnpm test --project=express-example
 
 # Run only Effect Platform tests
-pnpm test effect-platform.spec.ts
+pnpm test --project=effect-platform-example
 ```
 
 ### Debug Mode
@@ -89,98 +99,139 @@ pnpm test:ui
 
 ## What's Tested
 
-### Express Example
+### Express Example (5/5 passing ✅)
 - ✅ HTTP requests handled correctly
-- ✅ Traces sent to collector
+- ✅ Traces sent to isolated collector
 - ✅ Pattern filtering works (health checks filtered)
 - ✅ POST requests create traces
 - ✅ Interactive UI loads
 
-### Vanilla Example
+### Vanilla Example (5/5 passing ✅)
 - ✅ Pure Node.js HTTP server works
 - ✅ Traces sent for all operations
-- ✅ Pattern-based filtering applied
+- ✅ Database operation spans
+- ✅ Cache operation spans
+- ✅ Interactive UI loads
 
-### Effect-TS + Express Example
+### Effect-TS + Express Example (8/8 passing ✅)
 - ✅ Effect.withSpan() creates traces
 - ✅ Express auto-instrumentation works
 - ✅ Both Effect and HTTP spans present
 - ✅ Auto-instrumentation auto-enabled (has web framework)
-
-### Pure Effect-TS Example
-- ✅ @effect/platform HTTP server works
-- ✅ Effect.withSpan() creates traces
-- ✅ Auto-instrumentation auto-disabled (no web framework)
-- ✅ No Express/HTTP auto-instrumentation spans
+- ✅ Race/retry/timeout operations traced
 - ✅ Error handling works
+
+### Pure Effect-TS Example (2/4 passing ⚠️)
+- ✅ @effect/platform HTTP server works
+- ✅ Auto-instrumentation auto-disabled (no web framework)
+- ⚠️ Effect.withSpan() traces (investigating)
+- ⚠️ Error handling (investigating)
+
+### Detection Tests (8/8 passing ✅)
+- ✅ Detects existing NodeSDK initialization
+- ✅ Detects Effect-TS without web framework
+- ✅ Enables auto-instrumentation for Express + Effect
+- ✅ Respects explicit autoInstrument settings
+- ✅ Handles multiple initialization attempts
+- ✅ Pattern-only mode when SDK exists
+- ✅ Configuration priority handling
 
 ## Test Output
 
-### Successful Test
+### Successful Run
 
 ```bash
-Running 4 tests using 1 worker
+Running 31 tests using 8 workers
 
-  ✓ [express-example] express.spec.ts:20:7 › Express Example › should respond to requests (523ms)
-  ✓ [express-example] express.spec.ts:30:7 › Express Example › should send traces to collector (3.2s)
-  ✓ [effect-platform-example] effect-platform.spec.ts:25:7 › Pure Effect-TS Example › should send Effect.withSpan() traces (2.8s)
-  ✓ [effect-platform-example] effect-platform.spec.ts:50:7 › Pure Effect-TS Example › auto-instrumentation should be disabled (2.1s)
+🚀 Starting isolated OTEL Collector container...
+🚀 Starting isolated OTEL Collector container...
+🚀 Starting isolated OTEL Collector container...
+...
+✅ Collector ready - HTTP: 55928, gRPC: 55927, Health: 55929
+✅ Collector ready - HTTP: 55931, gRPC: 55930, Health: 55932
+...
 
-4 passed (12.3s)
+  ✓ [express-example] › express.spec.ts:52:3 › should respond to requests (172ms)
+  ✓ [vanilla-example] › vanilla.spec.ts:52:3 › should respond to requests (117ms)
+  ...
+
+🧹 Tearing down integration tests...
+✅ Isolated collector containers stopped by individual test suites
+
+  29 passed (20.3s)
 ```
 
 ### Failed Test
 
 When a test fails, Playwright provides:
 - Screenshot of the failure
-- Video recording (if configured)
+- Video recording
 - Trace file for debugging
 - Console logs
 - Collector logs
 
 ## Troubleshooting
 
-### Collector Won't Start
+### Docker Not Running
 
 ```bash
-# Check Docker is running
+# Check Docker daemon
 docker ps
 
-# View collector logs
-docker logs atrim-otel-collector-test
-
-# Restart collector
-docker-compose -f test/integration/docker-compose.yml restart
+# Start Docker Desktop (macOS/Windows)
+# or start Docker service (Linux)
+sudo systemctl start docker
 ```
 
 ### No Traces Received
 
-1. Check example server logs
-2. Check collector logs:
-   ```bash
-   docker logs atrim-otel-collector-test | tail -100
-   ```
-3. Verify OTLP endpoint:
-   ```bash
-   curl http://localhost:4320/v1/traces
-   ```
+1. **Check test output** - Collector logs are shown in test output
+2. **Check app server logs** - Look for "SDK initialized successfully"
+3. **Verify collector is healthy** - Should see "Collector ready" in logs
+4. **Check for errors** - Look for any error messages in test output
 
 ### Port Conflicts
 
-If ports 4319/4320 are in use:
+Port conflicts are **automatically avoided** by:
+- Testcontainers assigning random ports for collectors
+- Worker-based port allocation for app servers
 
-1. Edit `docker-compose.yml` to use different ports
-2. Update `helpers.ts` with new OTLP endpoint
-3. Restart tests
-
-### Server Won't Start
-
+If you still see EADDRINUSE errors:
 ```bash
-# Check if port is already in use
-lsof -i :3100
-
 # Kill any hanging processes
 pkill -f "tsx.*examples"
+
+# Check what's using a port
+lsof -i :3100
+```
+
+### Tests Hang or Timeout
+
+```bash
+# Check for orphaned containers
+docker ps -a | grep otel
+
+# Clean up all containers
+docker container prune
+
+# Restart tests
+pnpm test
+```
+
+### Collector Container Issues
+
+```bash
+# View running containers
+docker ps
+
+# View all containers (including stopped)
+docker ps -a
+
+# View logs for a specific container
+docker logs <container-id>
+
+# Force remove containers
+docker rm -f $(docker ps -a -q --filter ancestor=otel/opentelemetry-collector)
 ```
 
 ## CI/CD Integration
@@ -229,33 +280,70 @@ jobs:
 
 ```typescript
 import { test, expect } from '@playwright/test'
-import { startExample, stopServer, collectorReceivedTraces } from './helpers.js'
+import {
+  startExample,
+  stopServer,
+  startCollectorContainer,
+  stopCollectorContainer,
+  collectorReceivedTraces,
+  type TestServer,
+  type CollectorContainer
+} from './helpers.js'
+import path from 'path'
+
+const EXAMPLE_DIR = path.join(process.cwd(), '../../examples/my-example')
+const BASE_PORT = 3105
 
 let server: TestServer
+let collector: CollectorContainer
+let port: number
 
 test.describe('My Example', () => {
-  test.beforeAll(async () => {
-    server = await startExample('My-Example', './examples/my-example', 3105)
+  test.beforeAll(async ({ }, testInfo) => {
+    // Use worker-specific port to avoid conflicts
+    port = BASE_PORT + (testInfo.workerIndex * 10)
+
+    // Start isolated collector container
+    collector = await startCollectorContainer()
+
+    // Start the example server
+    server = await startExample(
+      'My-Example',
+      EXAMPLE_DIR,
+      port,
+      `http://localhost:${collector.httpPort}`
+    )
   })
 
   test.afterAll(async () => {
     if (server) {
       await stopServer(server)
     }
+    if (collector) {
+      await stopCollectorContainer(collector)
+    }
   })
 
   test('should send traces', async ({ page }) => {
-    await page.goto(`http://localhost:3105/endpoint`)
+    await page.goto(`http://localhost:${port}/endpoint`)
     await page.waitForTimeout(2000)
 
-    const hasTraces = await collectorReceivedTraces()
+    const hasTraces = await collectorReceivedTraces(collector)
     expect(hasTraces).toBeTruthy()
   })
 })
 ```
 
+### Key Points
+
+1. **Always use isolated collectors** - Each test suite should start its own
+2. **Worker-specific ports** - Use `BASE_PORT + (testInfo.workerIndex * 10)`
+3. **Clean up containers** - Always stop collector in `afterAll`
+4. **Pass collector to functions** - Helper functions need the collector instance
+
 ## Learn More
 
 - [Playwright Documentation](https://playwright.dev)
+- [Testcontainers Documentation](https://node.testcontainers.org/)
 - [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/)
 - [@atrim/instrumentation](../../README.md)

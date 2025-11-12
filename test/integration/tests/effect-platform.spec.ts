@@ -11,34 +11,51 @@ import { test, expect } from '@playwright/test'
 import {
   startExample,
   stopServer,
-  clearCollectorLogs,
+  startCollectorContainer,
+  stopCollectorContainer,
   collectorReceivedTraces,
   waitFor,
   getCollectorLogs,
-  type TestServer
+  type TestServer,
+  type CollectorContainer
 } from './helpers.js'
 import path from 'path'
 
 const EXAMPLE_DIR = path.join(process.cwd(), '../../examples/effect-platform')
-const PORT = 3103
+const BASE_PORT = 3103
 
 let server: TestServer
+let collector: CollectorContainer
+let port: number
 
-// Use serial mode for trace collection tests to avoid race conditions
-test.describe.serial('Pure Effect-TS Example', () => {
-  test.beforeAll(async () => {
-    server = await startExample('Effect-Platform', EXAMPLE_DIR, PORT)
-    await clearCollectorLogs()
+test.describe('Pure Effect-TS Example', () => {
+  test.beforeAll(async ({ }, testInfo) => {
+    // Use worker-specific port to avoid conflicts in parallel execution
+    port = BASE_PORT + (testInfo.workerIndex * 10)
+
+    // Start isolated collector container
+    collector = await startCollectorContainer()
+
+    // Start the Effect-Platform example server with custom OTLP endpoint
+    server = await startExample(
+      'Effect-Platform',
+      EXAMPLE_DIR,
+      port,
+      `http://localhost:${collector.httpPort}`
+    )
   })
 
   test.afterAll(async () => {
     if (server) {
       await stopServer(server)
     }
+    if (collector) {
+      await stopCollectorContainer(collector)
+    }
   })
 
   test('should respond to requests', async ({ page }) => {
-    const response = await page.goto(`http://localhost:${PORT}/health`)
+    const response = await page.goto(`http://localhost:${port}/health`)
     expect(response?.status()).toBe(200)
 
     const body = await response?.json()
@@ -46,24 +63,22 @@ test.describe.serial('Pure Effect-TS Example', () => {
   })
 
   test('should send Effect.withSpan() traces', async ({ page }) => {
-    await clearCollectorLogs()
-
     // Make request to trigger Effect spans
-    await page.goto(`http://localhost:${PORT}/users`)
+    await page.goto(`http://localhost:${port}/users`)
     await page.waitForTimeout(6000) // Wait for batch processor export (default 5s interval)
 
     // Verify traces were received
-    const receivedTraces = await waitFor(collectorReceivedTraces, 10000, 1000)
+    const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
 
     if (!receivedTraces) {
-      const logs = await getCollectorLogs(100)
+      const logs = await getCollectorLogs(collector, 100)
       console.error('No traces received. Collector logs:', logs)
     }
 
     expect(receivedTraces).toBeTruthy()
 
     // Verify Effect spans are present
-    const logs = await getCollectorLogs(100)
+    const logs = await getCollectorLogs(collector, 100)
 
     // Should have HTTP span from @effect/platform
     expect(logs).toContain('http.users.list')
@@ -73,16 +88,14 @@ test.describe.serial('Pure Effect-TS Example', () => {
   })
 
   test('should handle Effect errors gracefully', async ({ page }) => {
-    await clearCollectorLogs()
-
     // Request non-existent user
-    const response = await page.request.get(`http://localhost:${PORT}/users/999`)
+    const response = await page.request.get(`http://localhost:${port}/users/999`)
     expect(response.status()).toBe(404)
 
     await page.waitForTimeout(2000)
 
     // Should still have traces even for errors
-    const receivedTraces = await collectorReceivedTraces()
+    const receivedTraces = await collectorReceivedTraces(collector)
     expect(receivedTraces).toBeTruthy()
   })
 
@@ -90,11 +103,10 @@ test.describe.serial('Pure Effect-TS Example', () => {
     // This is a pure Effect app with no Express/Fastify
     // Auto-instrumentation should be auto-detected as disabled
 
-    await clearCollectorLogs()
-    await page.goto(`http://localhost:${PORT}/users`)
+    await page.goto(`http://localhost:${port}/users`)
     await page.waitForTimeout(2000)
 
-    const logs = await getCollectorLogs(100)
+    const logs = await getCollectorLogs(collector, 100)
 
     // Should NOT have Express/HTTP auto-instrumentation spans
     // All spans should be from Effect.withSpan()

@@ -12,33 +12,51 @@ import { test, expect } from '@playwright/test'
 import {
   startExample,
   stopServer,
-  clearCollectorLogs,
+  startCollectorContainer,
+  stopCollectorContainer,
   collectorReceivedTraces,
   waitFor,
   getCollectorLogs,
-  type TestServer
+  type TestServer,
+  type CollectorContainer
 } from './helpers.js'
 import path from 'path'
 
 const EXAMPLE_DIR = path.join(process.cwd(), '../../examples/effect-ts')
-const PORT = 3102
+const BASE_PORT = 3102
 
 let server: TestServer
+let collector: CollectorContainer
+let port: number
 
 test.describe('Effect-TS + Express Example', () => {
-  test.beforeAll(async () => {
-    server = await startExample('Effect-TS', EXAMPLE_DIR, PORT)
-    await clearCollectorLogs()
+  test.beforeAll(async ({ }, testInfo) => {
+    // Use worker-specific port to avoid conflicts in parallel execution
+    port = BASE_PORT + (testInfo.workerIndex * 10)
+
+    // Start isolated collector container
+    collector = await startCollectorContainer()
+
+    // Start the Effect-TS example server with custom OTLP endpoint
+    server = await startExample(
+      'Effect-TS',
+      EXAMPLE_DIR,
+      port,
+      `http://localhost:${collector.httpPort}`
+    )
   })
 
   test.afterAll(async () => {
     if (server) {
       await stopServer(server)
     }
+    if (collector) {
+      await stopCollectorContainer(collector)
+    }
   })
 
   test('should respond to requests', async ({ page }) => {
-    const response = await page.goto(`http://localhost:${PORT}/health`)
+    const response = await page.goto(`http://localhost:${port}/health`)
     expect(response?.status()).toBe(200)
 
     const body = await response?.json()
@@ -46,23 +64,21 @@ test.describe('Effect-TS + Express Example', () => {
   })
 
   test('should send both Effect and HTTP traces', async ({ page }) => {
-    await clearCollectorLogs()
-
     // Make request that triggers both Express and Effect tracing
-    await page.goto(`http://localhost:${PORT}/users`)
+    await page.goto(`http://localhost:${port}/users`)
     await page.waitForTimeout(3000)
 
     // Verify traces were received
-    const receivedTraces = await waitFor(collectorReceivedTraces, 10000, 1000)
+    const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
 
     if (!receivedTraces) {
-      const logs = await getCollectorLogs(100)
+      const logs = await getCollectorLogs(collector, 100)
       console.error('No traces received. Collector logs:', logs)
     }
 
     expect(receivedTraces).toBeTruthy()
 
-    const logs = await getCollectorLogs(200)
+    const logs = await getCollectorLogs(collector, 200)
 
     // Should have HTTP auto-instrumentation spans
     const hasHttpSpans = logs.includes('GET') || logs.includes('http')
@@ -79,11 +95,10 @@ test.describe('Effect-TS + Express Example', () => {
 
   test('auto-instrumentation should be enabled', async ({ page }) => {
     // This is Effect + Express, so auto-instrumentation should be enabled
-    await clearCollectorLogs()
-    await page.goto(`http://localhost:${PORT}/users`)
+    await page.goto(`http://localhost:${port}/users`)
     await page.waitForTimeout(2000)
 
-    const logs = await getCollectorLogs(100)
+    const logs = await getCollectorLogs(collector, 100)
 
     // With Express present, should have HTTP instrumentation
     // The exact span names depend on OpenTelemetry's HTTP instrumentation
@@ -100,15 +115,13 @@ test.describe('Effect-TS + Express Example', () => {
   })
 
   test('should trace Effect race operations', async ({ page }) => {
-    await clearCollectorLogs()
-
     // Trigger race endpoint if it exists
-    const response = await page.request.get(`http://localhost:${PORT}/race`)
+    const response = await page.request.get(`http://localhost:${port}/race`)
 
     if (response.status() === 200) {
       await page.waitForTimeout(2000)
 
-      const logs = await getCollectorLogs(100)
+      const logs = await getCollectorLogs(collector, 100)
 
       // Should have race-related spans
       const hasRaceSpans = logs.includes('race') || logs.includes('concurrent')
@@ -119,15 +132,13 @@ test.describe('Effect-TS + Express Example', () => {
   })
 
   test('should trace Effect retry operations', async ({ page }) => {
-    await clearCollectorLogs()
-
     // Trigger retry endpoint if it exists
-    const response = await page.request.get(`http://localhost:${PORT}/retry`)
+    const response = await page.request.get(`http://localhost:${port}/retry`)
 
     if (response.status() === 200 || response.status() === 500) {
       await page.waitForTimeout(2000)
 
-      const logs = await getCollectorLogs(100)
+      const logs = await getCollectorLogs(collector, 100)
 
       // Should have retry-related spans
       const hasRetrySpans = logs.includes('retry') || logs.includes('attempt')
@@ -138,15 +149,13 @@ test.describe('Effect-TS + Express Example', () => {
   })
 
   test('should trace Effect timeout operations', async ({ page }) => {
-    await clearCollectorLogs()
-
     // Trigger timeout endpoint if it exists
-    const response = await page.request.get(`http://localhost:${PORT}/timeout`)
+    const response = await page.request.get(`http://localhost:${port}/timeout`)
 
     if (response.status() === 200 || response.status() === 408) {
       await page.waitForTimeout(2000)
 
-      const logs = await getCollectorLogs(100)
+      const logs = await getCollectorLogs(collector, 100)
 
       // Should have timeout-related spans
       const hasTimeoutSpans = logs.includes('timeout')
@@ -157,10 +166,8 @@ test.describe('Effect-TS + Express Example', () => {
   })
 
   test('should handle Effect errors with tracing', async ({ page }) => {
-    await clearCollectorLogs()
-
     // Request that might cause an error
-    const response = await page.request.get(`http://localhost:${PORT}/users/999`)
+    const response = await page.request.get(`http://localhost:${port}/users/999`)
 
     // Should return 404 or similar
     expect([404, 500]).toContain(response.status())
@@ -168,12 +175,12 @@ test.describe('Effect-TS + Express Example', () => {
     await page.waitForTimeout(2000)
 
     // Should still have traces even for errors
-    const receivedTraces = await collectorReceivedTraces()
+    const receivedTraces = await collectorReceivedTraces(collector)
     expect(receivedTraces).toBeTruthy()
   })
 
   test('should have interactive UI', async ({ page }) => {
-    await page.goto(`http://localhost:${PORT}`)
+    await page.goto(`http://localhost:${port}`)
     await page.waitForLoadState('networkidle')
 
     const title = await page.title()

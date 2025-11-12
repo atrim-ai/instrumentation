@@ -110,13 +110,13 @@ const healthHandler = Effect.gen(function* () {
 const router = HttpRouter.empty.pipe(
   // Health check first (simplest route)
   HttpRouter.get('/health', healthHandler),
-  HttpRouter.get('/users', () =>
+  HttpRouter.get('/users',
     Effect.gen(function* () {
       const userList = yield* getAllUsers
-      return HttpServerResponse.json(userList)
+      return yield* HttpServerResponse.json(userList)
     }).pipe(Effect.withSpan('http.users.list'))
   ),
-  HttpRouter.get('/users/:id', () =>
+  HttpRouter.get('/users/:id',
     Effect.gen(function* () {
       const params = yield* HttpRouter.schemaPathParams(
         Schema.Struct({
@@ -126,20 +126,18 @@ const router = HttpRouter.empty.pipe(
 
       // Try to get the user - handle error with proper 404 response
       return yield* getUserById(params.id).pipe(
-        Effect.map((user) => HttpServerResponse.json(user)),
+        Effect.andThen((user) => HttpServerResponse.json(user)),
         Effect.catchAll((error) =>
-          Effect.succeed(
-            HttpServerResponse.json(
-              { error: error.message },
-              { status: 404 }
-            )
+          HttpServerResponse.json(
+            { error: error.message },
+            { status: 404 }
           )
         ),
         Effect.withSpan('http.users.get')
       )
     })
   ),
-  HttpRouter.post('/users', () =>
+  HttpRouter.post('/users',
     Effect.gen(function* () {
       const body = yield* HttpRouter.schemaJson(
         Schema.Struct({
@@ -150,7 +148,7 @@ const router = HttpRouter.empty.pipe(
 
       const newUser = yield* createUser(body.name, body.email)
 
-      return HttpServerResponse.json(newUser, { status: 201 })
+      return yield* HttpServerResponse.json(newUser, { status: 201 })
     }).pipe(Effect.withSpan('http.users.create'))
   )
 )

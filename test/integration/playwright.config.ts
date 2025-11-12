@@ -15,8 +15,8 @@ export default defineConfig({
     timeout: 10000
   },
 
-  // Run tests in parallel
-  fullyParallel: false, // Run serially to avoid port conflicts
+  // Run tests in parallel (each suite uses isolated collector containers)
+  fullyParallel: true,
 
   // Fail the build on CI if you accidentally left test.only
   forbidOnly: !!process.env.CI,

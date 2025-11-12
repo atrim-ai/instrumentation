@@ -5,8 +5,15 @@
 import { exec, spawn, ChildProcess } from 'child_process'
 import { promisify } from 'util'
 import { setTimeout as sleep } from 'timers/promises'
+import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
 const execAsync = promisify(exec)
+
+// ES module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 export interface TestServer {
   process: ChildProcess
@@ -14,100 +21,96 @@ export interface TestServer {
   name: string
 }
 
+export interface CollectorContainer {
+  container: StartedTestContainer
+  httpPort: number
+  grpcPort: number
+  healthPort: number
+}
+
 /**
- * Start the OTEL collector
+ * Start an isolated OTEL collector container using testcontainers
  */
-export async function startCollector(): Promise<void> {
-  console.log('🚀 Starting OTEL Collector...')
+export async function startCollectorContainer(): Promise<CollectorContainer> {
+  console.log('🚀 Starting isolated OTEL Collector container...')
 
   try {
-    // Stop any existing collector
-    await execAsync('docker-compose -f docker-compose.yml down -v').catch(() => {})
+    const configPath = path.join(__dirname, '..', 'otel-collector-config.yaml')
 
-    // Start collector
-    await execAsync('docker-compose -f docker-compose.yml up -d')
-
-    // Wait for health check - test from host using exposed port 14133
-    let attempts = 0
-    while (attempts < 30) {
-      try {
-        const response = await fetch('http://localhost:14133/')
-        if (response.ok) {
-          console.log('✅ Collector is ready')
-          // Give it a moment to fully initialize
-          await sleep(2000)
-          return
+    const container = await new GenericContainer('otel/opentelemetry-collector:latest')
+      .withCommand(['--config=/etc/otel-collector-config.yaml'])
+      .withBindMounts([
+        {
+          source: configPath,
+          target: '/etc/otel-collector-config.yaml',
+          mode: 'ro'
         }
-      } catch {
-        // Health check not ready yet
-      }
-      attempts++
-      await sleep(1000)
-    }
+      ])
+      .withExposedPorts(4318, 4317, 13133)
+      .withWaitStrategy(Wait.forHttp('/', 13133))
+      .withStartupTimeout(30000)
+      .start()
 
-    throw new Error('Collector failed to become healthy')
+    const httpPort = container.getMappedPort(4318)
+    const grpcPort = container.getMappedPort(4317)
+    const healthPort = container.getMappedPort(13133)
+
+    console.log(`✅ Collector ready - HTTP: ${httpPort}, gRPC: ${grpcPort}, Health: ${healthPort}`)
+
+    // Give it a moment to fully initialize
+    await sleep(1000)
+
+    return {
+      container,
+      httpPort,
+      grpcPort,
+      healthPort
+    }
   } catch (error) {
-    console.error('❌ Failed to start collector:', error)
+    console.error('❌ Failed to start collector container:', error)
     throw error
   }
 }
 
 /**
- * Stop the OTEL collector
+ * Stop an OTEL collector container
  */
-export async function stopCollector(): Promise<void> {
-  console.log('🛑 Stopping OTEL Collector...')
+export async function stopCollectorContainer(collector: CollectorContainer): Promise<void> {
+  console.log('🛑 Stopping OTEL Collector container...')
   try {
-    await execAsync('docker-compose -f docker-compose.yml down -v')
-    console.log('✅ Collector stopped')
+    await collector.container.stop()
+    console.log('✅ Collector container stopped')
   } catch (error) {
-    console.error('⚠️  Error stopping collector:', error)
+    console.error('⚠️  Error stopping collector container:', error)
   }
 }
 
+
 /**
- * Get collector logs
- * If clearCollectorLogs was called, only returns logs after that timestamp
+ * Get logs from a specific collector container using docker CLI
  */
-export async function getCollectorLogs(lines: number = 1000): Promise<string> {
+export async function getCollectorLogs(
+  collector: CollectorContainer,
+  lines: number = 1000
+): Promise<string> {
   try {
-    const { stdout } = await execAsync(`docker logs atrim-otel-collector-test 2>&1 | tail -${lines}`)
+    // Get the container ID
+    const containerId = collector.container.getId()
 
-    // If we have a clear timestamp, filter logs to only those after it
-    if (logClearTimestamp) {
-      const logLines = stdout.split('\n')
-      const filteredLines: string[] = []
-      let foundStartMarker = false
-
-      for (const line of logLines) {
-        // Look for timestamp in line (format: 2025-11-12 01:05:24.285Z or similar)
-        const timestampMatch = line.match(/(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)/)
-        if (timestampMatch) {
-          const lineTimestamp = new Date(timestampMatch[1])
-          if (lineTimestamp >= logClearTimestamp) {
-            foundStartMarker = true
-          }
-        }
-
-        if (foundStartMarker) {
-          filteredLines.push(line)
-        }
-      }
-
-      return filteredLines.join('\n')
-    }
-
+    // Use docker CLI to get logs
+    const { stdout } = await execAsync(`docker logs ${containerId} 2>&1 | tail -${lines}`)
     return stdout
   } catch (error) {
+    console.error('Failed to get collector logs:', error)
     return 'Failed to get logs'
   }
 }
 
 /**
- * Check if collector received traces (after last clearCollectorLogs call)
+ * Check if collector received traces
  */
-export async function collectorReceivedTraces(): Promise<boolean> {
-  const logs = await getCollectorLogs()
+export async function collectorReceivedTraces(collector: CollectorContainer): Promise<boolean> {
+  const logs = await getCollectorLogs(collector)
 
   // Look for trace data in debug exporter output
   const hasTraces =
@@ -120,26 +123,13 @@ export async function collectorReceivedTraces(): Promise<boolean> {
 }
 
 /**
- * Track when logs were last "cleared" (timestamp marker)
- */
-let logClearTimestamp: Date | null = null
-
-/**
- * Clear collector logs (sets a timestamp marker)
- */
-export async function clearCollectorLogs(): Promise<void> {
-  logClearTimestamp = new Date()
-  // Give the timestamp a moment to settle
-  await sleep(100)
-}
-
-/**
  * Start an example server
  */
 export async function startExample(
   name: string,
   dir: string,
-  port: number
+  port: number,
+  otlpEndpoint?: string
 ): Promise<TestServer> {
   console.log(`🚀 Starting ${name} on port ${port}...`)
 
@@ -150,7 +140,7 @@ export async function startExample(
       env: {
         ...process.env,
         PORT: String(port),
-        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:14318'
+        OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint || 'http://localhost:14318'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     })

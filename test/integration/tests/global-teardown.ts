@@ -1,19 +1,13 @@
 /**
  * Global teardown for integration tests
- * Stops the OTEL collector after all tests complete
+ *
+ * NOTE: Each test suite now manages its own isolated OTEL collector container
+ * using testcontainers, so no global teardown is needed.
  */
-
-import { stopCollector } from './helpers.js'
 
 async function globalTeardown() {
   console.log('\n🧹 Tearing down integration tests...\n')
-
-  try {
-    await stopCollector()
-    console.log('\n✅ Teardown complete\n')
-  } catch (error) {
-    console.error('\n⚠️  Teardown had errors:', error)
-  }
+  console.log('✅ Isolated collector containers stopped by individual test suites\n')
 }
 
 export default globalTeardown

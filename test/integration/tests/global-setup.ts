@@ -1,20 +1,13 @@
 /**
  * Global setup for integration tests
- * Starts the OTEL collector before running any tests
+ *
+ * NOTE: Each test suite now starts its own isolated OTEL collector container
+ * using testcontainers, so no global setup is needed.
  */
-
-import { startCollector } from './helpers.js'
 
 async function globalSetup() {
   console.log('\n🧪 Setting up integration tests...\n')
-
-  try {
-    await startCollector()
-    console.log('\n✅ Setup complete\n')
-  } catch (error) {
-    console.error('\n❌ Setup failed:', error)
-    throw error
-  }
+  console.log('✅ Using isolated collector containers per test suite\n')
 }
 
 export default globalSetup
