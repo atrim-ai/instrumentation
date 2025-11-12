@@ -28,31 +28,32 @@ async function setupInstrumentation() {
 // Fetch users from backend
 async function fetchUsers(): Promise<any> {
   const tracer = trace.getTracer('ui-service')
-  const span = tracer.startSpan('ui.fetch.users')
 
-  try {
-    // Make HTTP request to backend
-    // NodeSDK will automatically:
-    // 1. Create http.client span
-    // 2. Add traceparent header with current trace ID
-    // 3. Backend will continue this trace
-    const response = await fetch(`${BACKEND_URL}/api/users`)
+  return await tracer.startActiveSpan('ui.fetch.users', async (span) => {
+    try {
+      // Make HTTP request to backend
+      // NodeSDK will automatically:
+      // 1. Create http.client span
+      // 2. Add traceparent header with current trace ID
+      // 3. Backend will continue this trace
+      const response = await fetch(`${BACKEND_URL}/api/users`)
 
-    if (!response.ok) {
-      throw new Error(`Backend returned ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`Backend returned ${response.status}`)
+      }
+
+      const data = await response.json()
+      span.setStatus({ code: 1 }) // OK
+      span.end()
+
+      return data
+    } catch (error) {
+      span.setStatus({ code: 2, message: error instanceof Error ? error.message : 'Error' })
+      span.recordException(error instanceof Error ? error : new Error(String(error)))
+      span.end()
+      throw error
     }
-
-    const data = await response.json()
-    span.setStatus({ code: 1 }) // OK
-    span.end()
-
-    return data
-  } catch (error) {
-    span.setStatus({ code: 2, message: error instanceof Error ? error.message : 'Error' })
-    span.recordException(error instanceof Error ? error : new Error(String(error)))
-    span.end()
-    throw error
-  }
+  })
 }
 
 // Create HTTP server

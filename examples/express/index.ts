@@ -58,22 +58,23 @@ const users = [
 // Simulate async database query
 async function queryDatabase(query: string): Promise<unknown[]> {
   const tracer = trace.getTracer('express-example')
-  const span = tracer.startSpan('app.db.query')
 
-  try {
-    annotateDbQuery(span, 'postgresql', query, 'users')
+  return await tracer.startActiveSpan('app.db.query', async (span) => {
+    try {
+      annotateDbQuery(span, 'postgresql', query, 'users')
 
-    // Simulate query execution
-    await new Promise((resolve) => setTimeout(resolve, 50))
+      // Simulate query execution
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
-    markSpanSuccess(span)
-    return users
-  } catch (error) {
-    markSpanError(span, 'Database query failed')
-    throw error
-  } finally {
-    span.end()
-  }
+      markSpanSuccess(span)
+      return users
+    } catch (error) {
+      markSpanError(span, 'Database query failed')
+      throw error
+    } finally {
+      span.end()
+    }
+  })
 }
 
 // Create Express app
@@ -109,84 +110,84 @@ function createApp() {
       })
     }
 
-    // Create a custom application span
-    const appSpan = tracer.startSpan('app.users.list')
+    // Create a custom application span with proper context propagation
+    await tracer.startActiveSpan('app.users.list', async (appSpan) => {
+      try {
+        // Query database (creates child span - will now be nested under app.users.list)
+        const result = await queryDatabase('SELECT * FROM users')
 
-    try {
-      // Query database (creates child span)
-      const result = await queryDatabase('SELECT * FROM users')
+        annotateHttpRequest(appSpan, 'GET', req.path, 200)
+        markSpanSuccess(appSpan)
 
-      annotateHttpRequest(appSpan, 'GET', req.path, 200)
-      markSpanSuccess(appSpan)
-
-      res.json(result)
-    } catch (error) {
-      markSpanError(appSpan, 'Failed to fetch users')
-      res.status(500).json({ error: 'Internal server error' })
-    } finally {
-      appSpan.end()
-    }
+        res.json(result)
+      } catch (error) {
+        markSpanError(appSpan, 'Failed to fetch users')
+        res.status(500).json({ error: 'Internal server error' })
+      } finally {
+        appSpan.end()
+      }
+    })
   })
 
   // Get user by ID (will be INSTRUMENTED)
   app.get('/users/:id', async (req, res) => {
-    const appSpan = tracer.startSpan('app.users.get')
+    await tracer.startActiveSpan('app.users.get', async (appSpan) => {
+      try {
+        setSpanAttributes(appSpan, {
+          'user.id': req.params.id
+        })
 
-    try {
-      setSpanAttributes(appSpan, {
-        'user.id': req.params.id
-      })
+        // Simulate database query
+        const user = users.find((u) => u.id === req.params.id)
 
-      // Simulate database query
-      const user = users.find((u) => u.id === req.params.id)
-
-      if (user) {
-        annotateHttpRequest(appSpan, 'GET', req.path, 200)
-        markSpanSuccess(appSpan)
-        res.json(user)
-      } else {
-        annotateHttpRequest(appSpan, 'GET', req.path, 404)
-        markSpanError(appSpan, 'User not found')
-        res.status(404).json({ error: 'User not found' })
+        if (user) {
+          annotateHttpRequest(appSpan, 'GET', req.path, 200)
+          markSpanSuccess(appSpan)
+          res.json(user)
+        } else {
+          annotateHttpRequest(appSpan, 'GET', req.path, 404)
+          markSpanError(appSpan, 'User not found')
+          res.status(404).json({ error: 'User not found' })
+        }
+      } catch (error) {
+        markSpanError(appSpan, 'Failed to fetch user')
+        res.status(500).json({ error: 'Internal server error' })
+      } finally {
+        appSpan.end()
       }
-    } catch (error) {
-      markSpanError(appSpan, 'Failed to fetch user')
-      res.status(500).json({ error: 'Internal server error' })
-    } finally {
-      appSpan.end()
-    }
+    })
   })
 
   // Create user (will be INSTRUMENTED)
   app.post('/users', async (req, res) => {
-    const appSpan = tracer.startSpan('app.users.create')
+    await tracer.startActiveSpan('app.users.create', async (appSpan) => {
+      try {
+        const { name, email } = req.body
 
-    try {
-      const { name, email } = req.body
+        setSpanAttributes(appSpan, {
+          'user.name': name,
+          'user.email': email
+        })
 
-      setSpanAttributes(appSpan, {
-        'user.name': name,
-        'user.email': email
-      })
+        // Simulate user creation
+        const newUser = {
+          id: String(users.length + 1),
+          name,
+          email
+        }
+        users.push(newUser)
 
-      // Simulate user creation
-      const newUser = {
-        id: String(users.length + 1),
-        name,
-        email
+        annotateHttpRequest(appSpan, 'POST', req.path, 201)
+        markSpanSuccess(appSpan)
+
+        res.status(201).json(newUser)
+      } catch (error) {
+        markSpanError(appSpan, 'Failed to create user')
+        res.status(500).json({ error: 'Internal server error' })
+      } finally {
+        appSpan.end()
       }
-      users.push(newUser)
-
-      annotateHttpRequest(appSpan, 'POST', req.path, 201)
-      markSpanSuccess(appSpan)
-
-      res.status(201).json(newUser)
-    } catch (error) {
-      markSpanError(appSpan, 'Failed to create user')
-      res.status(500).json({ error: 'Internal server error' })
-    } finally {
-      appSpan.end()
-    }
+    })
   })
 
   return app

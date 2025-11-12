@@ -107,8 +107,9 @@ function createSpan(name: string) {
   }
 
   // Create span for everything else
-  const span = tracer.startSpan(name)
-  return span
+  await tracer.startActiveSpan(name, async (span) => {
+    return span
+  })
 }
 ```
 
@@ -117,9 +118,10 @@ function createSpan(name: string) {
 ```typescript
 // No manual filtering needed - handled by configuration
 
-function createSpan(name: string) {
-  const span = tracer.startSpan(name)
-  return span
+async function createSpan(name: string) {
+  return await tracer.startActiveSpan(name, async (span) => {
+    return span
+  })
 }
 ```
 
@@ -290,25 +292,25 @@ const app = express()
 app.get('/api/users', async (req, res) => {
   // Manual span creation and filtering
   if (!req.path.startsWith('/health')) {
-    const span = tracer.startSpan('GET /api/users')
+    await tracer.startActiveSpan('GET /api/users', async (span) => {
+      try {
+        const users = await getUsers()
 
-    try {
-      const users = await getUsers()
+        // Manual attributes
+        span.setAttribute('http.method', 'GET')
+        span.setAttribute('http.url', req.path)
+        span.setAttribute('http.status_code', 200)
+        span.setStatus({ code: 1 }) // OK
 
-      // Manual attributes
-      span.setAttribute('http.method', 'GET')
-      span.setAttribute('http.url', req.path)
-      span.setAttribute('http.status_code', 200)
-      span.setStatus({ code: 1 }) // OK
-
-      res.json(users)
-    } catch (error) {
-      span.recordException(error)
-      span.setStatus({ code: 2, message: 'Error' })
-      res.status(500).json({ error: 'Internal error' })
-    } finally {
-      span.end()
-    }
+        res.json(users)
+      } catch (error) {
+        span.recordException(error)
+        span.setStatus({ code: 2, message: 'Error' })
+        res.status(500).json({ error: 'Internal error' })
+      } finally {
+        span.end()
+      }
+    })
   } else {
     // No span for health checks
     res.json({ status: 'ok' })
@@ -331,29 +333,30 @@ const app = express()
 
 app.get('/api/users', async (req, res) => {
   // Pattern filtering handled automatically
-  const span = tracer.startSpan('http.server.GET /api/users')
+  await tracer.startActiveSpan('http.server.GET /api/users', async (span) => {
+    try {
+      const users = await getUsers()
 
-  try {
-    const users = await getUsers()
+      // Helper sets all HTTP attributes + marks success
+      annotateHttpRequest(span, 'GET', req.path, 200)
 
-    // Helper sets all HTTP attributes + marks success
-    annotateHttpRequest(span, 'GET', req.path, 200)
-
-    res.json(users)
-  } catch (error) {
-    span.recordException(error)
-    markSpanError(span, 'Error fetching users')
-    res.status(500).json({ error: 'Internal error' })
-  } finally {
-    span.end()
-  }
+      res.json(users)
+    } catch (error) {
+      span.recordException(error)
+      markSpanError(span, 'Error fetching users')
+      res.status(500).json({ error: 'Internal error' })
+    } finally {
+      span.end()
+    }
+  })
 })
 
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
   // Span created but automatically dropped by ignore pattern
-  const span = tracer.startSpan('health.check')
-  res.json({ status: 'ok' })
-  span.end()
+  await tracer.startActiveSpan('health.check', async (span) => {
+    res.json({ status: 'ok' })
+    span.end()
+  })
 })
 ```
 
@@ -436,7 +439,9 @@ pattern: "^app\\."  # Matches "app."
 **Wrong:**
 
 ```typescript
-const span = tracer.startSpan('app.operation')  // Pattern matcher not ready!
+await tracer.startActiveSpan('app.operation', async (span) => {
+  // Pattern matcher not ready!
+})
 await initializeInstrumentation()
 ```
 
@@ -444,7 +449,9 @@ await initializeInstrumentation()
 
 ```typescript
 await initializeInstrumentation()  // Initialize FIRST
-const span = tracer.startSpan('app.operation')
+await tracer.startActiveSpan('app.operation', async (span) => {
+  // Now pattern matcher is ready
+})
 ```
 
 ### ❌ Not Understanding Fail-Open Behavior

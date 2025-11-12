@@ -35,36 +35,37 @@ async function setupInstrumentation() {
 // Query database service
 async function queryDatabase(table: string, query: string): Promise<any> {
   const tracer = trace.getTracer('backend-service')
-  const span = tracer.startSpan('app.db.call')
 
-  try {
-    setSpanAttributes(span, {
-      'db.table': table,
-      'db.query': query
-    })
+  return await tracer.startActiveSpan('app.db.call', async (span) => {
+    try {
+      setSpanAttributes(span, {
+        'db.table': table,
+        'db.query': query
+      })
 
-    // Make HTTP request to DB service
-    // NodeSDK will automatically:
-    // 1. Continue the existing trace from UI
-    // 2. Add traceparent header to DB request
-    // 3. DB service will be part of the same trace
-    const response = await fetch(`${DB_URL}/query?table=${table}&query=${query}`)
+      // Make HTTP request to DB service
+      // NodeSDK will automatically:
+      // 1. Continue the existing trace from UI
+      // 2. Add traceparent header to DB request
+      // 3. DB service will be part of the same trace
+      const response = await fetch(`${DB_URL}/query?table=${table}&query=${query}`)
 
-    if (!response.ok) {
-      throw new Error(`DB service returned ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`DB service returned ${response.status}`)
+      }
+
+      const data = await response.json()
+      markSpanSuccess(span)
+      span.end()
+
+      return data
+    } catch (error) {
+      markSpanError(span, error instanceof Error ? error.message : 'DB call failed')
+      span.recordException(error instanceof Error ? error : new Error(String(error)))
+      span.end()
+      throw error
     }
-
-    const data = await response.json()
-    markSpanSuccess(span)
-    span.end()
-
-    return data
-  } catch (error) {
-    markSpanError(span, error instanceof Error ? error.message : 'DB call failed')
-    span.recordException(error instanceof Error ? error : new Error(String(error)))
-    span.end()
-    throw error
-  }
+  })
 }
 
 // Create Express app
@@ -83,58 +84,58 @@ function createApp() {
   app.get('/api/users', async (req, res) => {
     // This span is created within the context of the incoming HTTP span
     // which is already part of the trace from the UI service
-    const span = tracer.startSpan('app.users.list')
+    await tracer.startActiveSpan('app.users.list', async (span) => {
+      try {
+        setSpanAttributes(span, {
+          'operation.type': 'list',
+          'service.tier': 'backend'
+        })
 
-    try {
-      setSpanAttributes(span, {
-        'operation.type': 'list',
-        'service.tier': 'backend'
-      })
+        // Call database service
+        // This will be a child span of the current trace
+        const users = await queryDatabase('users', 'SELECT * FROM users')
 
-      // Call database service
-      // This will be a child span of the current trace
-      const users = await queryDatabase('users', 'SELECT * FROM users')
+        setSpanAttributes(span, {
+          'result.count': users.length
+        })
 
-      setSpanAttributes(span, {
-        'result.count': users.length
-      })
-
-      markSpanSuccess(span)
-      res.json(users)
-    } catch (error) {
-      markSpanError(span, 'Failed to fetch users')
-      res.status(500).json({ error: 'Failed to fetch users' })
-    } finally {
-      span.end()
-    }
+        markSpanSuccess(span)
+        res.json(users)
+      } catch (error) {
+        markSpanError(span, 'Failed to fetch users')
+        res.status(500).json({ error: 'Failed to fetch users' })
+      } finally {
+        span.end()
+      }
+    })
   })
 
   // Get user by ID
   app.get('/api/users/:id', async (req, res) => {
-    const span = tracer.startSpan('app.users.get')
+    await tracer.startActiveSpan('app.users.get', async (span) => {
+      try {
+        setSpanAttributes(span, {
+          'operation.type': 'get',
+          'user.id': req.params.id
+        })
 
-    try {
-      setSpanAttributes(span, {
-        'operation.type': 'get',
-        'user.id': req.params.id
-      })
+        const users = await queryDatabase('users', `SELECT * FROM users WHERE id = '${req.params.id}'`)
+        const user = users.find((u: any) => u.id === req.params.id)
 
-      const users = await queryDatabase('users', `SELECT * FROM users WHERE id = '${req.params.id}'`)
-      const user = users.find((u: any) => u.id === req.params.id)
-
-      if (user) {
-        markSpanSuccess(span)
-        res.json(user)
-      } else {
-        markSpanError(span, 'User not found')
-        res.status(404).json({ error: 'User not found' })
+        if (user) {
+          markSpanSuccess(span)
+          res.json(user)
+        } else {
+          markSpanError(span, 'User not found')
+          res.status(404).json({ error: 'User not found' })
+        }
+      } catch (error) {
+        markSpanError(span, 'Failed to fetch user')
+        res.status(500).json({ error: 'Failed to fetch user' })
+      } finally {
+        span.end()
       }
-    } catch (error) {
-      markSpanError(span, 'Failed to fetch user')
-      res.status(500).json({ error: 'Failed to fetch user' })
-    } finally {
-      span.end()
-    }
+    })
   })
 
   return app
