@@ -76,11 +76,12 @@ See [Configuration Guide](./docs/CONFIGURATION.md) for all options.
 
 ## Documentation
 
-- **[Getting Started](./docs/GETTING_STARTED.md)** - Detailed setup guide
-- **[Configuration](./docs/CONFIGURATION.md)** - All configuration options
+- **[Examples](./docs/EXAMPLES.md)** - Sending to Atrim, Express, Effect, etc.
+- **[Getting Started](./docs/getting-started.md)** - Detailed setup guide
+- **[Configuration](./docs/configuration.md)** - All configuration options
 - **[Troubleshooting](./docs/TROUBLESHOOTING.md)** - Common issues & solutions
 - **[Effect Integration](./docs/EFFECT_INTEGRATION.md)** - Using with Effect-TS
-- **[API Reference](./docs/API.md)** - Complete API docs
+- **[API Reference](./docs/api-reference.md)** - Complete API docs
 
 ## Requirements
 
