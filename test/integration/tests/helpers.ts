@@ -5,7 +5,7 @@
 import { exec, spawn, ChildProcess } from 'child_process'
 import { promisify } from 'util'
 import { setTimeout as sleep } from 'timers/promises'
-import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers'
+import { GenericContainer, StartedTestContainer, Wait, TestContainers } from 'testcontainers'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -30,11 +30,19 @@ export interface CollectorContainer {
 
 /**
  * Start an isolated OTEL collector container using testcontainers
+ *
+ * Traces are forwarded to both:
+ * 1. Debug exporter (for test logs)
+ * 2. Dev instance at localhost:4318 (for inspection in your local collector)
  */
 export async function startCollectorContainer(): Promise<CollectorContainer> {
   console.log('🚀 Starting isolated OTEL Collector container...')
+  console.log('📤 Traces will be forwarded to host.testcontainers.internal:4318 for inspection')
 
   try {
+    // Expose host port 4318 so containers can reach dev collector on host
+    await TestContainers.exposeHostPorts(4318)
+
     const configPath = path.join(__dirname, '..', 'otel-collector-config.yaml')
 
     const container = await new GenericContainer('otel/opentelemetry-collector:latest')
