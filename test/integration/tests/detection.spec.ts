@@ -39,7 +39,7 @@ import { initializeInstrumentation } from '@atrim/instrumentation'
 const sdk = new NodeSDK({
   serviceName: 'user-service',
   traceExporter: new OTLPTraceExporter({
-    url: 'http://localhost:4320/v1/traces'
+    url: 'http://localhost:14318/v1/traces'
   })
 })
 sdk.start()
@@ -301,7 +301,7 @@ import { initializeInstrumentation } from '@atrim/instrumentation'
 
 // Set environment variables
 process.env.OTEL_SERVICE_NAME = 'env-service'
-process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4320'
+process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:14318'
 
 // No explicit config - should use environment
 initializeInstrumentation().then(() => {
@@ -318,6 +318,6 @@ initializeInstrumentation().then(() => {
 
     // Should use environment service name
     expect(output).toContain('Service: env-service')
-    expect(output).toContain('OTLP endpoint: http://localhost:4320')
+    expect(output).toContain('OTLP endpoint: http://localhost:14318')
   })
 })

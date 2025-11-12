@@ -32,12 +32,12 @@ Integration tests for `@atrim/instrumentation` that verify traces are actually s
 
 ## Ports Used
 
-- **4320**: OTLP HTTP receiver (test collector)
-- **4319**: OTLP gRPC receiver (test collector)
-- **13134**: Health check endpoint
+- **14318**: OTLP HTTP receiver (test collector)
+- **14317**: OTLP gRPC receiver (test collector)
+- **14133**: Health check endpoint
 - **3100-3199**: Example application ports
 
-These non-standard ports (4319/4320 instead of 4317/4318) are used to avoid conflicts with local collectors.
+These non-standard ports (14317/14318 instead of 4317/4318) are used to avoid conflicts with local collectors and other Atrim services.
 
 ## Running Tests
 
