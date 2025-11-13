@@ -31,9 +31,12 @@ export default defineConfig({
   // Reporter
   reporter: [
     ['list'],
-    ['html', { outputFolder: 'playwright-report', open: 'never' }],
-    ['json', { outputFile: 'test-results.json' }]
+    ['html', { outputFolder: 'target/playwright-report', open: 'never' }],
+    ['json', { outputFile: 'target/test-results.json' }]
   ],
+
+  // Output directories
+  outputDir: 'target/test-results',
 
   // Shared settings
   use: {

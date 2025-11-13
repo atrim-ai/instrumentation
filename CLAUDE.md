@@ -47,18 +47,42 @@ src/
 └── index.ts                      # Main entry point
 ```
 
+### Build Artifacts
+
+**IMPORTANT:** All build artifacts must be output to the `target/` directory to keep the project root clean and simplify `.gitignore` management.
+
+**Build artifact locations:**
+- `target/dist/` - Compiled TypeScript output (tsup)
+- `target/coverage/` - Test coverage reports (vitest)
+- `target/test-results/` - Integration test results (Playwright)
+- `target/playwright-report/` - Playwright HTML reports
+- `target/.tsbuildinfo` - TypeScript incremental build info
+
+**Why `target/`?**
+- Single `.gitignore` entry (`target/`) instead of multiple entries
+- Standard convention in many build systems (Maven, Gradle, etc.)
+- Clear separation between source and generated files
+- Easier to clean (`rm -rf target/`)
+
+**Configuration files to update:**
+- `package.json` - Update `exports`, `main`, `module`, `types`, `files`
+- `tsup.config.ts` - Set `outDir: 'target/dist'`
+- `tsconfig.json` - Set `outDir: './target/dist'`, `tsBuildInfoFile: './target/.tsbuildinfo'`
+- `vitest.config.ts` - Set `coverage.reportsDirectory: 'target/coverage'`
+- `playwright.config.ts` - Set `outputDir: 'target/test-results'`, reporter paths
+
 ### Package Exports
 
 ```json
 {
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./target/dist/index.js",
+      "require": "./target/dist/index.cjs"
     },
     "./effect": {
-      "import": "./dist/integrations/effect/index.js",
-      "require": "./dist/integrations/effect/index.cjs"
+      "import": "./target/dist/integrations/effect/index.js",
+      "require": "./target/dist/integrations/effect/index.cjs"
     }
   }
 }
