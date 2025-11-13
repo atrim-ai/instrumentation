@@ -15,7 +15,7 @@ import {
   startCollectorContainer,
   stopCollectorContainer,
   type CollectorContainer
-} from './helpers.js'
+} from '../../shared/helpers.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -44,7 +44,16 @@ async function runExample(
   otlpEndpoint: string,
   timeoutMs: number = 15000
 ): Promise<{ stdout: string; stderr: string }> {
-  const exampleDir = path.resolve(__dirname, '../examples', exampleName)
+  // Map short names to actual fixture directory names
+  const fixtureMap: Record<string, string> = {
+    'problematic': 'fiberset-problematic',
+    'correct': 'fiberset-correct',
+    'isolated': 'fiberset-isolated',
+    'schedule-isolation': 'schedule-isolation'
+  }
+
+  const fixtureName = fixtureMap[exampleName] || exampleName
+  const exampleDir = path.resolve(__dirname, 'fixtures/examples', fixtureName)
 
   return new Promise((resolve, reject) => {
     let stdout = ''
@@ -123,7 +132,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('\n📋 Testing problematic FiberSet.run pattern...\n')
 
     // Run the problematic example
-    const result = await runExample('fiberset-problematic', collectorUrl)
+    const result = await runExample('problematic', collectorUrl)
 
     // Verify the example ran successfully (check for program completion markers)
     expect(result.stdout).toContain('Program completed') // More lenient check
@@ -143,7 +152,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('\n📋 Testing correct FiberSet.run pattern...\n')
 
     // Run the correct example
-    const result = await runExample('fiberset-correct', collectorUrl)
+    const result = await runExample('correct', collectorUrl)
 
     // Verify the example ran successfully (check for program completion markers)
     expect(result.stdout).toContain('Program completed') // More lenient check
@@ -198,7 +207,7 @@ test.describe('FiberSet.run Context Leakage', () => {
 
     console.log('\n⏭️  Skipped: Requires trace export and parsing implementation')
     console.log('   To verify traces manually:')
-    console.log('   1. Run: cd test/integration/examples/fiberset-correct && pnpm start')
+    console.log('   1. Run: cd test/integration/effect/fiberset/fixtures/correct && pnpm start')
     console.log('   2. Export OTEL_EXPORTER_OTLP_ENDPOINT to a real collector')
     console.log('   3. View traces in your observability tool')
   })

@@ -45,3 +45,4 @@ lerna-debug.log*
 .cache/
 test/temp/
 tmp/
+test/integration/core/detection/temp/

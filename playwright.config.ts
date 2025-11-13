@@ -5,7 +5,7 @@ import { defineConfig, devices } from '@playwright/test'
  * Tests each example to ensure traces are sent to OTEL collector
  */
 export default defineConfig({
-  testDir: './test/integration/tests',
+  testDir: './test/integration',
 
   // Test timeout
   timeout: 60000,
@@ -25,8 +25,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
 
   // Global setup/teardown
-  globalSetup: './test/integration/tests/global-setup.ts',
-  globalTeardown: './test/integration/tests/global-teardown.ts',
+  globalSetup: './test/integration/shared/global-setup.ts',
+  globalTeardown: './test/integration/shared/global-teardown.ts',
 
   // Reporter
   reporter: [
@@ -50,37 +50,42 @@ export default defineConfig({
     video: 'retain-on-failure'
   },
 
-  // Projects for different examples
+  // Projects for different functional areas
   projects: [
     {
-      name: 'express-example',
+      name: 'express',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: '**/express.spec.ts'
+      testMatch: 'express/**/*.spec.ts'
     },
     {
-      name: 'vanilla-example',
+      name: 'vanilla',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: '**/vanilla.spec.ts'
+      testMatch: 'vanilla/**/*.spec.ts'
     },
     {
-      name: 'effect-ts-example',
+      name: 'effect-express',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: '**/effect-ts.spec.ts'
+      testMatch: 'effect/effect-express/**/*.spec.ts'
     },
     {
-      name: 'effect-platform-example',
+      name: 'effect-platform',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: '**/effect-platform.spec.ts'
+      testMatch: 'effect/effect-platform/**/*.spec.ts'
     },
     {
-      name: 'detection-tests',
+      name: 'effect-fiberset',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: '**/detection.spec.ts'
+      testMatch: 'effect/fiberset/**/*.spec.ts'
     },
     {
-      name: 'fiberset-context-leak',
+      name: 'bun',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: '**/fiberset-context-leak.spec.ts'
+      testMatch: 'bun/**/*.spec.ts'
+    },
+    {
+      name: 'detection',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: 'core/detection/**/*.spec.ts'
     }
   ],
 
