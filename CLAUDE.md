@@ -401,7 +401,7 @@ initializeInstrumentation({
 
 **IMPORTANT:** Before making any major changes, creating PR descriptions, or making significant design/implementation decisions, you MUST:
 
-1. **Create a proposal file** in `./tmp/` directory with a descriptive name (e.g., `./tmp/fiberset-tracing-fix-proposal.md`, `./tmp/pr-body-draft.md`)
+1. **Create a proposal file** in `./tmp/[DATE]` directory with a descriptive name (e.g., `./tmp/2025-11-12/fiberset-tracing-fix-proposal.md`, `./tmp/2025-11-12/pr-body-draft.md`)
 2. **Document the proposal** including:
    - Problem statement
    - Proposed solution(s)
