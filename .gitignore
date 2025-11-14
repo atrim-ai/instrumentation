@@ -2,7 +2,7 @@
 node_modules/
 .pnp
 .pnp.js
-pnpm-lock.yaml
+# pnpm-lock.yaml should be committed for reproducible builds
 examples/*/pnpm-lock.yaml
 
 # Build output (consolidated in target/ directory)
