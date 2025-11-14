@@ -14,6 +14,8 @@ on:
 
 env:
   PNPM_VERSION: '10.12.1'
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
   # Quick validation job - runs on all Node.js versions
@@ -45,22 +47,22 @@ jobs:
         run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
       - name: TypeScript compilation
-        run: pnpm typecheck
+        run: pnpm turbo typecheck
 
-      - name: Build
-        run: pnpm build
+      - name: Build packages
+        run: pnpm turbo build
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm turbo lint
 
-      - name: Unit tests with coverage
-        run: pnpm test:coverage
+      - name: Unit tests with coverage (Node.js package only)
+        run: pnpm --filter @atrim/instrumentation test:coverage
 
       - name: Upload coverage to Codecov (Node 20 only)
         if: matrix.node-version == 20
         uses: codecov/codecov-action@v5
         with:
-          files: ./target/coverage/coverage-final.json
+          files: ./packages/node/target/coverage/coverage-final.json
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -90,24 +92,24 @@ jobs:
         run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+        run: cd packages/node && pnpm exec playwright install --with-deps chromium
 
-      - name: Build
-        run: pnpm build
+      - name: Build packages
+        run: pnpm turbo build
 
-      - name: Run integration tests
-        run: pnpm test:integration
+      - name: Run integration tests (Node.js package)
+        run: pnpm --filter @atrim/instrumentation test:integration
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v5
         with:
           name: playwright-results
-          path: target/test-results/
+          path: packages/node/target/test-results/
           retention-days: 7
           if-no-files-found: ignore
 
-  # Package validation - ensure package can be installed
+  # Package validation - ensure packages can be installed
   package:
     name: Package Validation
     runs-on: ubuntu-latest
@@ -132,20 +134,34 @@ jobs:
       - name: Install dependencies
         run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
-      - name: Build package
-        run: pnpm build
+      - name: Build all packages
+        run: pnpm turbo build
 
-      - name: Pack package
-        run: pnpm pack
+      - name: Pack core package
+        run: cd packages/core && pnpm pack
 
-      - name: Test package installation
+      - name: Pack node package
+        run: cd packages/node && pnpm pack
+
+      - name: Test core package installation
         run: |
-          mkdir -p /tmp/test-install
-          cd /tmp/test-install
+          mkdir -p /tmp/test-core
+          cd /tmp/test-core
           npm init -y
-          npm install ${{ github.workspace }}/atrim-instrumentation-*.tgz
+          npm install ${{ github.workspace }}/packages/core/atrim-instrumentation-core-*.tgz
+          node -e "require('@atrim/instrumentation-core')"
+          echo "✅ Core package installation successful"
+
+      - name: Test node package installation
+        run: |
+          mkdir -p /tmp/test-node
+          cd /tmp/test-node
+          npm init -y
+          # Install core first (workspace dependency)
+          npm install ${{ github.workspace }}/packages/core/atrim-instrumentation-core-*.tgz
+          npm install ${{ github.workspace }}/packages/node/atrim-instrumentation-*.tgz
           node -e "require('@atrim/instrumentation')"
-          echo "✅ Package installation successful"
+          echo "✅ Node package installation successful"
 
   # Notify on build status
   notify:
