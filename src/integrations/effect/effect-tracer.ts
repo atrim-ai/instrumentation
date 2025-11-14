@@ -18,7 +18,7 @@
  * 4. This happens automatically via OpenTelemetry Context propagation
  */
 
-import { Effect, Layer } from 'effect'
+import { Effect, Layer, Tracer } from 'effect'
 import type { Tracer as EffectTracer } from 'effect'
 import * as Otlp from '@effect/opentelemetry/Otlp'
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
