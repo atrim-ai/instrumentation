@@ -156,6 +156,14 @@ jobs:
           node -e "require('@atrim/instrumentation')"
           echo "✅ Package installation successful"
 
+      - name: Upload package tarball
+        uses: actions/upload-artifact@v5
+        with:
+          name: npm-package
+          path: atrim-instrumentation-*.tgz
+          retention-days: 30
+          if-no-files-found: error
+
   # Notify on build status
   notify:
     name: Notify Build Status
