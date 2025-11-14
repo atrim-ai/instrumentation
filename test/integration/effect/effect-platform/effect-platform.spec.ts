@@ -16,6 +16,7 @@ import {
   collectorReceivedTraces,
   waitFor,
   getCollectorLogs,
+  TEST_TIMEOUTS,
   type TestServer,
   type CollectorContainer
 } from '../../shared/helpers.js'
@@ -65,7 +66,7 @@ test.describe('Pure Effect-TS Example', () => {
   test('should send Effect.withSpan() traces', async ({ page }) => {
     // Make request to trigger Effect spans
     await page.goto(`http://localhost:${port}/users`)
-    await page.waitForTimeout(6000) // Wait for batch processor export (default 5s interval)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -92,8 +93,8 @@ test.describe('Pure Effect-TS Example', () => {
     const response = await page.request.get(`http://localhost:${port}/users/999`)
     expect(response.status()).toBe(404)
 
-    // Wait for batch processor to export (default 5s interval)
-    await page.waitForTimeout(6000)
+    // Wait for traces to be exported
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     // Should still have traces even for errors
     const receivedTraces = await collectorReceivedTraces(collector)

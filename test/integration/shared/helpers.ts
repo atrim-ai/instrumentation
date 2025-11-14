@@ -3,6 +3,19 @@
  */
 
 import { exec, spawn, ChildProcess } from 'child_process'
+
+/**
+ * Test timeout configuration
+ * CI environments may need longer timeouts due to resource constraints
+ */
+export const TEST_TIMEOUTS = {
+  // Wait time after making request for traces to arrive at collector
+  // With SimpleSpanProcessor, this is just network/processing time
+  TRACE_EXPORT: process.env.CI ? 2000 : 1000,
+
+  // Brief wait for trace processing (filtering, etc.)
+  TRACE_PROCESSING: process.env.CI ? 1000 : 500
+} as const
 import { promisify } from 'util'
 import { setTimeout as sleep } from 'timers/promises'
 import { GenericContainer, StartedTestContainer, Wait, TestContainers } from 'testcontainers'
@@ -155,7 +168,9 @@ export async function startExample(
       env: {
         ...process.env,
         PORT: String(port),
-        OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint || 'http://localhost:14318'
+        OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint || 'http://localhost:14318',
+        // Use SimpleSpanProcessor in tests for immediate export (no batching delays)
+        OTEL_USE_SIMPLE_PROCESSOR: 'true'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     })

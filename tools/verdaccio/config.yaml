@@ -1,0 +1,52 @@
+# Verdaccio Configuration for Local Development
+
+storage: /verdaccio/storage
+
+auth:
+  htpasswd:
+    file: /verdaccio/conf/htpasswd
+    max_users: -1
+    algorithm: bcrypt
+
+security:
+  api:
+    jwt:
+      sign:
+        expiresIn: 7d
+
+web:
+  title: "@atrim/instrumentation - Local Registry"
+  enable: true
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+    max_fails: 5
+    timeout: 30s
+
+packages:
+  '@atrim/*':
+    access: $all
+    publish: $authenticated
+    unpublish: $authenticated
+    proxy: npmjs
+
+  '**':
+    access: $all
+    publish: $authenticated
+    unpublish: $authenticated
+    proxy: npmjs
+
+server:
+  keepAliveTimeout: 60
+
+middlewares:
+  audit:
+    enabled: true
+
+logs:
+  - { type: stdout, format: pretty, level: info }
+
+listen: 0.0.0.0:4873
+
+max_body_size: 100mb

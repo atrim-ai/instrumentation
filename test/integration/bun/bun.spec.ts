@@ -9,6 +9,7 @@ import {
   collectorReceivedTraces,
   waitFor,
   getCollectorLogs,
+  TEST_TIMEOUTS,
   type TestServer,
   type CollectorContainer
 } from '../shared/helpers.js'
@@ -166,7 +167,7 @@ test.describe('Bun Runtime Example', () => {
     expect(body).toHaveProperty('runtime', 'bun')
 
     // Wait for traces to be exported
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -187,7 +188,7 @@ test.describe('Bun Runtime Example', () => {
     console.log('🧪 Testing database operations...')
 
     await page.goto(`http://localhost:${port}/users/456`)
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     const logs = await getCollectorLogs(collector, 100)
 
@@ -206,7 +207,7 @@ test.describe('Bun Runtime Example', () => {
     })
 
     expect(response.ok).toBeTruthy()
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     const logs = await getCollectorLogs(collector, 100)
     expect(logs).toContain('app.cache.set')
@@ -225,7 +226,7 @@ test.describe('Bun Runtime Example', () => {
     const body = await response?.json()
     expect(body).toHaveProperty('traced', false)
 
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     const logsAfter = await getCollectorLogs(collector, 100)
 
@@ -244,7 +245,7 @@ test.describe('Bun Runtime Example', () => {
     const body = await response?.json()
     expect(body).toHaveProperty('traced', false)
 
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     const logs = await getCollectorLogs(collector, 100)
 
