@@ -29,6 +29,7 @@ export interface EffectMetadata {
  * @param fiber - Effect fiber to extract metadata from (optional peer dependency)
  * @returns Metadata object with span attributes
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function extractEffectMetadata(fiber?: any): EffectMetadata {
   if (!fiber) {
     return {}
@@ -73,6 +74,7 @@ export function extractEffectMetadata(fiber?: any): EffectMetadata {
  */
 export function addEffectMetadataToSpan(
   span: { setAttribute: (key: string, value: string | boolean) => void },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fiber?: any
 ): void {
   const metadata = extractEffectMetadata(fiber)

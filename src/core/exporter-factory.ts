@@ -44,7 +44,7 @@ export function createOtlpExporter(options: OtlpExporterOptions = {}): OTLPTrace
   // Ensure endpoint has /v1/traces path if not already present
   const normalizedEndpoint = normalizeEndpoint(endpoint)
 
-  const config: any = {
+  const config: { url: string; headers?: Record<string, string>; timeoutMillis?: number } = {
     url: normalizedEndpoint
   }
 
