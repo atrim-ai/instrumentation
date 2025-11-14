@@ -150,7 +150,7 @@ export async function startExample(
   console.log(`🚀 Starting ${name} on port ${port}...`)
 
   return new Promise((resolve, reject) => {
-    // Start the server
+    // Start the server - use shell:true to find pnpm in PATH
     const serverProcess = spawn('pnpm', ['start'], {
       cwd: dir,
       env: {
@@ -158,7 +158,8 @@ export async function startExample(
         PORT: String(port),
         OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint || 'http://localhost:14318'
       },
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: true
     })
 
     let output = ''
