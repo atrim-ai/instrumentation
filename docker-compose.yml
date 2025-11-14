@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  verdaccio:
+    image: verdaccio/verdaccio:latest
+    container_name: atrim-verdaccio
+    ports:
+      - "4873:4873"
+    volumes:
+      # Persist storage (gitignored)
+      - ./tools/verdaccio/storage:/verdaccio/storage
+      # Mount custom config
+      - ./tools/verdaccio/config.yaml:/verdaccio/conf/config.yaml
+    environment:
+      - VERDACCIO_PORT=4873
+    restart: unless-stopped
+    networks:
+      - verdaccio-network
+
+networks:
+  verdaccio-network:
+    driver: bridge

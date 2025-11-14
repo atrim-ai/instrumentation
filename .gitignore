@@ -47,3 +47,6 @@ lerna-debug.log*
 test/temp/
 tmp/
 test/integration/core/detection/temp/
+
+# Local Verdaccio registry storage (Docker Compose)
+tools/verdaccio/storage/
