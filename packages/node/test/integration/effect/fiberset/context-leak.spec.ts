@@ -64,7 +64,8 @@ async function runExample(
       env: {
         ...process.env,
         OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint
-      }
+      },
+      shell: true
     })
 
     child.stdout?.on('data', (data) => {
