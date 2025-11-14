@@ -13,6 +13,7 @@ import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
 import { detectServiceInfo } from './service-detector.js'
 import { loadConfig, type ConfigLoaderOptions } from './config-loader.js'
+import type { InstrumentationConfig, PatternConfig } from './instrumentation-schema.js'
 import { initializePatternMatcher } from './pattern-matcher.js'
 import { logger } from './logger.js'
 
@@ -151,11 +152,15 @@ function isTracingAlreadyInitialized(): boolean {
     // The default uninitialized state is a ProxyTracerProvider that wraps NoopTracerProvider
     // After NodeSDK.start(), it becomes a ProxyTracerProvider that wraps a real provider
     // We can detect this by checking for the _delegate property
-    const delegate = (provider as any)._delegate || (provider as any).getDelegate?.()
+    const providerWithDelegate = provider as unknown as {
+      _delegate?: unknown
+      getDelegate?: () => unknown
+    }
+    const delegate = providerWithDelegate._delegate || providerWithDelegate.getDelegate?.()
 
     if (delegate) {
       // Check if the delegate is not a NoopTracerProvider
-      const delegateName = delegate.constructor.name
+      const delegateName = (delegate as { constructor: { name: string } }).constructor.name
       if (!delegateName.includes('Noop')) {
         return true
       }
@@ -163,9 +168,14 @@ function isTracingAlreadyInitialized(): boolean {
 
     // Also check for direct TracerProvider properties (resource, activeSpanProcessor, etc.)
     // These exist on real providers but not on NoopTracerProvider
-    const hasResource = (provider as any).resource !== undefined
-    const hasActiveSpanProcessor = (provider as any).activeSpanProcessor !== undefined
-    const hasTracers = (provider as any)._tracers !== undefined
+    const providerWithProps = provider as unknown as {
+      resource?: unknown
+      activeSpanProcessor?: unknown
+      _tracers?: unknown
+    }
+    const hasResource = providerWithProps.resource !== undefined
+    const hasActiveSpanProcessor = providerWithProps.activeSpanProcessor !== undefined
+    const hasTracers = providerWithProps._tracers !== undefined
 
     return hasResource || hasActiveSpanProcessor || hasTracers
   } catch {
@@ -189,7 +199,9 @@ function isTracingAlreadyInitialized(): boolean {
  *
  * @returns The initialized NodeSDK instance, or null if skipped
  */
-export async function initializeSdk(options: SdkInitializationOptions = {}): Promise<NodeSDK | null> {
+export async function initializeSdk(
+  options: SdkInitializationOptions = {}
+): Promise<NodeSDK | null> {
   // Check if we already initialized via this library
   if (sdkInstance) {
     logger.warn('@atrim/instrumentation: SDK already initialized. Returning existing instance.')
@@ -198,7 +210,9 @@ export async function initializeSdk(options: SdkInitializationOptions = {}): Pro
 
   // Check if initialization is already in progress (prevents race conditions)
   if (initializationPromise) {
-    logger.log('@atrim/instrumentation: SDK already initialized, waiting for initialization to complete...')
+    logger.log(
+      '@atrim/instrumentation: SDK already initialized, waiting for initialization to complete...'
+    )
     return initializationPromise
   }
 
@@ -406,7 +420,7 @@ function registerShutdownHandlers(sdk: NodeSDK): void {
  * Log initialization details
  */
 function logInitialization(
-  config: any,
+  config: InstrumentationConfig,
   serviceName: string,
   serviceVersion: string | undefined,
   options: SdkInitializationOptions,
@@ -420,7 +434,7 @@ function logInitialization(
 
   if (config.instrumentation.enabled) {
     const instrumentCount = config.instrumentation.instrument_patterns.filter(
-      (p: any) => p.enabled !== false
+      (p: PatternConfig) => p.enabled !== false
     ).length
     const ignoreCount = config.instrumentation.ignore_patterns.length
 

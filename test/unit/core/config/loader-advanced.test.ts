@@ -48,7 +48,9 @@ instrumentation:
       const largeContent = 'version: "1.0"\n' + 'x: "' + 'a'.repeat(2_000_000) + '"'
       writeFileSync(testConfigPath, largeContent, 'utf8')
 
-      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow('exceeds maximum size')
+      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow(
+        'exceeds maximum size'
+      )
     })
 
     it('should handle invalid YAML', async () => {
@@ -74,7 +76,9 @@ instrumentation:
 `
       writeFileSync(testConfigPath, invalidConfig, 'utf8')
 
-      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow('Invalid configuration')
+      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow(
+        'Invalid configuration'
+      )
     })
 
     it('should handle missing required fields', async () => {
@@ -85,7 +89,9 @@ instrumentation:
 `
       writeFileSync(testConfigPath, incompleteConfig, 'utf8')
 
-      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow('Invalid configuration')
+      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow(
+        'Invalid configuration'
+      )
     })
   })
 
@@ -107,9 +113,9 @@ instrumentation:
       )
 
       try {
-        await expect(
-          loadConfig({ configUrl: 'https://example.com/config.yaml' })
-        ).rejects.toThrow('Failed to load config from URL')
+        await expect(loadConfig({ configUrl: 'https://example.com/config.yaml' })).rejects.toThrow(
+          'Failed to load config from URL'
+        )
       } finally {
         global.fetch = originalFetch
       }
@@ -124,9 +130,9 @@ instrumentation:
       } as Response)
 
       try {
-        await expect(
-          loadConfig({ configUrl: 'https://example.com/config.yaml' })
-        ).rejects.toThrow('HTTP 404')
+        await expect(loadConfig({ configUrl: 'https://example.com/config.yaml' })).rejects.toThrow(
+          'HTTP 404'
+        )
       } finally {
         global.fetch = originalFetch
       }

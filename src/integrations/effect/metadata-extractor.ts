@@ -29,7 +29,7 @@ export interface EffectMetadata {
  * @param fiber - Effect fiber to extract metadata from (optional peer dependency)
  * @returns Metadata object with span attributes
  */
-export function extractEffectMetadata(fiber?: any): EffectMetadata {
+export function extractEffectMetadata(fiber?: unknown): EffectMetadata {
   if (!fiber) {
     return {}
   }
@@ -37,10 +37,11 @@ export function extractEffectMetadata(fiber?: any): EffectMetadata {
   const metadata: EffectMetadata = {}
 
   try {
+    const fiberWithId = fiber as { id?: () => unknown }
     // Extract fiber ID if available
-    if (fiber.id && typeof fiber.id === 'function') {
+    if (fiberWithId.id && typeof fiberWithId.id === 'function') {
       try {
-        const fiberId = fiber.id()
+        const fiberId = fiberWithId.id()
         if (fiberId !== undefined) {
           metadata['effect.fiber.id'] = String(fiberId)
         }
@@ -73,7 +74,7 @@ export function extractEffectMetadata(fiber?: any): EffectMetadata {
  */
 export function addEffectMetadataToSpan(
   span: { setAttribute: (key: string, value: string | boolean) => void },
-  fiber?: any
+  fiber?: unknown
 ): void {
   const metadata = extractEffectMetadata(fiber)
 

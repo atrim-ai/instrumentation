@@ -10,13 +10,13 @@
  * This is the RECOMMENDED approach for using FiberSet.run.
  */
 
-import { Effect, FiberSet } from "effect"
-import { NodeSdk } from "@effect/opentelemetry"
-import { BatchSpanProcessor, ConsoleSpanExporter } from "@opentelemetry/sdk-trace-base"
-import { runIsolated, annotateSpawnedTasks } from "../../../../src/integrations/effect/fiberset.js"
+import { Effect, FiberSet } from 'effect'
+import { NodeSdk } from '@effect/opentelemetry'
+import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base'
+import { runIsolated, annotateSpawnedTasks } from '../../../../src/integrations/effect/fiberset.js'
 
 const TracingLive = NodeSdk.layer(() => ({
-  resource: { serviceName: "fiberset-isolated" },
+  resource: { serviceName: 'fiberset-isolated' },
   spanProcessor: new BatchSpanProcessor(
     new ConsoleSpanExporter() // Output to console to see span links!
   )
@@ -26,15 +26,13 @@ const TracingLive = NodeSdk.layer(() => ({
 const backgroundTask = (id: number) =>
   Effect.gen(function* () {
     console.log(`  🔄 Background task ${id} starting...`)
-    yield* Effect.sleep("10 millis")
+    yield* Effect.sleep('10 millis')
     console.log(`  ✅ Background task ${id} completed`)
 
     // Nested operation - will be child of background-task
     yield* Effect.gen(function* () {
-      yield* Effect.sleep("5 millis")
-    }).pipe(
-      Effect.withSpan(`nested-${id}`)
-    )
+      yield* Effect.sleep('5 millis')
+    }).pipe(Effect.withSpan(`nested-${id}`))
   })
 
 const program = Effect.scoped(
@@ -71,9 +69,7 @@ const program = Effect.scoped(
       })
 
       console.log('\n👨 Parent operation completed')
-    }).pipe(
-      Effect.withSpan('parent-operation')
-    )
+    }).pipe(Effect.withSpan('parent-operation'))
 
     // Wait for background tasks
     console.log('⏳ Waiting for background tasks...')
