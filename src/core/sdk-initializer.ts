@@ -152,12 +152,15 @@ function isTracingAlreadyInitialized(): boolean {
     // The default uninitialized state is a ProxyTracerProvider that wraps NoopTracerProvider
     // After NodeSDK.start(), it becomes a ProxyTracerProvider that wraps a real provider
     // We can detect this by checking for the _delegate property
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const delegate = (provider as any)._delegate || (provider as any).getDelegate?.()
+    const providerWithDelegate = provider as unknown as {
+      _delegate?: unknown
+      getDelegate?: () => unknown
+    }
+    const delegate = providerWithDelegate._delegate || providerWithDelegate.getDelegate?.()
 
     if (delegate) {
       // Check if the delegate is not a NoopTracerProvider
-      const delegateName = delegate.constructor.name
+      const delegateName = (delegate as { constructor: { name: string } }).constructor.name
       if (!delegateName.includes('Noop')) {
         return true
       }
@@ -165,12 +168,14 @@ function isTracingAlreadyInitialized(): boolean {
 
     // Also check for direct TracerProvider properties (resource, activeSpanProcessor, etc.)
     // These exist on real providers but not on NoopTracerProvider
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hasResource = (provider as any).resource !== undefined
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hasActiveSpanProcessor = (provider as any).activeSpanProcessor !== undefined
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hasTracers = (provider as any)._tracers !== undefined
+    const providerWithProps = provider as unknown as {
+      resource?: unknown
+      activeSpanProcessor?: unknown
+      _tracers?: unknown
+    }
+    const hasResource = providerWithProps.resource !== undefined
+    const hasActiveSpanProcessor = providerWithProps.activeSpanProcessor !== undefined
+    const hasTracers = providerWithProps._tracers !== undefined
 
     return hasResource || hasActiveSpanProcessor || hasTracers
   } catch {
