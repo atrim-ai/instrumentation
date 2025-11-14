@@ -127,5 +127,7 @@ export async function initializePatternMatchingOnly(
   initializePatternMatcher(config)
 
   logger.log('@atrim/instrumentation: Pattern matching initialized (legacy mode)')
-  logger.log('  Note: NodeSDK is not initialized. Use initializeInstrumentation() for complete setup.')
+  logger.log(
+    '  Note: NodeSDK is not initialized. Use initializeInstrumentation() for complete setup.'
+  )
 }

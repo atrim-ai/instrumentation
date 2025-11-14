@@ -14,7 +14,12 @@ export function annotateBatch(_size: number, _batchSize: number): void {
   // TODO: Implement
 }
 
-export function annotateLLM(_model: string, _operation: string, _inputTokens: number, _outputTokens: number): void {
+export function annotateLLM(
+  _model: string,
+  _operation: string,
+  _inputTokens: number,
+  _outputTokens: number
+): void {
   // TODO: Implement
 }
 
@@ -26,7 +31,10 @@ export function annotateHttpRequest(_method: string, _url: string, _statusCode: 
   // TODO: Implement
 }
 
-export function annotateError(_error: Error, _context?: Record<string, string | number | boolean>): void {
+export function annotateError(
+  _error: Error,
+  _context?: Record<string, string | number | boolean>
+): void {
   // TODO: Implement
 }
 

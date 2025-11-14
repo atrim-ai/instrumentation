@@ -101,7 +101,6 @@ export async function stopCollectorContainer(collector: CollectorContainer): Pro
   }
 }
 
-
 /**
  * Get logs from a specific collector container using docker CLI
  */
