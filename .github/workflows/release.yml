@@ -112,9 +112,9 @@ jobs:
           fi
           echo "✅ Node build artifacts verified"
 
-  # Publish packages to npm
+  # Publish packages to Google Artifact Registry
   publish:
-    name: Publish to npm
+    name: Publish to Google Artifact Registry
     runs-on: ubuntu-latest
     needs: [setup, validate]
     timeout-minutes: 10
@@ -132,8 +132,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_ARTIFACT_REGISTRY_SA_KEY }}
+
+      - name: Configure npm authentication
+        run: npx google-artifactregistry-auth
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -143,32 +150,26 @@ jobs:
 
       - name: Publish core package
         if: needs.setup.outputs.release-core == 'true'
-        run: cd packages/core && npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd packages/core && pnpm publish --no-git-checks
 
       - name: Publish node package
         if: needs.setup.outputs.release-node == 'true'
-        run: cd packages/node && npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd packages/node && pnpm publish --no-git-checks
 
       - name: Publish web package
         if: needs.setup.outputs.release-web == 'true'
-        run: cd packages/web && npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd packages/web && pnpm publish --no-git-checks
 
       - name: Send success notification
         uses: ./.github/actions/discord-notify
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
           status: 'success'
-          job-name: 'Published to npm'
+          job-name: 'Published to Google Artifact Registry'
           workflow-name: 'Release'
           branch: ${{ github.ref_name }}
           error-details: |
-            🎉 **Published to npm: v${{ needs.setup.outputs.version }}**
+            🎉 **Published to Google Artifact Registry: v${{ needs.setup.outputs.version }}**
 
             ${{ needs.setup.outputs.release-core == 'true' && '✅ @atrim/instrumentation-core' || '' }}
             ${{ needs.setup.outputs.release-node == 'true' && '✅ @atrim/instrumentation' || '' }}
@@ -185,11 +186,11 @@ jobs:
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
           status: 'failure'
-          job-name: 'npm publish failed'
+          job-name: 'GAR publish failed'
           workflow-name: 'Release'
           branch: ${{ github.ref_name }}
           error-details: |
-            ❌ Failed to publish packages to npm
+            ❌ Failed to publish packages to Google Artifact Registry
 
             **Tag:** ${{ github.ref_name }}
             **View Logs:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

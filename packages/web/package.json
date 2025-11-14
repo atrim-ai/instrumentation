@@ -15,8 +15,8 @@
   },
   "homepage": "https://github.com/atrim-ai/instrumentation/tree/main/packages/web#readme",
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "registry": "https://us-central1-npm.pkg.dev/endless-ability-477320-d9/atrim-npm/",
+    "access": "restricted"
   },
   "keywords": [
     "opentelemetry",

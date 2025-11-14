@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { PatternSpanProcessor } from '../../../../src/core/span-processor.js'
-import type { InstrumentationConfig } from '../../../../src/core/instrumentation-schema.js'
+import type { InstrumentationConfig } from '@atrim/instrumentation-core'
 import type { Span, SpanProcessor, ReadableSpan } from '@opentelemetry/sdk-trace-base'
 import type { Context } from '@opentelemetry/api'
 

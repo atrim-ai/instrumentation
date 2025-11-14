@@ -24,6 +24,14 @@ test-results.json
 .env.local
 .env.*.local
 
+# npm (credentials safety)
+.npmrc.local
+*.npmrc.backup
+
+# Google Cloud credentials (safety in case of local copies)
+*-key.json
+!examples/**/*-key.json
+
 # Editor
 .vscode/
 .idea/
