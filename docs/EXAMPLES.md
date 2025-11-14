@@ -11,7 +11,7 @@ import { initializeInstrumentation } from '@atrim/instrumentation'
 
 await initializeInstrumentation({
   serviceName: 'my-app',
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+  otlp: { endpoint: 'http://localhost:4318' }
 })
 ```
 
@@ -19,7 +19,7 @@ Or via environment variables:
 
 ```bash
 export OTEL_SERVICE_NAME=my-app
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://demo1.us-central1.gcp.atrim.ai
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 
 node index.js
 ```
@@ -33,7 +33,7 @@ import { initializeInstrumentation } from '@atrim/instrumentation'
 // Initialize at app startup
 await initializeInstrumentation({
   serviceName: 'express-api',
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+  otlp: { endpoint: 'http://localhost:4318' }
 })
 
 const app = express()
@@ -57,7 +57,7 @@ import * as HttpServer from '@effect/platform/HttpServer'
 import { EffectInstrumentationLive } from '@atrim/instrumentation/effect'
 
 // Set endpoint via environment
-process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://demo1.us-central1.gcp.atrim.ai'
+process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4318'
 process.env.OTEL_SERVICE_NAME = 'effect-service'
 
 const program = Effect.gen(function* () {
@@ -80,7 +80,7 @@ import { trace } from '@opentelemetry/api'
 
 await initializeInstrumentation({
   serviceName: 'vanilla-server',
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+  otlp: { endpoint: 'http://localhost:4318' }
 })
 
 const tracer = trace.getTracer('my-service')
@@ -126,7 +126,7 @@ Then just initialize:
 
 ```typescript
 await initializeInstrumentation({
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+  otlp: { endpoint: 'http://localhost:4318' }
 })
 // Patterns loaded automatically from ./instrumentation.yaml
 ```
@@ -137,7 +137,7 @@ await initializeInstrumentation({
 await initializeInstrumentation({
   serviceName: 'secure-service',
   otlp: {
-    endpoint: 'http://demo1.us-central1.gcp.atrim.ai',
+    endpoint: 'http://localhost:4318',
     headers: {
       'x-api-key': process.env.ATRIM_API_KEY,
       'x-tenant-id': 'my-org'
@@ -152,7 +152,7 @@ await initializeInstrumentation({
 ```typescript
 await initializeInstrumentation({
   serviceName: 'api-gateway',
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+  otlp: { endpoint: 'http://localhost:4318' }
 })
 ```
 
@@ -160,7 +160,7 @@ await initializeInstrumentation({
 ```typescript
 await initializeInstrumentation({
   serviceName: 'user-service',
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+  otlp: { endpoint: 'http://localhost:4318' }
 })
 ```
 
@@ -168,7 +168,7 @@ await initializeInstrumentation({
 ```typescript
 await initializeInstrumentation({
   serviceName: 'order-service',
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+  otlp: { endpoint: 'http://localhost:4318' }
 })
 ```
 
@@ -186,13 +186,13 @@ export OTEL_SERVICE_NAME=my-app-dev
 
 **Staging:**
 ```bash
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://demo1.us-central1.gcp.atrim.ai
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 export OTEL_SERVICE_NAME=my-app-staging
 ```
 
 **Production:**
 ```bash
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://prod.atrim.ai
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://otel-collector.company.com:4318
 export OTEL_SERVICE_NAME=my-app-prod
 export OTEL_EXPORTER_OTLP_HEADERS="x-api-key=${ATRIM_API_KEY}"
 ```
@@ -209,8 +209,8 @@ Load patterns from a remote URL:
 ```typescript
 await initializeInstrumentation({
   serviceName: 'my-service',
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' },
-  configUrl: 'https://config.atrim.ai/instrumentation.yaml',
+  otlp: { endpoint: 'http://localhost:4318' },
+  configUrl: 'https://config.example.com/instrumentation.yaml',
   cacheTimeout: 300_000  // Cache for 5 minutes
 })
 ```

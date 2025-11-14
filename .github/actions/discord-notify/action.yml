@@ -1,0 +1,274 @@
+name: 'Discord Build Notification'
+description: 'Send detailed build status notifications to Discord with error details for debugging'
+author: 'atrim'
+
+inputs:
+  webhook-url:
+    description: 'Discord webhook URL'
+    required: true
+  status:
+    description: 'Build status (success/failure/cancelled/started)'
+    required: true
+  job-name:
+    description: 'Name of the GitHub Actions job'
+    required: true
+  workflow-name:
+    description: 'Name of the workflow'
+    required: false
+    default: ${{ github.workflow }}
+  branch:
+    description: 'Git branch name'
+    required: false
+    default: ${{ github.ref_name }}
+  commit-sha:
+    description: 'Git commit SHA'
+    required: false
+    default: ${{ github.sha }}
+  commit-author:
+    description: 'Commit author'
+    required: false
+    default: ${{ github.actor }}
+  error-details:
+    description: 'Detailed error output for debugging'
+    required: false
+    default: ''
+  test-results:
+    description: 'Test results summary'
+    required: false
+    default: ''
+  typescript-errors:
+    description: 'TypeScript compilation errors'
+    required: false
+    default: ''
+  lint-errors:
+    description: 'ESLint errors'
+    required: false
+    default: ''
+  run-url:
+    description: 'URL to the GitHub Actions run'
+    required: false
+    default: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  pr-number:
+    description: 'Pull request number (when applicable)'
+    required: false
+    default: ''
+  pr-title:
+    description: 'Pull request title (when applicable)'
+    required: false
+    default: ''
+  pr-url:
+    description: 'Pull request URL (when applicable)'
+    required: false
+    default: ''
+  mention-on-failure:
+    description: 'Discord user mention for failures (e.g., <@USER_ID> or @username)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set status emoji and color
+      id: status-format
+      shell: bash
+      run: |
+        if [ "${{ inputs.status }}" == "success" ]; then
+          echo "emoji=✅" >> $GITHUB_OUTPUT
+          echo "color=3066993" >> $GITHUB_OUTPUT  # Green
+        elif [ "${{ inputs.status }}" == "failure" ]; then
+          echo "emoji=🔴" >> $GITHUB_OUTPUT
+          echo "color=15158332" >> $GITHUB_OUTPUT  # Red
+        elif [ "${{ inputs.status }}" == "cancelled" ]; then
+          echo "emoji=⚪" >> $GITHUB_OUTPUT
+          echo "color=9807270" >> $GITHUB_OUTPUT  # Orange/Yellow
+        elif [ "${{ inputs.status }}" == "started" ] || [ "${{ inputs.status }}" == "running" ]; then
+          echo "emoji=🔵" >> $GITHUB_OUTPUT
+          echo "color=3447003" >> $GITHUB_OUTPUT  # Blue
+        else
+          echo "emoji=❓" >> $GITHUB_OUTPUT
+          echo "color=9807270" >> $GITHUB_OUTPUT  # Gray
+        fi
+
+    - name: Format error details for Discord
+      id: format-errors
+      shell: bash
+      env:
+        ERROR_DETAILS: ${{ inputs.error-details }}
+      run: |
+        # Truncate error details to fit Discord embed limits (4096 chars for description)
+        if [ -n "$ERROR_DETAILS" ]; then
+          # Leave room for code block formatting (```\n and \n```)
+          ERROR_SNIPPET=$(printf '%s' "$ERROR_DETAILS" | head -c 4000)
+          # Escape for JSON (replace newlines, quotes, backslashes)
+          ERROR_JSON=$(echo "$ERROR_SNIPPET" | jq -Rs .)
+        else
+          ERROR_JSON='""'
+        fi
+        echo "error_json=$ERROR_JSON" >> $GITHUB_OUTPUT
+
+    - name: Format branch name and commit SHA
+      id: format-refs
+      shell: bash
+      run: |
+        # Clean up branch name - remove refs/heads/ prefix if present
+        BRANCH_NAME="${{ inputs.branch }}"
+        BRANCH_NAME="${BRANCH_NAME#refs/heads/}"
+        echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+        # Shorten commit SHA to 7 characters
+        COMMIT_SHA="${{ inputs.commit-sha }}"
+        SHORT_SHA="${COMMIT_SHA:0:7}"
+        echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+    - name: Send Discord notification
+      shell: bash
+      env:
+        STATUS_COLOR: ${{ steps.status-format.outputs.color }}
+        STATUS_EMOJI: ${{ steps.status-format.outputs.emoji }}
+        INPUT_STATUS: ${{ inputs.status }}
+        WORKFLOW_NAME: ${{ inputs.workflow-name }}
+        JOB_NAME: ${{ inputs.job-name }}
+        RUN_URL: ${{ inputs.run-url }}
+        REPOSITORY: ${{ github.repository }}
+        BRANCH: ${{ steps.format-refs.outputs.branch }}
+        COMMIT_SHA: ${{ steps.format-refs.outputs.short_sha }}
+        COMMIT_AUTHOR: ${{ inputs.commit-author }}
+        DISCORD_WEBHOOK_URL: ${{ inputs.webhook-url }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        PR_URL: ${{ inputs.pr-url }}
+        ERROR_JSON: ${{ steps.format-errors.outputs.error_json }}
+      run: |
+        # Construct the title and link based on whether this is a PR or branch push
+        if [ -n "$PR_NUMBER" ] && [ -n "$PR_TITLE" ]; then
+          TITLE="$STATUS_EMOJI PR #$PR_NUMBER: $PR_TITLE - $WORKFLOW_NAME"
+          TITLE_LINK="${PR_URL:-$RUN_URL}"
+        else
+          TITLE="$STATUS_EMOJI [$BRANCH] Build $INPUT_STATUS: $WORKFLOW_NAME"
+          TITLE_LINK="$RUN_URL"
+        fi
+
+        # Construct GitHub URLs for clickable links
+        REPO_BASE_URL="https://github.com/$REPOSITORY"
+        REPO_LINK="$REPO_BASE_URL"
+        BRANCH_LINK="$REPO_BASE_URL/tree/$BRANCH"
+        JOB_LINK="$RUN_URL"
+
+        # For commit link, use PR commit URL if available, otherwise regular commit URL
+        if [ -n "$PR_URL" ]; then
+          COMMIT_LINK="$PR_URL/commits/$COMMIT_SHA"
+        else
+          COMMIT_LINK="$REPO_BASE_URL/commit/$COMMIT_SHA"
+        fi
+
+        # Build primary embed with build information
+        PRIMARY_EMBED=$(cat <<EOF
+        {
+          "title": "$TITLE",
+          "url": "$TITLE_LINK",
+          "color": $STATUS_COLOR,
+          "fields": [
+            {
+              "name": "Repository",
+              "value": "[\`$REPOSITORY\`]($REPO_LINK)",
+              "inline": true
+            },
+            {
+              "name": "Branch",
+              "value": "[\`$BRANCH\`]($BRANCH_LINK)",
+              "inline": true
+            },
+            {
+              "name": "Job",
+              "value": "[\`$JOB_NAME\`]($JOB_LINK)",
+              "inline": true
+            },
+            {
+              "name": "Commit",
+              "value": "[\`$COMMIT_SHA\`]($COMMIT_LINK)",
+              "inline": true
+            },
+            {
+              "name": "Author",
+              "value": "@$COMMIT_AUTHOR",
+              "inline": true
+            },
+            {
+              "name": "Time",
+              "value": "$(date -u '+%Y-%m-%d %H:%M UTC')",
+              "inline": true
+            }
+          ],
+          "footer": {
+            "text": "GitHub Actions",
+            "icon_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+          },
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+        }
+        EOF
+        )
+
+        # Start building the embeds array
+        EMBEDS="[$PRIMARY_EMBED"
+
+        # Add error details embed if this is a failure
+        if [ "$INPUT_STATUS" == "failure" ] && [ -n "$ERROR_JSON" ] && [ "$ERROR_JSON" != '""' ]; then
+          ERROR_EMBED=$(cat <<EOF
+          {
+            "title": "📋 Error Details (Copy for Claude Code)",
+            "description": $ERROR_JSON,
+            "color": 15158332,
+            "footer": {
+              "text": "Copy the above errors to Claude Code for debugging assistance"
+            }
+          }
+        EOF
+        )
+          EMBEDS="$EMBEDS,$ERROR_EMBED"
+
+          # Add quick links embed for failures (replaces Slack action buttons)
+          LINKS_EMBED=$(cat <<EOF
+          {
+            "description": "**Quick Links**\\n📋 [View Full Logs]($RUN_URL) | 🔄 [Re-run Workflow]($RUN_URL) | 💬 [Open Claude Code](https://claude.ai/code)",
+            "color": 2303786
+          }
+        EOF
+        )
+          EMBEDS="$EMBEDS,$LINKS_EMBED"
+        fi
+
+        # Close the embeds array
+        EMBEDS="$EMBEDS]"
+
+        # Add mention for failures
+        CONTENT_FIELD=""
+        if [ "$INPUT_STATUS" == "failure" ] && [ -n "${{ inputs.mention-on-failure }}" ]; then
+          CONTENT_FIELD='"content": "${{ inputs.mention-on-failure }} Build failed! 🚨",'
+        fi
+
+        # Construct the final Discord webhook payload
+        PAYLOAD=$(cat <<EOF
+        {
+          $CONTENT_FIELD
+          "username": "Instrumentation CI",
+          "avatar_url": "https://cdn.discordapp.com/embed/avatars/0.png",
+          "embeds": $EMBEDS
+        }
+        EOF
+        )
+
+        # Send to Discord
+        HTTP_CODE=$(curl -X POST \
+          -H 'Content-type: application/json' \
+          --data "$PAYLOAD" \
+          --write-out "%{http_code}" \
+          --silent \
+          --output /dev/null \
+          "$DISCORD_WEBHOOK_URL")
+
+        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+          echo "✅ Discord notification sent successfully (HTTP $HTTP_CODE)"
+        else
+          echo "⚠️ Discord notification failed with HTTP $HTTP_CODE"
+          exit 1
+        fi
