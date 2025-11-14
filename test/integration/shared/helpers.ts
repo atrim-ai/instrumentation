@@ -155,7 +155,8 @@ export async function startExample(
       env: {
         ...process.env,
         PORT: String(port),
-        OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint || 'http://localhost:14318'
+        OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint || 'http://localhost:14318',
+        OTEL_USE_SIMPLE_PROCESSOR: 'true'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     })
