@@ -1,0 +1,47 @@
+# This is the default config file. It allows all users to do anything,
+# so don't use it on production systems.
+
+# path to a directory with all packages
+storage: /verdaccio/storage
+
+# a list of other known repositories we can talk to
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+
+packages:
+  '@atrim/*':
+    # allow all users to publish
+    access: $all
+    publish: $all
+    unpublish: $all
+    proxy: npmjs
+
+  '**':
+    # allow all users to access packages
+    access: $all
+    # allow all users to publish packages
+    publish: $all
+    # allow all users to unpublish packages
+    unpublish: $all
+    # if package is not available locally, proxy requests to 'npmjs' registry
+    proxy: npmjs
+
+# Log settings
+logs: { type: stdout, format: pretty, level: http }
+
+# Web UI and authentication
+web:
+  enable: true
+  title: Verdaccio - Local NPM Registry
+
+# Authentication
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    # Maximum amount of users allowed to register, defaults to "+infinity".
+    # You can set this to -1 to disable registration.
+    max_users: 1000
+
+# You can specify listen address (or simply a port).
+listen: 0.0.0.0:4873
