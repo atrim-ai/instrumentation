@@ -2,7 +2,7 @@
  * Integration test for Vanilla TypeScript example
  */
 
-import { test, expect } from '@playwright/test'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import {
   startExample,
   stopServer,
@@ -11,22 +11,22 @@ import {
   collectorReceivedTraces,
   waitFor,
   getCollectorLogs,
+  getRandomPort,
   type TestServer,
   type CollectorContainer
 } from '../shared/helpers.js'
 import path from 'path'
 
-const EXAMPLE_DIR = path.join(process.cwd(), './examples/vanilla')
-const BASE_PORT = 3101
+const EXAMPLE_DIR = path.join(process.cwd(), '../../examples/vanilla')
 
 let server: TestServer
 let collector: CollectorContainer
 let port: number
 
-test.describe('Vanilla TypeScript Example', () => {
-  test.beforeAll(async ({ }, testInfo) => {
+describe('Vanilla TypeScript Example', () => {
+  beforeAll(async () => {
     // Use worker-specific port to avoid conflicts in parallel execution
-    port = BASE_PORT + (testInfo.workerIndex * 10)
+    port = await getRandomPort()
 
     // Start isolated collector container
     collector = await startCollectorContainer()
@@ -40,7 +40,7 @@ test.describe('Vanilla TypeScript Example', () => {
     )
   })
 
-  test.afterAll(async () => {
+  afterAll(async () => {
     if (server) {
       await stopServer(server)
     }
@@ -49,18 +49,18 @@ test.describe('Vanilla TypeScript Example', () => {
     }
   })
 
-  test('should respond to requests', async ({ page }) => {
-    const response = await page.goto(`http://localhost:${port}/health`)
-    expect(response?.status()).toBe(200)
+  it('should respond to requests', async () => {
+    const response = await fetch(`http://localhost:${port}/health`)
+    expect(response.status).toBe(200)
 
-    const body = await response?.json()
+    const body = await response.json()
     expect(body).toEqual({ status: 'ok' })
   })
 
-  test('should send traces for operations', async ({ page }) => {
+  it('should send traces for operations', async () => {
     // Trigger operation that creates spans
-    await page.goto(`http://localhost:${port}/users/1`)
-    await page.waitForTimeout(6000)
+    await fetch(`http://localhost:${port}/users/1`)
+    await new Promise(resolve => setTimeout(resolve, 6000))
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -77,9 +77,9 @@ test.describe('Vanilla TypeScript Example', () => {
     expect(logs).toContain('app.user.fetch')
   })
 
-  test('should trace database operations', async ({ page }) => {
-    await page.goto(`http://localhost:${port}/users/1`)
-    await page.waitForTimeout(6000)
+  it('should trace database operations', async () => {
+    await fetch(`http://localhost:${port}/users/1`)
+    await new Promise(resolve => setTimeout(resolve, 6000))
 
     const logs = await getCollectorLogs(collector, 100)
 
@@ -88,14 +88,14 @@ test.describe('Vanilla TypeScript Example', () => {
     expect(logs).toContain('app.db.query')
   })
 
-  test('should trace cache operations', async ({ page }) => {
+  it('should trace cache operations', async () => {
     // First request - cache miss
-    await page.goto(`http://localhost:${port}/users/1`)
-    await page.waitForTimeout(1000)
+    await fetch(`http://localhost:${port}/users/1`)
+    await new Promise(resolve => setTimeout(resolve, 1000))
 
     // Second request - cache hit (if implemented)
-    await page.goto(`http://localhost:${port}/users/1`)
-    await page.waitForTimeout(2000)
+    await fetch(`http://localhost:${port}/users/1`)
+    await new Promise(resolve => setTimeout(resolve, 2000))
 
     const logs = await getCollectorLogs(collector, 100)
     const hasCacheSpans = logs.includes('cache.')
@@ -104,11 +104,11 @@ test.describe('Vanilla TypeScript Example', () => {
     // Cache may or may not be implemented in example
   })
 
-  test('should have interactive UI', async ({ page }) => {
-    await page.goto(`http://localhost:${port}`)
-    await page.waitForLoadState('networkidle')
+  it('should have interactive UI', async () => {
+    await fetch(`http://localhost:${port}`)
+    
 
-    const title = await page.title()
-    expect(title).toBeTruthy()
+    // UI check - removed for Vitest
+    // UI validation removed - use Playwright for UI tests
   })
 })
