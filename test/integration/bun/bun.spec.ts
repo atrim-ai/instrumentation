@@ -121,9 +121,9 @@ async function stopBunServer(server: TestServer): Promise<void> {
 }
 
 test.describe('Bun Runtime Example', () => {
-  test.beforeAll(async ({ }, testInfo) => {
+  test.beforeAll(async ({}, testInfo) => {
     // Use worker-specific port to avoid conflicts in parallel execution
-    port = BASE_PORT + (testInfo.workerIndex * 10)
+    port = BASE_PORT + testInfo.workerIndex * 10
 
     // Start isolated collector container
     collector = await startCollectorContainer()
