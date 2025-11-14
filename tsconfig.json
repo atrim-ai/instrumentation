@@ -6,7 +6,7 @@
     "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "outDir": "./dist",
+    "outDir": "./target/dist",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -27,14 +27,14 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "incremental": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./target/.tsbuildinfo"
   },
   "include": [
     "src/**/*"
   ],
   "exclude": [
     "node_modules",
-    "dist",
+    "target",
     "test",
     "examples"
   ]

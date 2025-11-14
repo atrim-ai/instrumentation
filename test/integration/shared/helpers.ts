@@ -33,17 +33,25 @@ export interface CollectorContainer {
  *
  * Traces are forwarded to both:
  * 1. Debug exporter (for test logs)
- * 2. Dev instance at localhost:4318 (for inspection in your local collector)
+ * 2. Dev instance at localhost:4318 (for inspection in your local collector) - if available
  */
 export async function startCollectorContainer(): Promise<CollectorContainer> {
   console.log('🚀 Starting isolated OTEL Collector container...')
-  console.log('📤 Traces will be forwarded to host.testcontainers.internal:4318 for inspection')
+
+  // Try to enable dev collector forwarding, but don't fail if unavailable
+  let devForwardingEnabled = false
+  try {
+    await TestContainers.exposeHostPorts(4318)
+    devForwardingEnabled = true
+    console.log('📤 Traces will be forwarded to host.testcontainers.internal:4318 for inspection')
+  } catch (error) {
+    console.log('⚠️  Dev collector forwarding disabled (port 4318 unavailable or already exposed)')
+  }
 
   try {
-    // Expose host port 4318 so containers can reach dev collector on host
-    await TestContainers.exposeHostPorts(4318)
-
-    const configPath = path.join(__dirname, '..', 'otel-collector-config.yaml')
+    const configPath = devForwardingEnabled
+      ? path.join(__dirname, '..', 'otel-collector-config.yaml')
+      : path.join(__dirname, '..', 'otel-collector-config-no-forward.yaml')
 
     const container = await new GenericContainer('otel/opentelemetry-collector:latest')
       .withCommand(['--config=/etc/otel-collector-config.yaml'])

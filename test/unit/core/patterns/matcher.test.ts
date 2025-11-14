@@ -2,8 +2,8 @@
  * Unit tests for pattern-matcher
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { PatternMatcher, clearPatternMatcher } from '../../src/core/pattern-matcher.js'
-import type { InstrumentationConfig } from '../../src/core/instrumentation-schema.js'
+import { PatternMatcher, clearPatternMatcher } from '../../../../src/core/pattern-matcher.js'
+import type { InstrumentationConfig } from '../../../../src/core/instrumentation-schema.js'
 
 describe('pattern-matcher', () => {
   beforeEach(() => {

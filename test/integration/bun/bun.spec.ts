@@ -11,7 +11,7 @@ import {
   getCollectorLogs,
   type TestServer,
   type CollectorContainer
-} from './helpers.js'
+} from '../shared/helpers.js'
 import { spawn, ChildProcess } from 'child_process'
 import path from 'path'
 
