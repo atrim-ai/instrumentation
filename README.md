@@ -25,7 +25,7 @@ By default, traces go to `http://localhost:4318`. To send to a remote collector:
 
 ```typescript
 await initializeInstrumentation({
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+  otlp: { endpoint: 'https://otel-collector.company.com:4318' }
 })
 ```
 

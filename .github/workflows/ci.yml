@@ -1,0 +1,190 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.vscode/**'
+      - 'tmp/**'
+  pull_request:
+    branches: [main]
+
+env:
+  PNPM_VERSION: '10.12.1'
+
+jobs:
+  # Quick validation job - runs on all Node.js versions
+  test:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript compilation
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov (Node 20 only)
+        if: matrix.node-version == 20
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./target/coverage/coverage-final.json
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Integration tests - only on Node 20
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run integration tests
+        run: pnpm test:integration
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-results
+          path: target/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Package validation - ensure package can be installed
+  package:
+    name: Package Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Pack package
+        run: pnpm pack
+
+      - name: Test package installation
+        run: |
+          mkdir -p /tmp/test-install
+          cd /tmp/test-install
+          npm init -y
+          npm install ${{ github.workspace }}/atrim-instrumentation-*.tgz
+          node -e "require('@atrim/instrumentation')"
+          echo "✅ Package installation successful"
+
+  # Notify on build status
+  notify:
+    name: Notify Build Status
+    runs-on: ubuntu-latest
+    needs: [test, integration, package]
+    if: always() && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Determine overall status
+        id: status
+        run: |
+          if [[ "${{ needs.test.result }}" == "success" && \
+                "${{ needs.integration.result }}" == "success" && \
+                "${{ needs.package.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=All checks passed ✅" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=Some checks failed ❌" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Discord notification
+        if: github.ref == 'refs/heads/main' || failure()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          status: ${{ steps.status.outputs.status }}
+          job-name: 'CI Build'
+          workflow-name: 'CI'
+          branch: ${{ github.ref_name }}
+          error-details: |
+            **Build Results:**
+            • Tests: ${{ needs.test.result }}
+            • Integration: ${{ needs.integration.result }}
+            • Package: ${{ needs.package.result }}
+
+            ${{ steps.status.outputs.message }}
+          mention-on-failure: '<@clayroach>'

@@ -16,7 +16,7 @@ await initializeInstrumentation({
 
 // Atrim demo instance
 await initializeInstrumentation({
-  otlp: { endpoint: 'http://demo1.us-central1.gcp.atrim.ai' }
+  otlp: { endpoint: 'http://localhost:4318' }
 })
 ```
 
@@ -95,7 +95,7 @@ const program = Effect.gen(function* () {
 
 Set the endpoint via environment:
 ```bash
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://demo1.us-central1.gcp.atrim.ai
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 ```
 
 ## Duplicate Initialization Warnings
@@ -172,7 +172,7 @@ await initializeInstrumentation({
 
 ```typescript
 await initializeInstrumentation({
-  configUrl: 'https://config.atrim.ai/instrumentation.yaml'
+  configUrl: 'https://config.example.com/instrumentation.yaml'
 })
 ```
 
@@ -202,10 +202,10 @@ export OTEL_SERVICE_NAME=my-api
 export OTEL_SERVICE_VERSION=1.0.0
 
 # OTLP endpoint
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://demo1.us-central1.gcp.atrim.ai
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 
 # Alternative: traces-specific endpoint
-export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://demo1.us-central1.gcp.atrim.ai/v1/traces
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces
 
 # Authentication (if needed)
 export OTEL_EXPORTER_OTLP_HEADERS="x-api-key=your-key-here"
