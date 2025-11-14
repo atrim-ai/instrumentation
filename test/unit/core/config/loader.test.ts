@@ -2,8 +2,8 @@
  * Unit tests for config-loader
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { loadConfig, clearConfigCache } from '../../src/core/config-loader.js'
-import type { InstrumentationConfig } from '../../src/core/instrumentation-schema.js'
+import { loadConfig, clearConfigCache } from '../../../../src/core/config-loader.js'
+import type { InstrumentationConfig } from '../../../../src/core/instrumentation-schema.js'
 
 describe('config-loader', () => {
   beforeEach(() => {

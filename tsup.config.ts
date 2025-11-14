@@ -14,7 +14,7 @@ export default defineConfig([
     treeshake: true,
     minify: false,
     target: 'es2020',
-    outDir: 'dist',
+    outDir: 'target/dist',
     external: [
       '@opentelemetry/api',
       '@opentelemetry/sdk-trace-base'
@@ -33,7 +33,7 @@ export default defineConfig([
     treeshake: true,
     minify: false,
     target: 'es2020',
-    outDir: 'dist',
+    outDir: 'target/dist',
     external: [
       'effect',
       '@effect/opentelemetry',

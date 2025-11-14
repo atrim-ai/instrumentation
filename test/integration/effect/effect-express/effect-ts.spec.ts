@@ -19,7 +19,7 @@ import {
   getCollectorLogs,
   type TestServer,
   type CollectorContainer
-} from './helpers.js'
+} from '../../shared/helpers.js'
 import path from 'path'
 
 const EXAMPLE_DIR = path.join(process.cwd(), './examples/effect-ts')

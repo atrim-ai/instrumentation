@@ -2,7 +2,7 @@
  * Advanced unit tests for config-loader (error handling, edge cases)
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { loadConfig, clearConfigCache } from '../../src/core/config-loader.js'
+import { loadConfig, clearConfigCache } from '../../../../src/core/config-loader.js'
 import { writeFileSync, mkdirSync, rmSync } from 'fs'
 import { join } from 'path'
 

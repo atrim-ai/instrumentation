@@ -5,12 +5,13 @@ node_modules/
 pnpm-lock.yaml
 examples/*/pnpm-lock.yaml
 
-# Build output
-dist/
-build/
+# Build output (consolidated in target/ directory)
+target/
 *.tsbuildinfo
 
-# Testing
+# Legacy build directories (kept for backwards compatibility)
+dist/
+build/
 coverage/
 .nyc_output/
 playwright-report/
@@ -45,3 +46,4 @@ lerna-debug.log*
 .cache/
 test/temp/
 tmp/
+test/integration/core/detection/temp/

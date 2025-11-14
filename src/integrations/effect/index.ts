@@ -28,3 +28,12 @@ export {
 
 // Effect-specific types
 export type { EffectMetadata } from './metadata-extractor.js'
+
+// FiberSet isolation helpers (automatic span isolation + virtual parent tracking)
+export {
+  runIsolated,
+  runWithSpan,
+  annotateSpawnedTasks,
+  FiberSet,
+  type IsolationOptions
+} from './fiberset.js'
