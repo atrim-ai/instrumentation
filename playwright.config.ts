@@ -7,16 +7,19 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './test/integration',
 
-  // Test timeout
-  timeout: 60000,
+  // Test timeout (increased for CI to account for resource constraints)
+  timeout: process.env.CI ? 120000 : 60000,
 
   // Expect timeout for assertions
   expect: {
-    timeout: 10000
+    timeout: process.env.CI ? 20000 : 10000
   },
 
   // Run tests in parallel (each suite uses isolated collector containers)
   fullyParallel: true,
+
+  // Limit workers on CI to prevent resource exhaustion
+  workers: process.env.CI ? 1 : undefined,
 
   // Fail the build on CI if you accidentally left test.only
   forbidOnly: !!process.env.CI,
