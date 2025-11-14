@@ -7,19 +7,29 @@
 
 ## Quick Start
 
-**1. Install**
+**1. Configure npm** (one-time setup)
+```bash
+# Configure @atrim scope to use Google Artifact Registry
+npm config set @atrim:registry https://us-central1-npm.pkg.dev/endless-ability-477320-d9/atrim-npm/
+
+# Authenticate (requires Google Cloud credentials)
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/key.json
+npx google-artifactregistry-auth
+```
+
+**2. Install**
 ```bash
 npm install @atrim/instrumentation
 ```
 
-**2. Initialize** (at the top of your app)
+**3. Initialize** (at the top of your app)
 ```typescript
 import { initializeInstrumentation } from '@atrim/instrumentation'
 
 await initializeInstrumentation()
 ```
 
-**3. Done!** Your app is now sending traces to OpenTelemetry.
+**4. Done!** Your app is now sending traces to OpenTelemetry.
 
 By default, traces go to `http://localhost:4318`. To send to a remote collector:
 
@@ -73,6 +83,14 @@ await initializeInstrumentation({
 ```
 
 See [Configuration Guide](./docs/CONFIGURATION.md) for all options.
+
+## Packages
+
+This is a monorepo containing multiple packages:
+
+- **[@atrim/instrumentation](./packages/node)** - Main package for Node.js applications (this package)
+- **[@atrim/instrumentation-core](./packages/core)** - Shared schemas and utilities (internal)
+- **[@atrim/instrumentation-web](./packages/web)** - Web/browser implementation (coming soon)
 
 ## Documentation
 
