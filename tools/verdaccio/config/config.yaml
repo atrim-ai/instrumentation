@@ -11,17 +11,16 @@ uplinks:
 
 packages:
   '@atrim/*':
-    # allow all users to publish
+    # allow all users (including anonymous) to publish
     access: $all
-    publish: $all
+    publish: $anonymous
     unpublish: $all
-    proxy: npmjs
 
   '**':
     # allow all users to access packages
     access: $all
     # allow all users to publish packages
-    publish: $all
+    publish: $anonymous
     # allow all users to unpublish packages
     unpublish: $all
     # if package is not available locally, proxy requests to 'npmjs' registry
@@ -35,13 +34,27 @@ web:
   enable: true
   title: Verdaccio - Local NPM Registry
 
-# Authentication
+# Authentication - disabled for local development
+# Allows anonymous publishing without login
 auth:
   htpasswd:
     file: /verdaccio/storage/htpasswd
     # Maximum amount of users allowed to register, defaults to "+infinity".
     # You can set this to -1 to disable registration.
     max_users: 1000
+    # Allow anonymous access (no login required)
+    algorithm: bcrypt
+    rounds: 10
+
+# Security settings for local development
+security:
+  api:
+    jwt:
+      sign:
+        expiresIn: 60d
+  web:
+    sign:
+      expiresIn: 7d
 
 # You can specify listen address (or simply a port).
 listen: 0.0.0.0:4873
