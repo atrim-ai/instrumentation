@@ -199,7 +199,9 @@ function isTracingAlreadyInitialized(): boolean {
  *
  * @returns The initialized NodeSDK instance, or null if skipped
  */
-export async function initializeSdk(options: SdkInitializationOptions = {}): Promise<NodeSDK | null> {
+export async function initializeSdk(
+  options: SdkInitializationOptions = {}
+): Promise<NodeSDK | null> {
   // Check if we already initialized via this library
   if (sdkInstance) {
     logger.warn('@atrim/instrumentation: SDK already initialized. Returning existing instance.')
@@ -208,7 +210,9 @@ export async function initializeSdk(options: SdkInitializationOptions = {}): Pro
 
   // Check if initialization is already in progress (prevents race conditions)
   if (initializationPromise) {
-    logger.log('@atrim/instrumentation: SDK already initialized, waiting for initialization to complete...')
+    logger.log(
+      '@atrim/instrumentation: SDK already initialized, waiting for initialization to complete...'
+    )
     return initializationPromise
   }
 
