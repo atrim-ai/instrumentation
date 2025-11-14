@@ -46,6 +46,7 @@ export default [
         }
       ],
       '@typescript-eslint/no-non-null-assertion': 'error',
+      'no-unused-vars': 'off', // Using @typescript-eslint/no-unused-vars instead
       'no-undef': 'off', // TypeScript handles this
       'no-redeclare': 'off', // TypeScript compiler validates overloads
       '@typescript-eslint/no-redeclare': 'off' // Disabled - conflicts with Effect Schema const + type pattern
@@ -57,8 +58,8 @@ export default [
       '@typescript-eslint': tseslint
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': 'warn'
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': 'error'
     }
   }
 ]
