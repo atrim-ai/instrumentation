@@ -1,0 +1,70 @@
+{
+  "name": "@atrim/instrumentation-core",
+  "version": "0.1.0",
+  "description": "Shared schemas and utilities for @atrim/instrumentation (runtime-agnostic)",
+  "type": "module",
+  "license": "MIT",
+  "author": "Atrim AI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atrim-ai/instrumentation.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/atrim-ai/instrumentation/issues"
+  },
+  "homepage": "https://github.com/atrim-ai/instrumentation/tree/main/packages/core#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "opentelemetry",
+    "instrumentation",
+    "configuration",
+    "schema"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./target/dist/index.d.ts",
+      "import": "./target/dist/index.js",
+      "require": "./target/dist/index.cjs"
+    },
+    "./schemas": {
+      "types": "./target/dist/schemas/index.d.ts",
+      "import": "./target/dist/schemas/index.js",
+      "require": "./target/dist/schemas/index.cjs"
+    }
+  },
+  "main": "./target/dist/index.js",
+  "module": "./target/dist/index.js",
+  "types": "./target/dist/index.d.ts",
+  "files": [
+    "target/dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "clean": "rm -rf target node_modules"
+  },
+  "dependencies": {
+    "yaml": "^2.3.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^9.0.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.8"
+  }
+}
