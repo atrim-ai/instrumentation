@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { loadConfig, clearConfigCache } from '../../../../src/core/config-loader.js'
-import type { InstrumentationConfig } from '../../../../src/core/instrumentation-schema.js'
+import type { InstrumentationConfig } from '@atrim/instrumentation-core'
 
 describe('config-loader', () => {
   beforeEach(() => {
