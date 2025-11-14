@@ -3,7 +3,9 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*.*.*'           # Matches v1.0.0, v2.1.3, etc.
+      - 'core-v*.*.*'      # Matches core-v1.0.0 (core package only)
+      - 'web-v*.*.*'       # Matches web-v1.0.0 (web package only)
 
 permissions:
   contents: write
@@ -13,10 +15,52 @@ env:
   PNPM_VERSION: '10.12.1'
 
 jobs:
+  # Determine which packages to release based on tag
+  setup:
+    name: Setup Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release-core: ${{ steps.packages.outputs.core }}
+      release-node: ${{ steps.packages.outputs.node }}
+      release-web: ${{ steps.packages.outputs.web }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Determine packages to release
+        id: packages
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            # Main release - publish all packages
+            echo "core=true" >> $GITHUB_OUTPUT
+            echo "node=true" >> $GITHUB_OUTPUT
+            echo "web=false" >> $GITHUB_OUTPUT  # Web not ready yet
+          elif [[ "$TAG" =~ ^core-v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            # Core-only release
+            echo "core=true" >> $GITHUB_OUTPUT
+            echo "node=false" >> $GITHUB_OUTPUT
+            echo "web=false" >> $GITHUB_OUTPUT
+          elif [[ "$TAG" =~ ^web-v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            # Web-only release
+            echo "core=false" >> $GITHUB_OUTPUT
+            echo "node=false" >> $GITHUB_OUTPUT
+            echo "web=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract version
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#*-v}"  # Remove prefix (core-v, web-v)
+          VERSION="${VERSION#v}" # Remove v prefix
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
   # Validate the release before publishing
   validate:
     name: Validate Release
     runs-on: ubuntu-latest
+    needs: setup
     timeout-minutes: 10
 
     steps:
@@ -37,41 +81,42 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate version matches tag
-        run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
-            echo "❌ Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)"
-            exit 1
-          fi
-          echo "✅ Version validation passed: $TAG_VERSION"
-
       - name: TypeScript compilation
-        run: pnpm typecheck
+        run: pnpm turbo typecheck
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm turbo lint
 
-      - name: Build
-        run: pnpm build
+      - name: Build all packages
+        run: pnpm turbo build
 
-      - name: Run tests
-        run: pnpm test:coverage
+      - name: Run tests (Node.js package)
+        if: needs.setup.outputs.release-node == 'true'
+        run: pnpm --filter @atrim/instrumentation test:coverage
 
-      - name: Verify build artifacts
+      - name: Verify build artifacts (core)
+        if: needs.setup.outputs.release-core == 'true'
         run: |
-          if [ ! -f "target/dist/index.js" ]; then
-            echo "❌ Build artifacts missing"
+          if [ ! -f "packages/core/target/dist/index.js" ]; then
+            echo "❌ Core build artifacts missing"
             exit 1
           fi
-          echo "✅ Build artifacts verified"
+          echo "✅ Core build artifacts verified"
 
-  # Publish to npm
+      - name: Verify build artifacts (node)
+        if: needs.setup.outputs.release-node == 'true'
+        run: |
+          if [ ! -f "packages/node/target/dist/index.js" ]; then
+            echo "❌ Node build artifacts missing"
+            exit 1
+          fi
+          echo "✅ Node build artifacts verified"
+
+  # Publish packages to npm
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
-    needs: validate
+    needs: [setup, validate]
     timeout-minutes: 10
 
     steps:
@@ -94,16 +139,25 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build for release
-        run: pnpm build
+        run: pnpm turbo build
 
-      - name: Publish to npm
-        run: npm publish --provenance --access public
+      - name: Publish core package
+        if: needs.setup.outputs.release-core == 'true'
+        run: cd packages/core && npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Get version
-        id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+      - name: Publish node package
+        if: needs.setup.outputs.release-node == 'true'
+        run: cd packages/node && npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish web package
+        if: needs.setup.outputs.release-web == 'true'
+        run: cd packages/web && npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Send success notification
         uses: ./.github/actions/discord-notify
@@ -114,11 +168,16 @@ jobs:
           workflow-name: 'Release'
           branch: ${{ github.ref_name }}
           error-details: |
-            🎉 **@atrim/instrumentation v${{ steps.version.outputs.version }}** published to npm!
+            🎉 **Published to npm: v${{ needs.setup.outputs.version }}**
 
-            📦 Install: `npm install @atrim/instrumentation@${{ steps.version.outputs.version }}`
-            🔗 npm: https://www.npmjs.com/package/@atrim/instrumentation/v/${{ steps.version.outputs.version }}
-            📖 Changelog: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+            ${{ needs.setup.outputs.release-core == 'true' && '✅ @atrim/instrumentation-core' || '' }}
+            ${{ needs.setup.outputs.release-node == 'true' && '✅ @atrim/instrumentation' || '' }}
+            ${{ needs.setup.outputs.release-web == 'true' && '✅ @atrim/instrumentation-web' || '' }}
+
+            📦 Install:
+            ```bash
+            npm install @atrim/instrumentation@${{ needs.setup.outputs.version }}
+            ```
 
       - name: Send failure notification
         if: failure()
@@ -130,7 +189,7 @@ jobs:
           workflow-name: 'Release'
           branch: ${{ github.ref_name }}
           error-details: |
-            ❌ Failed to publish @atrim/instrumentation to npm
+            ❌ Failed to publish packages to npm
 
             **Tag:** ${{ github.ref_name }}
             **View Logs:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -140,7 +199,7 @@ jobs:
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: publish
+    needs: [setup, publish]
     timeout-minutes: 5
 
     steps:
@@ -148,10 +207,6 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0 # Needed for changelog generation
-
-      - name: Get version
-        id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
       - name: Generate release notes
         id: notes
@@ -166,8 +221,24 @@ jobs:
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
           fi
 
+          # Determine which packages were released
+          PACKAGES=""
+          if [ "${{ needs.setup.outputs.release-core }}" == "true" ]; then
+            PACKAGES="$PACKAGES\n- 📦 @atrim/instrumentation-core@${{ needs.setup.outputs.version }}"
+          fi
+          if [ "${{ needs.setup.outputs.release-node }}" == "true" ]; then
+            PACKAGES="$PACKAGES\n- 📦 @atrim/instrumentation@${{ needs.setup.outputs.version }}"
+          fi
+          if [ "${{ needs.setup.outputs.release-web }}" == "true" ]; then
+            PACKAGES="$PACKAGES\n- 📦 @atrim/instrumentation-web@${{ needs.setup.outputs.version }}"
+          fi
+
           # Create release notes
           cat > release-notes.md <<EOF
+          ## Packages Released
+
+          $PACKAGES
+
           ## What's Changed
 
           $CHANGELOG
@@ -175,14 +246,21 @@ jobs:
           ## Installation
 
           \`\`\`bash
-          npm install @atrim/instrumentation@${{ steps.version.outputs.version }}
+          # Node.js
+          npm install @atrim/instrumentation@${{ needs.setup.outputs.version }}
+
+          # Web (coming soon)
+          npm install @atrim/instrumentation-web@${{ needs.setup.outputs.version }}
+
+          # Core (for library authors)
+          npm install @atrim/instrumentation-core@${{ needs.setup.outputs.version }}
           \`\`\`
 
           ## Documentation
 
           - 📖 [README](https://github.com/${{ github.repository }}#readme)
-          - 📋 [Examples](https://github.com/${{ github.repository }}/blob/main/docs/EXAMPLES.md)
-          - 🔧 [Troubleshooting](https://github.com/${{ github.repository }}/blob/main/docs/TROUBLESHOOTING.md)
+          - 📋 [Examples](https://github.com/${{ github.repository }}/blob/main/examples)
+          - 🔧 [Troubleshooting](https://github.com/${{ github.repository }}/blob/main/TROUBLESHOOTING.md)
 
           **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ github.ref_name }}
           EOF
@@ -192,7 +270,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create ${{ github.ref_name }} \
-            --title "v${{ steps.version.outputs.version }}" \
+            --title "v${{ needs.setup.outputs.version }}" \
             --notes-file release-notes.md \
             --verify-tag
 
@@ -205,6 +283,6 @@ jobs:
           workflow-name: 'Release'
           branch: ${{ github.ref_name }}
           error-details: |
-            📝 GitHub release created for v${{ steps.version.outputs.version }}
+            📝 GitHub release created for v${{ needs.setup.outputs.version }}
 
             🔗 https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
