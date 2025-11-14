@@ -8,6 +8,7 @@ examples/*/pnpm-lock.yaml
 # Build output (consolidated in target/ directory)
 target/
 *.tsbuildinfo
+.turbo/
 
 # Legacy build directories (kept for backwards compatibility)
 dist/
