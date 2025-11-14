@@ -1,0 +1,71 @@
+{
+  "name": "@atrim/instrumentation-web",
+  "version": "0.1.0",
+  "description": "Universal OpenTelemetry instrumentation with centralized YAML configuration for Web/Browser applications",
+  "type": "module",
+  "license": "MIT",
+  "author": "Atrim AI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atrim-ai/instrumentation.git",
+    "directory": "packages/web"
+  },
+  "bugs": {
+    "url": "https://github.com/atrim-ai/instrumentation/issues"
+  },
+  "homepage": "https://github.com/atrim-ai/instrumentation/tree/main/packages/web#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "opentelemetry",
+    "instrumentation",
+    "tracing",
+    "observability",
+    "browser",
+    "web",
+    "effect"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./target/dist/index.d.ts",
+      "import": "./target/dist/index.js",
+      "require": "./target/dist/index.cjs"
+    }
+  },
+  "main": "./target/dist/index.js",
+  "module": "./target/dist/index.js",
+  "types": "./target/dist/index.d.ts",
+  "files": [
+    "target/dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "clean": "rm -rf target node_modules"
+  },
+  "dependencies": {
+    "@atrim/instrumentation-core": "workspace:*",
+    "@opentelemetry/sdk-trace-web": "^2.2.0",
+    "@opentelemetry/instrumentation": "^0.54.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^9.0.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.8"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.0.0"
+  }
+}
