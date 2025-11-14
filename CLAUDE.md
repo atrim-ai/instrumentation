@@ -25,26 +25,46 @@ This is the `@atrim/instrumentation` library - a universal OpenTelemetry instrum
 
 ## Architecture
 
-### Directory Structure
+### Monorepo Structure
+
+**Build System:** pnpm workspaces + Turborepo
 
 ```
-src/
-├── core/                          # Framework-agnostic core
-│   ├── config-loader.ts          # Configuration loading (file/URL)
-│   ├── pattern-matcher.ts        # Pattern compilation & matching
-│   ├── instrumentation-schema.ts # Schema validation
-│   └── span-processor.ts         # Pattern-based span filtering
-├── integrations/
-│   ├── effect/                   # Optional Effect-TS integration
-│   │   ├── effect-tracer.ts     # Effect-TS tracer integration
-│   │   ├── metadata-extractor.ts # Auto metadata extraction
-│   │   └── effect-helpers.ts    # Effect-specific helpers
-│   ├── standard/                 # Standard OpenTelemetry
-│   │   ├── tracer-provider.ts   # Standard OTel TracerProvider
-│   │   └── span-helpers.ts      # Generic span helpers
-│   └── index.ts
-├── api.ts                        # Public API surface
-└── index.ts                      # Main entry point
+packages/
+├── core/                          # @atrim/instrumentation-core
+│   ├── src/
+│   │   ├── schemas/               # Zod configuration schemas
+│   │   │   └── instrumentation-schema.ts
+│   │   ├── utils/                 # Runtime-agnostic utilities
+│   │   │   └── pattern-matcher.ts
+│   │   └── index.ts
+│   ├── package.json               # Dependencies: zod, yaml
+│   └── Builds: ESM + CJS + DTS
+│
+├── node/                          # @atrim/instrumentation (main package)
+│   ├── src/
+│   │   ├── core/                  # SDK initialization, config loading
+│   │   │   ├── config-loader.ts
+│   │   │   ├── sdk-initializer.ts
+│   │   │   └── span-processor.ts
+│   │   ├── integrations/
+│   │   │   ├── effect/            # Optional Effect-TS integration
+│   │   │   │   ├── effect-tracer.ts
+│   │   │   │   ├── metadata-extractor.ts
+│   │   │   │   └── effect-helpers.ts
+│   │   │   └── standard/          # Standard OpenTelemetry
+│   │   │       ├── tracer-provider.ts
+│   │   │       └── span-helpers.ts
+│   │   ├── api.ts
+│   │   └── index.ts
+│   ├── test/                      # Full unit + integration tests
+│   ├── package.json               # Depends on: @atrim/instrumentation-core (workspace)
+│   └── Builds: ESM + CJS + DTS
+│
+└── web/                           # @atrim/instrumentation-web (planned)
+    ├── src/index.ts               # Placeholder (not implemented)
+    ├── package.json               # Depends on: @atrim/instrumentation-core (workspace)
+    └── README.md                  # Planned features documented
 ```
 
 ### Build Artifacts
@@ -73,6 +93,17 @@ src/
 
 ### Package Exports
 
+**@atrim/instrumentation-core:**
+```json
+{
+  "exports": {
+    ".": "./target/dist/index.js",
+    "./schemas": "./target/dist/schemas/index.js"
+  }
+}
+```
+
+**@atrim/instrumentation:**
 ```json
 {
   "exports": {
@@ -87,6 +118,17 @@ src/
   }
 }
 ```
+
+### Publishing
+
+**Registry:** Google Artifact Registry (internal)
+**Scope:** `@atrim`
+**Registry URL:** `https://us-central1-npm.pkg.dev/endless-ability-477320-d9/atrim-npm/`
+
+**Published Packages:**
+- `@atrim/instrumentation-core` - Shared schemas and utilities
+- `@atrim/instrumentation` - Node.js implementation (main package)
+- `@atrim/instrumentation-web` - Web/browser implementation (planned)
 
 ## Configuration System
 
