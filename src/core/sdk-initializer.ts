@@ -13,6 +13,7 @@ import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
 import { detectServiceInfo } from './service-detector.js'
 import { loadConfig, type ConfigLoaderOptions } from './config-loader.js'
+import type { InstrumentationConfig, PatternConfig } from './instrumentation-schema.js'
 import { initializePatternMatcher } from './pattern-matcher.js'
 import { logger } from './logger.js'
 
@@ -151,6 +152,7 @@ function isTracingAlreadyInitialized(): boolean {
     // The default uninitialized state is a ProxyTracerProvider that wraps NoopTracerProvider
     // After NodeSDK.start(), it becomes a ProxyTracerProvider that wraps a real provider
     // We can detect this by checking for the _delegate property
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const delegate = (provider as any)._delegate || (provider as any).getDelegate?.()
 
     if (delegate) {
@@ -163,8 +165,11 @@ function isTracingAlreadyInitialized(): boolean {
 
     // Also check for direct TracerProvider properties (resource, activeSpanProcessor, etc.)
     // These exist on real providers but not on NoopTracerProvider
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hasResource = (provider as any).resource !== undefined
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hasActiveSpanProcessor = (provider as any).activeSpanProcessor !== undefined
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hasTracers = (provider as any)._tracers !== undefined
 
     return hasResource || hasActiveSpanProcessor || hasTracers
@@ -406,7 +411,7 @@ function registerShutdownHandlers(sdk: NodeSDK): void {
  * Log initialization details
  */
 function logInitialization(
-  config: any,
+  config: InstrumentationConfig,
   serviceName: string,
   serviceVersion: string | undefined,
   options: SdkInitializationOptions,
@@ -420,7 +425,7 @@ function logInitialization(
 
   if (config.instrumentation.enabled) {
     const instrumentCount = config.instrumentation.instrument_patterns.filter(
-      (p: any) => p.enabled !== false
+      (p: PatternConfig) => p.enabled !== false
     ).length
     const ignoreCount = config.instrumentation.ignore_patterns.length
 
