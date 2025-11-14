@@ -7,7 +7,7 @@
  * - Effect.withSpan() tracing
  */
 
-import { test, expect } from '@playwright/test'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import {
   startExample,
   stopServer,
@@ -16,22 +16,22 @@ import {
   collectorReceivedTraces,
   waitFor,
   getCollectorLogs,
+  getRandomPort,
   type TestServer,
   type CollectorContainer
 } from '../../shared/helpers.js'
 import path from 'path'
 
-const EXAMPLE_DIR = path.join(process.cwd(), './examples/effect-platform')
-const BASE_PORT = 3103
+const EXAMPLE_DIR = path.join(process.cwd(), '../../examples/effect-platform')
 
 let server: TestServer
 let collector: CollectorContainer
 let port: number
 
-test.describe('Pure Effect-TS Example', () => {
-  test.beforeAll(async ({ }, testInfo) => {
+describe('Pure Effect-TS Example', () => {
+  beforeAll(async () => {
     // Use worker-specific port to avoid conflicts in parallel execution
-    port = BASE_PORT + (testInfo.workerIndex * 10)
+    port = await getRandomPort()
 
     // Start isolated collector container
     collector = await startCollectorContainer()
@@ -45,7 +45,7 @@ test.describe('Pure Effect-TS Example', () => {
     )
   })
 
-  test.afterAll(async () => {
+  afterAll(async () => {
     if (server) {
       await stopServer(server)
     }
@@ -54,18 +54,18 @@ test.describe('Pure Effect-TS Example', () => {
     }
   })
 
-  test('should respond to requests', async ({ page }) => {
-    const response = await page.goto(`http://localhost:${port}/health`)
-    expect(response?.status()).toBe(200)
+  it('should respond to requests', async () => {
+    const response = await fetch(`http://localhost:${port}/health`)
+    expect(response.status).toBe(200)
 
-    const body = await response?.json()
+    const body = await response.json()
     expect(body).toEqual({ status: 'ok' })
   })
 
-  test('should send Effect.withSpan() traces', async ({ page }) => {
+  it('should send Effect.withSpan() traces', async () => {
     // Make request to trigger Effect spans
-    await page.goto(`http://localhost:${port}/users`)
-    await page.waitForTimeout(6000) // Wait for batch processor export (default 5s interval)
+    await fetch(`http://localhost:${port}/users`)
+    await new Promise(resolve => setTimeout(resolve, 6000)) // Wait for batch processor export (default 5s interval)
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -87,25 +87,25 @@ test.describe('Pure Effect-TS Example', () => {
     expect(logs).toContain('app.users.list')
   })
 
-  test('should handle Effect errors gracefully', async ({ page }) => {
+  it('should handle Effect errors gracefully', async () => {
     // Request non-existent user
-    const response = await page.request.get(`http://localhost:${port}/users/999`)
+    const response = await fetch(`http://localhost:${port}/users/999`)
     expect(response.status()).toBe(404)
 
     // Wait for batch processor to export (default 5s interval)
-    await page.waitForTimeout(6000)
+    await new Promise(resolve => setTimeout(resolve, 6000))
 
     // Should still have traces even for errors
     const receivedTraces = await collectorReceivedTraces(collector)
     expect(receivedTraces).toBeTruthy()
   })
 
-  test('auto-instrumentation should be disabled', async ({ page }) => {
+  it('auto-instrumentation should be disabled', async () => {
     // This is a pure Effect app with no Express/Fastify
     // Auto-instrumentation should be auto-detected as disabled
 
-    await page.goto(`http://localhost:${port}/users`)
-    await page.waitForTimeout(2000)
+    await fetch(`http://localhost:${port}/users`)
+    await new Promise(resolve => setTimeout(resolve, 2000))
 
     const logs = await getCollectorLogs(collector, 100)
 

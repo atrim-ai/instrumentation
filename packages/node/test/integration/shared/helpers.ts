@@ -3,6 +3,7 @@
  */
 
 import { exec, spawn, ChildProcess } from 'child_process'
+import { createServer } from 'net'
 import { promisify } from 'util'
 import { setTimeout as sleep } from 'timers/promises'
 import { GenericContainer, StartedTestContainer, Wait, TestContainers } from 'testcontainers'
@@ -14,6 +15,26 @@ const execAsync = promisify(exec)
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+/**
+ * Get a random available port for testing
+ * This avoids port conflicts when running tests in parallel
+ */
+export async function getRandomPort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer()
+    server.listen(0, () => {
+      const address = server.address()
+      if (address && typeof address !== 'string') {
+        const port = address.port
+        server.close(() => resolve(port))
+      } else {
+        server.close(() => reject(new Error('Failed to get port')))
+      }
+    })
+    server.on('error', reject)
+  })
+}
 
 export interface TestServer {
   process: ChildProcess
@@ -150,7 +171,7 @@ export async function startExample(
   console.log(`🚀 Starting ${name} on port ${port}...`)
 
   return new Promise((resolve, reject) => {
-    // Start the server - use shell:true to find pnpm in PATH
+    // Start the server - use shell to find pnpm in PATH
     const serverProcess = spawn('pnpm', ['start'], {
       cwd: dir,
       env: {

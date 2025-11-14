@@ -2,7 +2,7 @@
  * Integration test for Express example
  */
 
-import { test, expect } from '@playwright/test'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import {
   startExample,
   stopServer,
@@ -11,22 +11,22 @@ import {
   collectorReceivedTraces,
   waitFor,
   getCollectorLogs,
+  getRandomPort,
   type TestServer,
   type CollectorContainer
 } from '../shared/helpers.js'
 import path from 'path'
 
-const EXAMPLE_DIR = path.join(process.cwd(), './examples/express')
-const BASE_PORT = 3100
+const EXAMPLE_DIR = path.join(process.cwd(), '../../examples/express')
 
 let server: TestServer
 let collector: CollectorContainer
 let port: number
 
-test.describe('Express Example', () => {
-  test.beforeAll(async ({ }, testInfo) => {
-    // Use worker-specific port to avoid conflicts in parallel execution
-    port = BASE_PORT + (testInfo.workerIndex * 10)
+describe('Express Example', () => {
+  beforeAll(async () => {
+    // Get random available port to avoid conflicts in parallel execution
+    port = await getRandomPort()
 
     // Start isolated collector container
     collector = await startCollectorContainer()
@@ -40,7 +40,7 @@ test.describe('Express Example', () => {
     )
   })
 
-  test.afterAll(async () => {
+  afterAll(async () => {
     if (server) {
       await stopServer(server)
     }
@@ -49,19 +49,21 @@ test.describe('Express Example', () => {
     }
   })
 
-  test('should respond to requests', async ({ page }) => {
-    // Navigate to the health endpoint
-    const response = await page.goto(`http://localhost:${port}/health`)
-    expect(response?.status()).toBe(200)
+  it('should respond to requests', async () => {
+    // Make request to health endpoint
+    const response = await fetch(`http://localhost:${port}/health`)
+    expect(response.status).toBe(200)
 
-    const body = await response?.json()
+    const body = await response.json()
     expect(body).toEqual({ status: 'ok' })
   })
 
-  test('should send traces to collector', async ({ page }) => {
+  it('should send traces to collector', async () => {
     // Make a request that should create traces
-    await page.goto(`http://localhost:${port}/users`)
-    await page.waitForTimeout(6000) // Wait for traces to be sent (batch processor exports every 5s)
+    await fetch(`http://localhost:${port}/users`)
+
+    // Wait for traces to be sent (batch processor exports every 5s)
+    await new Promise(resolve => setTimeout(resolve, 6000))
 
     // Check if collector received traces
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -78,10 +80,12 @@ test.describe('Express Example', () => {
     expect(logs).toContain('app.users.list')
   })
 
-  test('should filter health check spans', async ({ page }) => {
+  it('should filter health check spans', async () => {
     // Make health check request (should be filtered)
-    await page.goto(`http://localhost:${port}/health`)
-    await page.waitForTimeout(2000)
+    await fetch(`http://localhost:${port}/health`)
+
+    // Wait for potential traces
+    await new Promise(resolve => setTimeout(resolve, 2000))
 
     const logs = await getCollectorLogs(collector, 100)
 
@@ -95,19 +99,23 @@ test.describe('Express Example', () => {
     console.log('Has health spans:', hasHealthSpans)
   })
 
-  test('should handle POST requests', async ({ page }) => {
+  it('should handle POST requests', async () => {
     // Create a new user
-    const response = await page.request.post(`http://localhost:${port}/users`, {
-      data: {
+    const response = await fetch(`http://localhost:${port}/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         name: 'Test User',
         email: 'test@example.com'
-      }
+      })
     })
 
-    expect(response.status()).toBe(201)
+    expect(response.status).toBe(201)
 
     // Wait for traces (batch processor exports every 5s by default)
-    await page.waitForTimeout(6000)
+    await new Promise(resolve => setTimeout(resolve, 6000))
 
     // Verify traces were sent
     const receivedTraces = await collectorReceivedTraces(collector)
@@ -117,15 +125,13 @@ test.describe('Express Example', () => {
     expect(logs).toContain('app.users.create')
   })
 
-  test('should have interactive UI', async ({ page }) => {
+  it('should have interactive UI', async () => {
     // Check if the UI is served
-    await page.goto(`http://localhost:${port}`)
+    const response = await fetch(`http://localhost:${port}`)
+    expect(response.status).toBe(200)
 
-    // Wait for page to load
-    await page.waitForLoadState('networkidle')
-
-    // Check for basic UI elements
-    const title = await page.title()
-    expect(title).toBeTruthy()
+    // Check content type is HTML
+    const contentType = response.headers.get('content-type')
+    expect(contentType).toContain('text/html')
   })
 })

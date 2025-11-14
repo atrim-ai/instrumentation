@@ -7,7 +7,7 @@
  * Related: https://github.com/Effect-TS/effect/pull/5433/files
  */
 
-import { test, expect } from '@playwright/test'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { spawn } from 'child_process'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -113,7 +113,7 @@ async function fetchTraces(collectorUrl: string): Promise<Span[]> {
   return []
 }
 
-test.describe('FiberSet.run Context Leakage', () => {
+describe('FiberSet.run Context Leakage', () => {
   let collector: CollectorContainer
   let collectorUrl: string
 
@@ -129,7 +129,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     }
   })
 
-  test('should demonstrate context leakage with problematic pattern', async () => {
+  it('should demonstrate context leakage with problematic pattern', async () => {
     console.log('\n📋 Testing problematic FiberSet.run pattern...\n')
 
     // Run the problematic example
@@ -149,7 +149,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('   Background tasks incorrectly inherit parent span context')
   })
 
-  test('should properly isolate context with correct pattern', async () => {
+  it('should properly isolate context with correct pattern', async () => {
     console.log('\n📋 Testing correct FiberSet.run pattern...\n')
 
     // Run the correct example
@@ -171,7 +171,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('   Untraced tasks do not create spans at all')
   })
 
-  test('should demonstrate schedule context isolation', async () => {
+  it('should demonstrate schedule context isolation', async () => {
     console.log('\n📋 Testing schedule iteration isolation...\n')
 
     // Run the schedule isolation example
