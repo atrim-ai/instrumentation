@@ -60,7 +60,7 @@ test.describe('Vanilla TypeScript Example', () => {
   test('should send traces for operations', async ({ page }) => {
     // Trigger operation that creates spans
     await page.goto(`http://localhost:${port}/users/1`)
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(1000)
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -79,7 +79,7 @@ test.describe('Vanilla TypeScript Example', () => {
 
   test('should trace database operations', async ({ page }) => {
     await page.goto(`http://localhost:${port}/users/1`)
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(1000)
 
     const logs = await getCollectorLogs(collector, 100)
 
@@ -95,7 +95,7 @@ test.describe('Vanilla TypeScript Example', () => {
 
     // Second request - cache hit (if implemented)
     await page.goto(`http://localhost:${port}/users/1`)
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(1000)
 
     const logs = await getCollectorLogs(collector, 100)
     const hasCacheSpans = logs.includes('cache.')

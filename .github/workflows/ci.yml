@@ -86,6 +86,11 @@ jobs:
           node-version: 20
           cache: ${{ github.actor != 'dependabot[bot]' && 'pnpm' || '' }}
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
       - name: Install dependencies
         run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 

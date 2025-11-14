@@ -66,7 +66,7 @@ test.describe('Effect-TS + Express Example', () => {
   test('should send both Effect and HTTP traces', async ({ page }) => {
     // Make request that triggers both Express and Effect tracing
     await page.goto(`http://localhost:${port}/users`)
-    await page.waitForTimeout(3000)
+    await page.waitForTimeout(1000)
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -119,7 +119,7 @@ test.describe('Effect-TS + Express Example', () => {
     const response = await page.request.get(`http://localhost:${port}/race`)
 
     if (response.status() === 200) {
-      await page.waitForTimeout(2000)
+      await page.waitForTimeout(1000)
 
       const logs = await getCollectorLogs(collector, 100)
 
@@ -136,7 +136,7 @@ test.describe('Effect-TS + Express Example', () => {
     const response = await page.request.get(`http://localhost:${port}/retry`)
 
     if (response.status() === 200 || response.status() === 500) {
-      await page.waitForTimeout(2000)
+      await page.waitForTimeout(1000)
 
       const logs = await getCollectorLogs(collector, 100)
 
@@ -153,7 +153,7 @@ test.describe('Effect-TS + Express Example', () => {
     const response = await page.request.get(`http://localhost:${port}/timeout`)
 
     if (response.status() === 200 || response.status() === 408) {
-      await page.waitForTimeout(2000)
+      await page.waitForTimeout(1000)
 
       const logs = await getCollectorLogs(collector, 100)
 
