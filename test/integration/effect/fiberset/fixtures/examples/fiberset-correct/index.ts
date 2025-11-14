@@ -7,10 +7,10 @@
  * Solution: Use @effect/opentelemetry's NodeSdk.layer() and { root: true }
  */
 
-import { Effect, FiberSet } from "effect"
-import { NodeSdk } from "@effect/opentelemetry"
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base"
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http"
+import { Effect, FiberSet } from 'effect'
+import { NodeSdk } from '@effect/opentelemetry'
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 
 // Get OTLP endpoint from environment
 const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
@@ -18,7 +18,7 @@ const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhos
 // ✅ CORRECT: Use Effect's built-in NodeSdk.layer
 // This properly integrates with Effect's fiber-local context
 const TracingLive = NodeSdk.layer(() => ({
-  resource: { serviceName: "fiberset-correct" },
+  resource: { serviceName: 'fiberset-correct' },
   spanProcessor: new BatchSpanProcessor(
     new OTLPTraceExporter({
       url: `${otlpEndpoint}/v1/traces`
@@ -31,7 +31,7 @@ const TracingLive = NodeSdk.layer(() => ({
 const backgroundTaskWithRoot = (id: number) =>
   Effect.gen(function* () {
     console.log(`  🔄 Background task ${id} (root) starting...`)
-    yield* Effect.sleep("10 millis")
+    yield* Effect.sleep('10 millis')
     console.log(`  ✅ Background task ${id} (root) completed`)
   }).pipe(
     // ✅ IMPORTANT: { root: true } creates a new root span
@@ -44,7 +44,7 @@ const backgroundTaskWithRoot = (id: number) =>
 const backgroundTaskUntraced = (id: number) =>
   Effect.gen(function* () {
     console.log(`  🔄 Background task ${id} (untraced) starting...`)
-    yield* Effect.sleep("10 millis")
+    yield* Effect.sleep('10 millis')
     console.log(`  ✅ Background task ${id} (untraced) completed`)
   }).pipe(
     // ✅ Alternative: Disable tracing entirely for this operation
@@ -58,34 +58,32 @@ const program = Effect.scoped(
 
     const set = yield* FiberSet.make()
 
-  // Parent operation
-  yield* Effect.gen(function* () {
-    console.log('👨 Parent operation starting...')
-    yield* Effect.sleep("5 millis")
+    // Parent operation
+    yield* Effect.gen(function* () {
+      console.log('👨 Parent operation starting...')
+      yield* Effect.sleep('5 millis')
 
-    // Spawn background tasks with explicit root spans
-    console.log('🚀 Spawning background tasks with { root: true }...')
-    yield* FiberSet.run(set, backgroundTaskWithRoot(1))
-    yield* FiberSet.run(set, backgroundTaskWithRoot(2))
-    yield* FiberSet.run(set, backgroundTaskWithRoot(3))
+      // Spawn background tasks with explicit root spans
+      console.log('🚀 Spawning background tasks with { root: true }...')
+      yield* FiberSet.run(set, backgroundTaskWithRoot(1))
+      yield* FiberSet.run(set, backgroundTaskWithRoot(2))
+      yield* FiberSet.run(set, backgroundTaskWithRoot(3))
 
-    // Spawn untraced background tasks
-    console.log('🚀 Spawning untraced background tasks...')
-    yield* FiberSet.run(set, backgroundTaskUntraced(4))
-    yield* FiberSet.run(set, backgroundTaskUntraced(5))
+      // Spawn untraced background tasks
+      console.log('🚀 Spawning untraced background tasks...')
+      yield* FiberSet.run(set, backgroundTaskUntraced(4))
+      yield* FiberSet.run(set, backgroundTaskUntraced(5))
 
-    console.log('👨 Parent operation completed')
-  }).pipe(
-    Effect.withSpan("parent-operation")
-  )
+      console.log('👨 Parent operation completed')
+    }).pipe(Effect.withSpan('parent-operation'))
 
-  // Wait for all background tasks to complete
-  console.log('⏳ Waiting for background tasks to complete...')
-  yield* Effect.sleep("200 millis") // Give fibers time to complete
+    // Wait for all background tasks to complete
+    console.log('⏳ Waiting for background tasks to complete...')
+    yield* Effect.sleep('200 millis') // Give fibers time to complete
 
-  // Give time for traces to be exported
-  console.log('📤 Waiting for traces to be exported...')
-  yield* Effect.sleep("500 millis")
+    // Give time for traces to be exported
+    console.log('📤 Waiting for traces to be exported...')
+    yield* Effect.sleep('500 millis')
 
     console.log('\n✅ Program completed\n')
     console.log('✅ Expected: background-task-root-* spans are ROOT spans (no parent)')
@@ -95,9 +93,7 @@ const program = Effect.scoped(
 )
 
 // Provide the correct tracing layer
-const main = program.pipe(
-  Effect.provide(TracingLive)
-)
+const main = program.pipe(Effect.provide(TracingLive))
 
 // Run the program
 Effect.runPromise(main)

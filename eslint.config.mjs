@@ -32,23 +32,15 @@ export default [
       '@typescript-eslint': tseslint
     },
     rules: {
-      ...tseslint.configs.recommended.rules,
+      // Basic TypeScript rules (not using recommended due to ESLint 9 + typescript-eslint v6 incompatibility)
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
       ],
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/consistent-type-assertions': [
-        'error',
-        {
-          assertionStyle: 'as',
-          objectLiteralTypeAssertions: 'allow-as-parameter'
-        }
-      ],
-      '@typescript-eslint/no-non-null-assertion': 'error',
+      'no-unused-vars': 'off', // Using @typescript-eslint/no-unused-vars instead
       'no-undef': 'off', // TypeScript handles this
-      'no-redeclare': 'off', // TypeScript compiler validates overloads
-      '@typescript-eslint/no-redeclare': 'off' // Disabled - conflicts with Effect Schema const + type pattern
+      'no-redeclare': 'off' // TypeScript compiler validates overloads
     }
   },
   {
@@ -57,8 +49,8 @@ export default [
       '@typescript-eslint': tseslint
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': 'warn'
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': 'error'
     }
   }
 ]

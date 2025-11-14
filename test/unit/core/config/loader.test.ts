@@ -43,7 +43,9 @@ describe('config-loader', () => {
         // Missing instrumentation field
       }
 
-      await expect(loadConfig({ config: invalidConfig as any })).rejects.toThrow('Invalid configuration')
+      await expect(loadConfig({ config: invalidConfig as any })).rejects.toThrow(
+        'Invalid configuration'
+      )
     })
   })
 })

@@ -30,7 +30,7 @@
     "fastify"
   ],
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=20.0.0",
     "bun": ">=1.0.0"
   },
   "exports": {
@@ -69,14 +69,15 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
-    "prepublishOnly": "pnpm run build && pnpm run test && pnpm run typecheck"
+    "prepublishOnly": "pnpm run build && pnpm run test && pnpm run typecheck",
+    "prepare": "husky"
   },
   "dependencies": {
-    "@opentelemetry/auto-instrumentations-node": "^0.52.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.54.0",
-    "@opentelemetry/instrumentation": "^0.54.0",
-    "@opentelemetry/sdk-node": "^0.54.0",
-    "@opentelemetry/sdk-trace-base": "^1.30.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.65.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.206.0",
+    "@opentelemetry/instrumentation": "^0.208.0",
+    "@opentelemetry/sdk-node": "^0.206.0",
+    "@opentelemetry/sdk-trace-base": "^2.2.0",
     "yaml": "^2.3.0",
     "zod": "^3.22.0"
   },
@@ -85,15 +86,22 @@
     "@effect/platform": "^0.93.0",
     "@eslint/js": "^9.0.0",
     "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@opentelemetry/sdk-logs": "^0.208.0",
+    "@opentelemetry/sdk-metrics": "^2.2.0",
     "@opentelemetry/sdk-trace-base": "^1.28.0",
+    "@opentelemetry/sdk-trace-node": "^2.2.0",
+    "@opentelemetry/sdk-trace-web": "^2.2.0",
+    "@opentelemetry/semantic-conventions": "^1.38.0",
     "@playwright/test": "^1.40.0",
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
-    "@vitest/coverage-v8": "^1.0.4",
+    "@vitest/coverage-v8": "^4.0.8",
     "effect": "^3.19.0",
     "eslint": "^9.0.0",
     "globals": "^15.0.0",
+    "husky": "^9.1.7",
     "prettier": "^3.1.1",
     "testcontainers": "^11.8.1",
     "tsup": "^8.0.1",
