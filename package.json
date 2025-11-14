@@ -69,6 +69,10 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "pack": "pnpm pack",
+    "publish:dry-run": "pnpm publish --dry-run --no-git-checks",
+    "publish:snapshot": "pnpm version --no-git-tag-version prerelease --preid SNAPSHOT && pnpm publish --access public --no-git-checks --tag snapshot",
+    "publish:public": "pnpm publish --access public --no-git-checks",
     "prepublishOnly": "pnpm run build && pnpm run test && pnpm run typecheck",
     "prepare": "husky"
   },
