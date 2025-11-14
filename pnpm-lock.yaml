@@ -8,9 +8,18 @@ importers:
 
   .:
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.0.0
+        version: 9.39.1
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.24
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.1
+      globals:
+        specifier: ^15.0.0
+        version: 15.15.0
       husky:
         specifier: ^9.1.7
         version: 9.1.7
