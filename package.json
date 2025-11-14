@@ -71,7 +71,7 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "prepublishOnly": "pnpm run build && pnpm run test && pnpm run typecheck",
     "prepare": "husky",
-    "publish:local": "pnpm run build && pnpm publish --registry http://localhost:4873 --no-git-checks"
+    "publish:local": "pnpm run build && pnpm publish --registry http://localhost:4873 --no-git-checks --provenance false"
   },
   "dependencies": {
     "@opentelemetry/auto-instrumentations-node": "^0.65.0",
