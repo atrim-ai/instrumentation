@@ -56,16 +56,17 @@ jobs:
       # - name: Lint
       #   run: pnpm turbo lint
 
-      - name: Unit tests with coverage (Node.js package only)
-        run: pnpm --filter @atrim/instrumentation test:coverage
+      - name: Unit tests (Node.js package only)
+        run: pnpm --filter @atrim/instrumentation test
 
-      - name: Upload coverage to Codecov (Node 20 only)
-        if: matrix.node-version == 20
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./packages/node/target/coverage/coverage-final.json
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
+      # TODO: Fix vitest/coverage-v8 version mismatch
+      # - name: Upload coverage to Codecov (Node 20 only)
+      #   if: matrix.node-version == 20
+      #   uses: codecov/codecov-action@v5
+      #   with:
+      #     files: ./packages/node/target/coverage/coverage-final.json
+      #     fail_ci_if_error: false
+      #     token: ${{ secrets.CODECOV_TOKEN }}
 
   # Integration tests - only on Node 20
   # TODO: Re-enable integration tests after fixing in separate branch
