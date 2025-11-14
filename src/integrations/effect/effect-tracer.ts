@@ -21,12 +21,10 @@
 import { Effect, Layer, Tracer } from 'effect'
 import type { Tracer as EffectTracer } from 'effect'
 import * as Otlp from '@effect/opentelemetry/Otlp'
-import * as OtelTracer from '@effect/opentelemetry/Tracer'
 import { FetchHttpClient } from '@effect/platform'
 import { context, trace, type SpanContext, TraceFlags } from '@opentelemetry/api'
 import { loadConfig, type ConfigLoaderOptions } from '../../core/config-loader.js'
 import { initializePatternMatcher } from '../../core/pattern-matcher.js'
-import { extractEffectMetadata } from './metadata-extractor.js'
 import { logger } from '../../core/logger.js'
 
 /**

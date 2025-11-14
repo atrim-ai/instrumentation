@@ -9,8 +9,8 @@
  * @module
  */
 
-import { Effect, FiberSet as EffectFiberSet, Tracer, Option, Context } from 'effect'
-import type { Fiber, RuntimeFiber } from 'effect/Fiber'
+import { Effect, FiberSet as EffectFiberSet, Tracer } from 'effect'
+import type { RuntimeFiber } from 'effect/Fiber'
 
 /**
  * Options for span isolation when running effects in FiberSet
