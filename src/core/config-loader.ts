@@ -11,7 +11,10 @@
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import { parse as parseYAML } from 'yaml'
-import { InstrumentationConfigSchema, type InstrumentationConfig } from './instrumentation-schema.js'
+import {
+  InstrumentationConfigSchema,
+  type InstrumentationConfig
+} from './instrumentation-schema.js'
 
 export interface ConfigLoaderOptions {
   configPath?: string
@@ -41,7 +44,9 @@ const configCache = new Map<
 /**
  * Load configuration with priority order
  */
-export async function loadConfig(options: ConfigLoaderOptions = {}): Promise<InstrumentationConfig> {
+export async function loadConfig(
+  options: ConfigLoaderOptions = {}
+): Promise<InstrumentationConfig> {
   // Priority 1: Explicit config object
   if (options.config) {
     return validateConfig(options.config)
@@ -83,7 +88,9 @@ function loadConfigFromFile(filePath: string): InstrumentationConfig {
 
     // Security: Check file size
     if (fileContents.length > SECURITY_DEFAULTS.maxConfigSize) {
-      throw new Error(`Config file exceeds maximum size of ${SECURITY_DEFAULTS.maxConfigSize} bytes`)
+      throw new Error(
+        `Config file exceeds maximum size of ${SECURITY_DEFAULTS.maxConfigSize} bytes`
+      )
     }
 
     const rawConfig = parseYAML(fileContents)
@@ -172,7 +179,9 @@ function validateConfig(rawConfig: unknown): InstrumentationConfig {
   try {
     return InstrumentationConfigSchema.parse(rawConfig)
   } catch (error) {
-    throw new Error(`Invalid configuration: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(
+      `Invalid configuration: ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 }
 

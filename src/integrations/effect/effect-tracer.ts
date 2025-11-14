@@ -128,17 +128,14 @@ export function createEffectInstrumentation(
 
       // 4. Extract options with defaults
       const otlpEndpoint =
-        options.otlpEndpoint ||
-        process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
-        'http://localhost:4318'
+        options.otlpEndpoint || process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
 
-      const serviceName =
-        options.serviceName || process.env.OTEL_SERVICE_NAME || 'effect-service'
+      const serviceName = options.serviceName || process.env.OTEL_SERVICE_NAME || 'effect-service'
 
-      const serviceVersion =
-        options.serviceVersion || process.env.npm_package_version || '1.0.0'
+      const serviceVersion = options.serviceVersion || process.env.npm_package_version || '1.0.0'
 
-      const autoExtractMetadata = options.autoExtractMetadata ?? config.effect?.auto_extract_metadata ?? true
+      const autoExtractMetadata =
+        options.autoExtractMetadata ?? config.effect?.auto_extract_metadata ?? true
 
       const continueExistingTraces = options.continueExistingTraces ?? true
 
@@ -225,47 +222,46 @@ export function createEffectInstrumentation(
  * )
  * ```
  */
-export const EffectInstrumentationLive: Layer.Layer<never, never, never> =
-  Effect.sync(() => {
-    const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
-    const serviceName = process.env.OTEL_SERVICE_NAME || 'effect-service'
-    const serviceVersion = process.env.npm_package_version || '1.0.0'
+export const EffectInstrumentationLive: Layer.Layer<never, never, never> = Effect.sync(() => {
+  const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
+  const serviceName = process.env.OTEL_SERVICE_NAME || 'effect-service'
+  const serviceVersion = process.env.npm_package_version || '1.0.0'
 
-    logger.log('🔍 Effect OpenTelemetry tracer (Otlp.layer)')
-    logger.log(`   📡 Endpoint: ${endpoint}`)
-    logger.log(`   🏷️  Service: ${serviceName}`)
+  logger.log('🔍 Effect OpenTelemetry tracer (Otlp.layer)')
+  logger.log(`   📡 Endpoint: ${endpoint}`)
+  logger.log(`   🏷️  Service: ${serviceName}`)
 
-    // Use Otlp.layer() like atrim platform
-    // This creates Effect-specific spans that get exported via OTLP
-    return Otlp.layer({
-      baseUrl: endpoint,
-      resource: {
-        serviceName,
-        serviceVersion,
-        attributes: {
-          'platform.component': 'effect'
-        }
-      },
-      // CRITICAL: Bridge Effect context to OpenTelemetry global context
-      // This allows NodeSDK auto-instrumentation to see Effect spans as parent spans
-      tracerContext: <X>(f: () => X, span: EffectTracer.AnySpan): X => {
-        // Only bridge actual Effect spans (not ExternalSpan)
-        if (span._tag !== 'Span') {
-          return f()
-        }
-
-        // Create OpenTelemetry SpanContext from Effect span metadata
-        const spanContext: SpanContext = {
-          traceId: span.traceId,
-          spanId: span.spanId,
-          traceFlags: span.sampled ? TraceFlags.SAMPLED : TraceFlags.NONE
-        }
-
-        // Create a non-recording span to represent the Effect span in OTel context
-        const otelSpan = trace.wrapSpanContext(spanContext)
-
-        // Set as active span in OpenTelemetry global context
-        return context.with(trace.setSpan(context.active(), otelSpan), f)
+  // Use Otlp.layer() like atrim platform
+  // This creates Effect-specific spans that get exported via OTLP
+  return Otlp.layer({
+    baseUrl: endpoint,
+    resource: {
+      serviceName,
+      serviceVersion,
+      attributes: {
+        'platform.component': 'effect'
       }
-    }).pipe(Layer.provide(FetchHttpClient.layer))
-  }).pipe(Layer.unwrapEffect)
+    },
+    // CRITICAL: Bridge Effect context to OpenTelemetry global context
+    // This allows NodeSDK auto-instrumentation to see Effect spans as parent spans
+    tracerContext: <X>(f: () => X, span: EffectTracer.AnySpan): X => {
+      // Only bridge actual Effect spans (not ExternalSpan)
+      if (span._tag !== 'Span') {
+        return f()
+      }
+
+      // Create OpenTelemetry SpanContext from Effect span metadata
+      const spanContext: SpanContext = {
+        traceId: span.traceId,
+        spanId: span.spanId,
+        traceFlags: span.sampled ? TraceFlags.SAMPLED : TraceFlags.NONE
+      }
+
+      // Create a non-recording span to represent the Effect span in OTel context
+      const otelSpan = trace.wrapSpanContext(spanContext)
+
+      // Set as active span in OpenTelemetry global context
+      return context.with(trace.setSpan(context.active(), otelSpan), f)
+    }
+  }).pipe(Layer.provide(FetchHttpClient.layer))
+}).pipe(Layer.unwrapEffect)

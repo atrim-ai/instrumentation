@@ -24,9 +24,9 @@ let collector: CollectorContainer
 let port: number
 
 test.describe('Express Example', () => {
-  test.beforeAll(async ({ }, testInfo) => {
+  test.beforeAll(async ({}, testInfo) => {
     // Use worker-specific port to avoid conflicts in parallel execution
-    port = BASE_PORT + (testInfo.workerIndex * 10)
+    port = BASE_PORT + testInfo.workerIndex * 10
 
     // Start isolated collector container
     collector = await startCollectorContainer()

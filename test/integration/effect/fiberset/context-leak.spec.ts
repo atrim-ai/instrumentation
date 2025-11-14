@@ -46,9 +46,9 @@ async function runExample(
 ): Promise<{ stdout: string; stderr: string }> {
   // Map short names to actual fixture directory names
   const fixtureMap: Record<string, string> = {
-    'problematic': 'fiberset-problematic',
-    'correct': 'fiberset-correct',
-    'isolated': 'fiberset-isolated',
+    problematic: 'fiberset-problematic',
+    correct: 'fiberset-correct',
+    isolated: 'fiberset-isolated',
     'schedule-isolation': 'schedule-isolation'
   }
 
@@ -102,7 +102,7 @@ async function runExample(
  */
 async function fetchTraces(collectorUrl: string): Promise<Span[]> {
   // Wait a bit for spans to be exported
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   // The collector should expose traces via its internal API or we collect them differently
   // For now, we'll rely on the console output and collector logs
