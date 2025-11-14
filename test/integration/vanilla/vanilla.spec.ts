@@ -11,6 +11,7 @@ import {
   collectorReceivedTraces,
   waitFor,
   getCollectorLogs,
+  TEST_TIMEOUTS,
   type TestServer,
   type CollectorContainer
 } from '../shared/helpers.js'
@@ -60,7 +61,7 @@ test.describe('Vanilla TypeScript Example', () => {
   test('should send traces for operations', async ({ page }) => {
     // Trigger operation that creates spans
     await page.goto(`http://localhost:${port}/users/1`)
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -79,7 +80,7 @@ test.describe('Vanilla TypeScript Example', () => {
 
   test('should trace database operations', async ({ page }) => {
     await page.goto(`http://localhost:${port}/users/1`)
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     const logs = await getCollectorLogs(collector, 100)
 

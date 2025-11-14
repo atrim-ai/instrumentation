@@ -11,6 +11,7 @@ import {
   collectorReceivedTraces,
   waitFor,
   getCollectorLogs,
+  TEST_TIMEOUTS,
   type TestServer,
   type CollectorContainer
 } from '../shared/helpers.js'
@@ -61,7 +62,7 @@ test.describe('Express Example', () => {
   test('should send traces to collector', async ({ page }) => {
     // Make a request that should create traces
     await page.goto(`http://localhost:${port}/users`)
-    await page.waitForTimeout(6000) // Wait for traces to be sent (batch processor exports every 5s)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     // Check if collector received traces
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -81,7 +82,7 @@ test.describe('Express Example', () => {
   test('should filter health check spans', async ({ page }) => {
     // Make health check request (should be filtered)
     await page.goto(`http://localhost:${port}/health`)
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_PROCESSING)
 
     const logs = await getCollectorLogs(collector, 100)
 
@@ -106,8 +107,8 @@ test.describe('Express Example', () => {
 
     expect(response.status()).toBe(201)
 
-    // Wait for traces (batch processor exports every 5s by default)
-    await page.waitForTimeout(6000)
+    // Wait for traces to be exported
+    await page.waitForTimeout(TEST_TIMEOUTS.TRACE_EXPORT)
 
     // Verify traces were sent
     const receivedTraces = await collectorReceivedTraces(collector)
