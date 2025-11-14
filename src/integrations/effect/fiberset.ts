@@ -10,7 +10,7 @@
  */
 
 import { Effect, FiberSet as EffectFiberSet, Tracer, Option, Context } from 'effect'
-import type { Fiber } from 'effect/Fiber'
+import type { Fiber, RuntimeFiber } from 'effect/Fiber'
 
 /**
  * Options for span isolation when running effects in FiberSet
@@ -106,7 +106,7 @@ const createLogicalParentAttributes = (
     // Logical parent tracking (works in ALL tools)
     'atrim.logical_parent.span_id': parentSpan.spanId,
     'atrim.logical_parent.trace_id': parentSpan.traceId,
-    'atrim.logical_parent.name': parentSpan.name,
+    'atrim.logical_parent.name': parentSpan._tag === 'Span' ? parentSpan.name : 'external',
 
     // Categorization and metadata
     'atrim.fiberset.isolated': true,
@@ -167,7 +167,7 @@ export const runIsolated = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
   name: string,
   options?: IsolationOptions
-): Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R> => {
+): Effect.Effect<RuntimeFiber<A, E>, never, R> => {
   const {
     createRoot = true,
     captureLogicalParent = true,
@@ -252,7 +252,7 @@ export const runWithSpan = <A, E, R>(
     readonly attributes?: Record<string, unknown>
     readonly category?: string
   }
-): Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R> => {
+): Effect.Effect<RuntimeFiber<A, E>, never, R> => {
   return runIsolated(set, effect, name, {
     createRoot: true,
     captureLogicalParent: true,
