@@ -89,6 +89,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm build
+
       - name: Install example dependencies
         run: |
           for dir in examples/*/; do
@@ -97,12 +103,6 @@ jobs:
               (cd "$dir" && pnpm install --no-frozen-lockfile)
             fi
           done
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Build
-        run: pnpm build
 
       - name: Run integration tests
         run: pnpm test:integration
