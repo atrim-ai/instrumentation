@@ -39,10 +39,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          cache: ${{ github.actor != 'dependabot[bot]' && 'pnpm' || '' }}
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
       - name: TypeScript compilation
         run: pnpm typecheck
@@ -84,10 +84,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: ${{ github.actor != 'dependabot[bot]' && 'pnpm' || '' }}
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
@@ -127,10 +127,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: ${{ github.actor != 'dependabot[bot]' && 'pnpm' || '' }}
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
       - name: Build package
         run: pnpm build
