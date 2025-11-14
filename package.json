@@ -100,7 +100,7 @@
     "@vitest/coverage-v8": "^4.0.8",
     "effect": "^3.19.0",
     "eslint": "^9.0.0",
-    "globals": "^15.0.0",
+    "globals": "^16.5.0",
     "husky": "^9.1.7",
     "prettier": "^3.1.1",
     "testcontainers": "^11.8.1",
