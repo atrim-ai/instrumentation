@@ -52,7 +52,7 @@ export async function detectServiceInfo(): Promise<ServiceInfo> {
         version: envServiceVersion || packageJson.version
       }
     }
-  } catch (error) {
+  } catch {
     // package.json not found or invalid - use fallback
   }
 

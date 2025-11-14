@@ -79,7 +79,7 @@ export function addEffectMetadataToSpan(
 
   for (const [key, value] of Object.entries(metadata)) {
     if (value !== undefined) {
-      span.setAttribute(key, value)
+      span.setAttribute(key, value as string | boolean)
     }
   }
 }
