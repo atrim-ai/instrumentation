@@ -1,0 +1,15 @@
+echo "🔍 Running pre-commit checks..."
+
+# Format all code
+echo "📝 Formatting code..."
+pnpm format
+
+# Run type checking
+echo "🔧 Type checking..."
+pnpm typecheck
+
+# Run linting
+echo "🧹 Linting..."
+pnpm lint
+
+echo "✅ Pre-commit checks passed!"
