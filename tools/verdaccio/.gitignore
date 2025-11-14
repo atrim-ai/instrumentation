@@ -1,0 +1,5 @@
+# Verdaccio storage (persisted data)
+storage/
+
+# Plugins
+plugins/
