@@ -192,13 +192,13 @@ describe('FiberSet.run Context Leakage', () => {
     if (collector && !process.env.CI) {
       await stopCollectorContainer(collector)
       console.log('🧹 Cleaned up collector (local dev mode)')
+      // Give a bit more time for any pending exports to complete
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     } else if (collector && process.env.CI) {
       console.log('⏭️  Leaving collector for CI cleanup')
-    }
-
-    // Give a bit more time for any pending exports to complete (only in local dev)
-    if (!process.env.CI) {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // In CI, wait longer for child processes to finish all exports
+      // before moving to the next test
+      await new Promise((resolve) => setTimeout(resolve, 3000))
     }
 
     // Clean up error handlers
