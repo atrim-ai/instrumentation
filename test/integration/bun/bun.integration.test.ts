@@ -140,8 +140,9 @@ describe('Bun Runtime Example', () => {
   afterAll(async () => {
     if (server) {
       await stopBunServer(server)
-      // Allow SDK time to flush remaining spans before stopping collector
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Wait for BatchSpanProcessor to export (OTEL_BSP_SCHEDULE_DELAY=500 for tests)
+      // Add extra time to ensure all exports complete
+      await new Promise((resolve) => setTimeout(resolve, 2000))
     }
     if (collector) {
       await stopCollectorContainer(collector)
