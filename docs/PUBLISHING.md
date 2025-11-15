@@ -81,6 +81,57 @@ Before creating a release tag, ensure:
 - [ ] README reflects current version capabilities
 - [ ] All PRs for this release are merged
 
+## Local Publishing (For Testing)
+
+If you need to test publishing before using the automated CI workflow, you can publish directly from your local machine.
+
+**⚠️ Note**: Local publishing cannot generate provenance attestations (GitHub Actions only), so use `--no-provenance`.
+
+### Steps for Local Publishing
+
+```bash
+# 1. Login to npm (if not already logged in)
+npm login
+
+# 2. Set a test version
+npm version 0.1.0-dev.1 --no-git-tag-version
+
+# 3. Build the package
+pnpm build
+
+# 4. Publish with dev tag (won't be the default "latest")
+npm publish --tag dev --access public --no-provenance
+
+# 5. Reset version back to development
+npm version 0.0.0-dev --no-git-tag-version
+```
+
+### Verify Local Publication
+
+```bash
+# View the published dev version
+npm view @atrim/instrumentation@dev
+
+# Install the dev version in a test project
+npm install @atrim/instrumentation@dev
+
+# Or install specific dev version
+npm install @atrim/instrumentation@0.1.0-dev.1
+```
+
+### When to Use Local Publishing
+
+- Testing the publishing process before CI setup
+- Quick hotfix testing
+- Verifying package contents
+- Emergency manual publish (if CI is down)
+
+**For production releases, always use the automated CI workflow** to ensure:
+- ✅ Provenance attestations
+- ✅ Full CI validation
+- ✅ Consistent build environment
+- ✅ Automated changelog generation
+
 ## Version Strategy
 
 ### Alpha/Beta Releases
@@ -88,20 +139,30 @@ Before creating a release tag, ensure:
 For pre-release versions, use semantic versioning with pre-release tags:
 
 ```bash
-# Alpha release
+# Alpha release (via CI)
 git tag v0.1.0-alpha.1
 git push origin v0.1.0-alpha.1
 
-# Beta release
+# Beta release (via CI)
 git tag v0.1.0-beta.1
 git push origin v0.1.0-beta.1
 
-# Release candidate
+# Release candidate (via CI)
 git tag v0.1.0-rc.1
 git push origin v0.1.0-rc.1
+
+# Dev release (local testing only)
+npm version 0.1.0-dev.1 --no-git-tag-version
+npm publish --tag dev --no-provenance
 ```
 
-These will be published to npm but tagged as `next` instead of `latest`.
+Pre-release versions can be installed with:
+
+```bash
+npm install @atrim/instrumentation@alpha  # Latest alpha
+npm install @atrim/instrumentation@beta   # Latest beta
+npm install @atrim/instrumentation@dev    # Latest dev
+```
 
 ### Roadmap to v1.0.0
 
