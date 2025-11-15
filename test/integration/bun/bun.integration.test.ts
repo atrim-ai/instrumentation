@@ -104,19 +104,22 @@ async function stopBunServer(server: TestServer): Promise<void> {
   return new Promise((resolve) => {
     server.process.once('exit', () => {
       console.log(`✅ ${server.name} stopped`)
-      resolve()
+      // Wait a bit after process exits to ensure SDK shutdown completes
+      // The shutdown handler might still be flushing spans
+      setTimeout(resolve, 1000)
     })
 
     server.process.kill('SIGTERM')
 
-    // Force kill after 5 seconds
+    // Force kill after 10 seconds (increased from 5s)
     setTimeout(() => {
       if (!server.process.killed) {
         console.log(`⚠️  Force killing ${server.name}`)
         server.process.kill('SIGKILL')
       }
-      resolve()
-    }, 5000)
+      // Still wait a bit even after force kill
+      setTimeout(resolve, 1000)
+    }, 10000)
   })
 }
 
