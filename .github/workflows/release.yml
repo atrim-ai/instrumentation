@@ -37,15 +37,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate version matches tag
+      - name: Set version from tag
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
-            echo "❌ Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)"
-            exit 1
-          fi
-          echo "✅ Version validation passed: $TAG_VERSION"
+          echo "Setting version to: $TAG_VERSION"
+          npm version "$TAG_VERSION" --no-git-tag-version --allow-same-version
 
       - name: TypeScript compilation
         run: pnpm typecheck
@@ -92,6 +88,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Set version from tag
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Setting version to: $TAG_VERSION"
+          npm version "$TAG_VERSION" --no-git-tag-version --allow-same-version
 
       - name: Build for release
         run: pnpm build
