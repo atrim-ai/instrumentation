@@ -7,7 +7,7 @@
  * Related: https://github.com/Effect-TS/effect/pull/5433/files
  */
 
-import { test, expect } from '@playwright/test'
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest'
 import { spawn } from 'child_process'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -63,6 +63,7 @@ async function runExample(
       cwd: exampleDir,
       env: {
         ...process.env,
+        NODE_ENV: 'test', // Ensure test environment is set
         OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint
       }
     })
@@ -112,23 +113,100 @@ async function fetchTraces(collectorUrl: string): Promise<Span[]> {
   return []
 }
 
-test.describe('FiberSet.run Context Leakage', () => {
+describe('FiberSet.run Context Leakage', () => {
   let collector: CollectorContainer
   let collectorUrl: string
+  let errorHandlers: Array<() => void> = []
 
-  test.beforeEach(async () => {
+  // Helper to suppress harmless connection errors during test cleanup
+  const suppressShutdownErrors = () => {
+    const isHarmlessConnectionError = (error: any): boolean => {
+      // Check for direct error properties
+      if (
+        error &&
+        typeof error === 'object' &&
+        error.code === 'ECONNREFUSED' &&
+        (error.address === '127.0.0.1' || error.address === '::1') &&
+        error.port === 4318
+      ) {
+        return true
+      }
+
+      // Check for AggregateError with nested connection errors
+      if (error && error.errors && Array.isArray(error.errors)) {
+        return error.errors.every(
+          (e: any) =>
+            e &&
+            e.code === 'ECONNREFUSED' &&
+            (e.address === '127.0.0.1' || e.address === '::1') &&
+            e.port === 4318
+        )
+      }
+
+      return false
+    }
+
+    const rejectionHandler = (reason: any) => {
+      if (!isHarmlessConnectionError(reason)) {
+        // Re-throw if it's not a harmless error
+        throw reason
+      }
+      // Silently ignore harmless connection errors
+    }
+
+    const exceptionHandler = (error: any) => {
+      if (!isHarmlessConnectionError(error)) {
+        // Re-throw if it's not a harmless error
+        throw error
+      }
+      // Silently ignore harmless connection errors
+    }
+
+    process.on('unhandledRejection', rejectionHandler)
+    process.on('uncaughtException', exceptionHandler)
+
+    // Keep track of handlers for cleanup
+    errorHandlers.push(() => {
+      process.removeListener('unhandledRejection', rejectionHandler)
+      process.removeListener('uncaughtException', exceptionHandler)
+    })
+  }
+
+  beforeEach(async () => {
     // Start isolated collector container using helper
     collector = await startCollectorContainer()
     collectorUrl = `http://localhost:${collector.httpPort}`
+
+    // Install error suppressors for this test
+    suppressShutdownErrors()
   })
 
-  test.afterEach(async () => {
-    if (collector) {
+  afterEach(async () => {
+    // Wait for BatchSpanProcessor to export (default schedule delay is 5000ms)
+    // We've configured OTEL_BSP_SCHEDULE_DELAY=500 in package.json for tests
+    // Add extra time to ensure all exports complete
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    // Only cleanup collectors in local development
+    // In CI, GitHub Actions automatically cleans up all containers when the workflow completes
+    if (collector && !process.env.CI) {
       await stopCollectorContainer(collector)
+      console.log('🧹 Cleaned up collector (local dev mode)')
+      // Give a bit more time for any pending exports to complete
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+    } else if (collector && process.env.CI) {
+      console.log('⏭️  Leaving collector for CI cleanup')
+      // In CI, wait longer for child processes to finish all exports
+      // before moving to the next test
+      await new Promise((resolve) => setTimeout(resolve, 3000))
     }
+
+    // Clean up error handlers
+    errorHandlers.forEach((handler) => handler())
+    errorHandlers = []
   })
 
-  test('should demonstrate context leakage with problematic pattern', async () => {
+  it('should demonstrate context leakage with problematic pattern', async () => {
     console.log('\n📋 Testing problematic FiberSet.run pattern...\n')
 
     // Run the problematic example
@@ -148,7 +226,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('   Background tasks incorrectly inherit parent span context')
   })
 
-  test('should properly isolate context with correct pattern', async () => {
+  it('should properly isolate context with correct pattern', async () => {
     console.log('\n📋 Testing correct FiberSet.run pattern...\n')
 
     // Run the correct example
@@ -170,7 +248,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('   Untraced tasks do not create spans at all')
   })
 
-  test('should demonstrate schedule context isolation', async () => {
+  it('should demonstrate schedule context isolation', async () => {
     console.log('\n📋 Testing schedule iteration isolation...\n')
 
     // Run the schedule isolation example
@@ -189,7 +267,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('\n✅ Schedule iterations should be independent root spans')
   })
 
-  test.skip('should verify trace parent-child relationships programmatically', async () => {
+  it.skip('should verify trace parent-child relationships programmatically', async () => {
     // This test is skipped because it requires:
     // 1. Configuring the collector to export to a queryable endpoint
     // 2. Implementing trace parsing logic

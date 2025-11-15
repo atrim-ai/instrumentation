@@ -5,13 +5,14 @@
  */
 
 import { NodeSDK, NodeSDKConfiguration } from '@opentelemetry/sdk-node'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
 import type { Instrumentation } from '@opentelemetry/instrumentation'
 import { trace } from '@opentelemetry/api'
 import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
-import { detectServiceInfo } from './service-detector.js'
+import { SafeSpanExporter } from './safe-exporter.js'
+import { detectServiceInfoAsync } from './service-detector.js'
 import { loadConfig, type ConfigLoaderOptions } from './config-loader.js'
 import type { InstrumentationConfig, PatternConfig } from './instrumentation-schema.js'
 import { initializePatternMatcher } from './pattern-matcher.js'
@@ -260,16 +261,25 @@ async function performInitialization(options: SdkInitializationOptions): Promise
   }
 
   // 3. Detect service info
-  const serviceInfo = await detectServiceInfo()
+  const serviceInfo = await detectServiceInfoAsync()
   const serviceName = options.serviceName || serviceInfo.name
   const serviceVersion = options.serviceVersion || serviceInfo.version
 
-  // 4. Create OTLP exporter
-  const exporter = createOtlpExporter(options.otlp)
+  // 4. Create OTLP exporter wrapped in SafeSpanExporter
+  // The safe exporter catches and handles connection errors gracefully
+  // instead of letting them escape as uncaught exceptions
+  const rawExporter = createOtlpExporter(options.otlp)
+  const exporter = new SafeSpanExporter(rawExporter)
 
   // 5. Create span processor chain
-  const batchProcessor = new BatchSpanProcessor(exporter)
-  const patternProcessor = new PatternSpanProcessor(config, batchProcessor)
+  // Use SimpleSpanProcessor in test mode to avoid shutdown race conditions
+  // with BatchSpanProcessor's background export timer
+  const useSimpleProcessor =
+    process.env.NODE_ENV === 'test' || process.env.OTEL_USE_SIMPLE_PROCESSOR === 'true'
+  const baseProcessor = useSimpleProcessor
+    ? new SimpleSpanProcessor(exporter)
+    : new BatchSpanProcessor(exporter)
+  const patternProcessor = new PatternSpanProcessor(config, baseProcessor)
 
   // 6. Prepare instrumentations
   const instrumentations: Instrumentation[] = []

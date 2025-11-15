@@ -86,26 +86,28 @@ jobs:
           node-version: 20
           cache: ${{ github.actor != 'dependabot[bot]' && 'pnpm' || '' }}
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
       - name: Install dependencies
         run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
 
       - name: Build
         run: pnpm build
 
+      - name: Install example dependencies
+        run: |
+          for dir in examples/*/; do
+            if [ -f "$dir/package.json" ]; then
+              echo "Installing dependencies for $(basename $dir)..."
+              (cd "$dir" && pnpm install --no-frozen-lockfile)
+            fi
+          done
+
       - name: Run integration tests
         run: pnpm test:integration
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: playwright-results
-          path: target/test-results/
-          retention-days: 7
-          if-no-files-found: ignore
 
   # Package validation - ensure package can be installed
   package:

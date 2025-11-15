@@ -8,7 +8,7 @@
  * - Auto-detection enabling auto-instrumentation (has web framework)
  */
 
-import { test, expect } from '@playwright/test'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import {
   startExample,
   stopServer,
@@ -29,10 +29,10 @@ let server: TestServer
 let collector: CollectorContainer
 let port: number
 
-test.describe('Effect-TS + Express Example', () => {
-  test.beforeAll(async ({}, testInfo) => {
-    // Use worker-specific port to avoid conflicts in parallel execution
-    port = BASE_PORT + testInfo.workerIndex * 10
+describe('Effect-TS + Express Example', () => {
+  beforeAll(async () => {
+    // Use random port to avoid conflicts in parallel execution
+    port = BASE_PORT + Math.floor(Math.random() * 1000)
 
     // Start isolated collector container
     collector = await startCollectorContainer()
@@ -46,27 +46,35 @@ test.describe('Effect-TS + Express Example', () => {
     )
   })
 
-  test.afterAll(async () => {
+  afterAll(async () => {
     if (server) {
       await stopServer(server)
+      // Allow SDK time to flush remaining spans before stopping collector
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     }
-    if (collector) {
+
+    // Only cleanup collectors in local development
+    // In CI, GitHub Actions automatically cleans up all containers when the workflow completes
+    if (collector && !process.env.CI) {
       await stopCollectorContainer(collector)
+      console.log('🧹 Cleaned up collector (local dev mode)')
+    } else if (collector && process.env.CI) {
+      console.log('⏭️  Leaving collector for CI cleanup')
     }
   })
 
-  test('should respond to requests', async ({ page }) => {
-    const response = await page.goto(`http://localhost:${port}/health`)
-    expect(response?.status()).toBe(200)
+  it('should respond to requests', async () => {
+    const response = await fetch(`http://localhost:${port}/health`)
+    expect(response.status).toBe(200)
 
-    const body = await response?.json()
+    const body = await response.json()
     expect(body).toEqual({ status: 'ok' })
   })
 
-  test('should send both Effect and HTTP traces', async ({ page }) => {
+  it('should send both Effect and HTTP traces', async () => {
     // Make request that triggers both Express and Effect tracing
-    await page.goto(`http://localhost:${port}/users`)
-    await page.waitForTimeout(3000)
+    await fetch(`http://localhost:${port}/users`)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -93,10 +101,10 @@ test.describe('Effect-TS + Express Example', () => {
     expect(hasEffectSpans || hasHttpSpans).toBeTruthy()
   })
 
-  test('auto-instrumentation should be enabled', async ({ page }) => {
+  it('auto-instrumentation should be enabled', async () => {
     // This is Effect + Express, so auto-instrumentation should be enabled
-    await page.goto(`http://localhost:${port}/users`)
-    await page.waitForTimeout(2000)
+    await fetch(`http://localhost:${port}/users`)
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     const logs = await getCollectorLogs(collector, 100)
 
@@ -114,12 +122,12 @@ test.describe('Effect-TS + Express Example', () => {
     // The specific span format may vary based on OTel version
   })
 
-  test('should trace Effect race operations', async ({ page }) => {
+  it('should trace Effect race operations', async () => {
     // Trigger race endpoint if it exists
-    const response = await page.request.get(`http://localhost:${port}/race`)
+    const response = await fetch(`http://localhost:${port}/race`)
 
-    if (response.status() === 200) {
-      await page.waitForTimeout(2000)
+    if (response.status === 200) {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       const logs = await getCollectorLogs(collector, 100)
 
@@ -131,12 +139,12 @@ test.describe('Effect-TS + Express Example', () => {
     }
   })
 
-  test('should trace Effect retry operations', async ({ page }) => {
+  it('should trace Effect retry operations', async () => {
     // Trigger retry endpoint if it exists
-    const response = await page.request.get(`http://localhost:${port}/retry`)
+    const response = await fetch(`http://localhost:${port}/retry`)
 
-    if (response.status() === 200 || response.status() === 500) {
-      await page.waitForTimeout(2000)
+    if (response.status === 200 || response.status === 500) {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       const logs = await getCollectorLogs(collector, 100)
 
@@ -148,12 +156,12 @@ test.describe('Effect-TS + Express Example', () => {
     }
   })
 
-  test('should trace Effect timeout operations', async ({ page }) => {
+  it('should trace Effect timeout operations', async () => {
     // Trigger timeout endpoint if it exists
-    const response = await page.request.get(`http://localhost:${port}/timeout`)
+    const response = await fetch(`http://localhost:${port}/timeout`)
 
-    if (response.status() === 200 || response.status() === 408) {
-      await page.waitForTimeout(2000)
+    if (response.status === 200 || response.status === 408) {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       const logs = await getCollectorLogs(collector, 100)
 
@@ -165,25 +173,26 @@ test.describe('Effect-TS + Express Example', () => {
     }
   })
 
-  test('should handle Effect errors with tracing', async ({ page }) => {
+  it('should handle Effect errors with tracing', async () => {
     // Request that might cause an error
-    const response = await page.request.get(`http://localhost:${port}/users/999`)
+    const response = await fetch(`http://localhost:${port}/users/999`)
 
     // Should return 404 or similar
-    expect([404, 500]).toContain(response.status())
+    expect([404, 500]).toContain(response.status)
 
-    await page.waitForTimeout(2000)
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Should still have traces even for errors
     const receivedTraces = await collectorReceivedTraces(collector)
     expect(receivedTraces).toBeTruthy()
   })
 
-  test('should have interactive UI', async ({ page }) => {
-    await page.goto(`http://localhost:${port}`)
-    await page.waitForLoadState('networkidle')
+  it('should have interactive UI', async () => {
+    const response = await fetch(`http://localhost:${port}`)
+    expect(response.status).toBe(200)
 
-    const title = await page.title()
-    expect(title).toBeTruthy()
+    // Check content type indicates HTML
+    const contentType = response.headers.get('content-type')
+    expect(contentType).toContain('text/html')
   })
 })

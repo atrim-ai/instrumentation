@@ -6,10 +6,29 @@ This is the `@atrim/instrumentation` library - a universal OpenTelemetry instrum
 
 ## Core Principles
 
+### Effect-First Architecture
+
+**IMPORTANT:** This is primarily an **Effect-TS project**. The core library implementation should use Effect-TS for all async operations, error handling, and business logic.
+
+**When to use Effect:**
+- ✅ **Core library code** (`src/core/`, `src/integrations/effect/`)
+- ✅ **Public API** (`src/api.ts` - Effect APIs are primary)
+- ✅ **Async operations** (file I/O, network I/O, initialization)
+- ✅ **Error handling** (typed errors using `Data.TaggedError`)
+- ✅ **Resource management** (use Effect's Scope for cleanup)
+
+**When Promises are acceptable:**
+- ✅ **Examples** (`examples/express/`, `examples/vanilla/`, etc.) - Intentionally Promise-based to demonstrate library compatibility with traditional Node.js applications
+- ✅ **Test infrastructure** (`test/`) - Vitest test framework is Promise-based
+- ✅ **Backward compatibility APIs** (`*Async()` functions) - Bridge to Promise-based users
+- ✅ **OpenTelemetry API compliance** - Where OTel spec requires Promise-based interfaces
+
+**Key principle:** While the library is **universal** and works with any framework, the **internal implementation** is Effect-first. Examples remain Promise-based to prove compatibility, NOT because Promises are preferred.
+
 ### Universal Design
 - Works with **any Node.js runtime** (Node.js 18+, Bun 1.0+, Deno 1.40+)
 - Works with **any framework** (Express, Fastify, Koa, Hono, vanilla TypeScript)
-- **Optional** Effect-TS integration (not required)
+- **Effect-TS is optional for users** - Library works without Effect knowledge
 - No framework dependencies in core library
 
 ### Zero-Config Philosophy
@@ -54,8 +73,6 @@ src/
 **Build artifact locations:**
 - `target/dist/` - Compiled TypeScript output (tsup)
 - `target/coverage/` - Test coverage reports (vitest)
-- `target/test-results/` - Integration test results (Playwright)
-- `target/playwright-report/` - Playwright HTML reports
 - `target/.tsbuildinfo` - TypeScript incremental build info
 
 **Why `target/`?**
@@ -68,8 +85,8 @@ src/
 - `package.json` - Update `exports`, `main`, `module`, `types`, `files`
 - `tsup.config.ts` - Set `outDir: 'target/dist'`
 - `tsconfig.json` - Set `outDir: './target/dist'`, `tsBuildInfoFile: './target/.tsbuildinfo'`
-- `vitest.config.ts` - Set `coverage.reportsDirectory: 'target/coverage'`
-- `playwright.config.ts` - Set `outputDir: 'target/test-results'`, reporter paths
+- `vitest.config.ts` - Set `coverage.reportsDirectory: 'target/coverage'` (unit tests)
+- `vitest.integration.config.ts` - Integration test configuration
 
 ### Package Exports
 
@@ -357,6 +374,30 @@ This library works seamlessly with the **Atrim Onboarding CLI**:
 - Fastify integration
 - Effect-TS integration
 - Vanilla TypeScript
+
+**Running Tests:**
+
+Integration tests use Vitest (migrated from Playwright) with an optimized OTel collector configuration:
+
+```bash
+# Run unit tests only
+pnpm test
+
+# Run integration tests
+pnpm test:integration
+
+# Run all tests (unit + integration)
+pnpm test:all
+
+# Watch mode for integration tests (useful during development)
+pnpm test:integration:watch
+```
+
+**Span Export Configuration for Tests:**
+
+Integration tests use `OTEL_BSP_SCHEDULE_DELAY=500` to configure the BatchSpanProcessor in test apps to export spans every 500ms (instead of the default 5000ms). This is already configured in the `test:integration` script in `package.json`.
+
+**Note:** The test collector config is unchanged from defaults and doesn't need modification - the key is configuring the **test apps** to export quickly via `OTEL_BSP_SCHEDULE_DELAY`.
 
 ### Performance Tests
 - Overhead <5% target
