@@ -1,4 +1,9 @@
 {
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/node" }
+  ],
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],
@@ -6,7 +11,6 @@
     "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "outDir": "./target/dist",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -26,16 +30,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "incremental": true,
-    "tsBuildInfoFile": "./target/.tsbuildinfo"
-  },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "target",
-    "test",
-    "examples"
-  ]
+    "composite": false
+  }
 }

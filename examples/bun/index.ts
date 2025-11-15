@@ -23,7 +23,7 @@ import {
   markSpanSuccess,
   markSpanError,
   setSpanAttributes
-} from '@atrim/instrumentation'
+} from '@atrim/instrument-node'
 
 async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation on Bun...\n')
@@ -46,7 +46,7 @@ async function fetchUserData(userId: string) {
       setSpanAttributes(span, {
         'user.id': userId,
         'operation.type': 'fetch',
-        'runtime': 'bun'
+        runtime: 'bun'
       })
 
       // Simulate database query
@@ -76,7 +76,7 @@ async function cacheOperation(key: string, value: string) {
   return await tracer.startActiveSpan('app.cache.set', async (span) => {
     try {
       annotateCacheOperation(span, 'set', key, undefined)
-      setSpanAttributes(span, { 'runtime': 'bun' })
+      setSpanAttributes(span, { runtime: 'bun' })
 
       // Simulate cache operation (using Bun's sleep)
       await Bun.sleep(20)
@@ -124,7 +124,7 @@ async function demoWorkflow() {
 
   return await tracer.startActiveSpan('demo.workflow', async (rootSpan) => {
     try {
-      setSpanAttributes(rootSpan, { 'runtime': 'bun' })
+      setSpanAttributes(rootSpan, { runtime: 'bun' })
 
       // 1. Fetch user (will be instrumented)
       const userData = await fetchUserData('user-456')

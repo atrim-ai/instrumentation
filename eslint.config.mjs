@@ -9,6 +9,7 @@ export default [
   {
     ignores: [
       'dist/**/*',
+      'target/**/*',
       'node_modules/**/*',
       '**/*.min.js',
       '**/bundle*',
@@ -16,7 +17,7 @@ export default [
     ]
   },
   {
-    files: ['src/**/*.ts'],
+    files: ['packages/*/src/**/*.ts', 'src/**/*.ts'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -44,7 +45,7 @@ export default [
     }
   },
   {
-    files: ['test/**/*.ts'],
+    files: ['packages/*/test/**/*.ts', 'test/**/*.ts'],
     plugins: {
       '@typescript-eslint': tseslint
     },

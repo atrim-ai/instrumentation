@@ -9,6 +9,9 @@ examples/*/pnpm-lock.yaml
 target/
 *.tsbuildinfo
 
+# Turborepo
+.turbo/
+
 # Legacy build directories (kept for backwards compatibility)
 dist/
 build/
