@@ -5,7 +5,7 @@
  */
 
 import { NodeSDK, NodeSDKConfiguration } from '@opentelemetry/sdk-node'
-import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
 import type { Instrumentation } from '@opentelemetry/instrumentation'
 import { trace } from '@opentelemetry/api'
@@ -268,16 +268,7 @@ async function performInitialization(options: SdkInitializationOptions): Promise
   const exporter = createOtlpExporter(options.otlp)
 
   // 5. Create span processor chain
-  // Use SimpleSpanProcessor in test environments for immediate export (no batching delays)
-  const useSimpleProcessor = process.env.OTEL_USE_SIMPLE_PROCESSOR === 'true'
-  const baseProcessor = useSimpleProcessor
-    ? new SimpleSpanProcessor(exporter)
-    : new BatchSpanProcessor(exporter)
-
-  if (useSimpleProcessor) {
-    logger.log('@atrim/instrumentation: Using SimpleSpanProcessor (immediate export)')
-  }
-
+  const baseProcessor = new BatchSpanProcessor(exporter)
   const patternProcessor = new PatternSpanProcessor(config, baseProcessor)
 
   // 6. Prepare instrumentations
