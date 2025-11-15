@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrumentation",
-  "version": "0.0.0-dev",
+  "version": "0.1.1-6badeaf-20251115184421",
   "description": "Universal OpenTelemetry instrumentation with centralized YAML configuration. Works with any Node.js application.",
   "type": "module",
   "license": "MIT",
