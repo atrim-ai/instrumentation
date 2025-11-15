@@ -38,14 +38,23 @@ export interface CollectorContainer {
 export async function startCollectorContainer(): Promise<CollectorContainer> {
   console.log('🚀 Starting isolated OTEL Collector container...')
 
-  // Try to enable dev collector forwarding, but don't fail if unavailable
+  // Disable dev forwarding in CI to avoid ECONNREFUSED errors
+  const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
   let devForwardingEnabled = false
-  try {
-    await TestContainers.exposeHostPorts(4318)
-    devForwardingEnabled = true
-    console.log('📤 Traces will be forwarded to host.testcontainers.internal:4318 for inspection')
-  } catch (error) {
-    console.log('⚠️  Dev collector forwarding disabled (port 4318 unavailable or already exposed)')
+
+  if (isCI) {
+    console.log('🔧 Running in CI - dev collector forwarding disabled')
+  } else {
+    // Try to enable dev collector forwarding in local dev, but don't fail if unavailable
+    try {
+      await TestContainers.exposeHostPorts(4318)
+      devForwardingEnabled = true
+      console.log('📤 Traces will be forwarded to host.testcontainers.internal:4318 for inspection')
+    } catch (error) {
+      console.log(
+        '⚠️  Dev collector forwarding disabled (port 4318 unavailable or already exposed)'
+      )
+    }
   }
 
   try {
@@ -215,19 +224,22 @@ export async function stopServer(server: TestServer): Promise<void> {
   return new Promise((resolve) => {
     server.process.once('exit', () => {
       console.log(`✅ ${server.name} stopped`)
-      resolve()
+      // Wait a bit after process exits to ensure SDK shutdown completes
+      // The shutdown handler might still be flushing spans
+      setTimeout(resolve, 1000)
     })
 
     server.process.kill('SIGTERM')
 
-    // Force kill after 5 seconds
+    // Force kill after 10 seconds (increased from 5s)
     setTimeout(() => {
       if (!server.process.killed) {
         console.log(`⚠️  Force killing ${server.name}`)
         server.process.kill('SIGKILL')
       }
-      resolve()
-    }, 5000)
+      // Still wait a bit even after force kill
+      setTimeout(resolve, 1000)
+    }, 10000)
   })
 }
 

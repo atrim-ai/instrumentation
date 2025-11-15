@@ -59,10 +59,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:integration": "playwright test",
-    "test:integration:ui": "playwright test --ui",
-    "test:integration:debug": "playwright test --debug",
-    "test:integration:headed": "playwright test --headed",
+    "test:integration": "OTEL_BSP_SCHEDULE_DELAY=500 vitest run --config vitest.integration.config.ts",
+    "test:all": "pnpm test && pnpm test:integration",
+    "cleanup:containers": "docker ps -a --filter 'ancestor=otel/opentelemetry-collector:latest' -q | xargs -r docker rm -f",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
@@ -77,11 +76,12 @@
     "publish:dev": "pnpm publish:dev:version && pnpm publish:dev:save && pnpm publish:dev:publish && pnpm publish:dev:reset"
   },
   "dependencies": {
-    "@opentelemetry/auto-instrumentations-node": "^0.65.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.206.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.67.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
     "@opentelemetry/instrumentation": "^0.208.0",
-    "@opentelemetry/sdk-node": "^0.206.0",
+    "@opentelemetry/sdk-node": "^0.208.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
+    "effect": "^3.19.0",
     "yaml": "^2.3.0",
     "zod": "^3.22.0"
   },
@@ -97,12 +97,10 @@
     "@opentelemetry/sdk-trace-node": "^2.2.0",
     "@opentelemetry/sdk-trace-web": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.38.0",
-    "@playwright/test": "^1.40.0",
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "@vitest/coverage-v8": "^4.0.8",
-    "effect": "^3.19.0",
     "eslint": "^9.0.0",
     "globals": "^15.0.0",
     "husky": "^9.1.7",
@@ -117,17 +115,13 @@
     "@effect/opentelemetry": ">=0.40.0",
     "@effect/platform": ">=0.70.0",
     "@opentelemetry/api": "^1.0.0",
-    "@opentelemetry/sdk-trace-base": "^1.0.0",
-    "effect": "^3.0.0"
+    "@opentelemetry/sdk-trace-base": "^1.0.0"
   },
   "peerDependenciesMeta": {
     "@opentelemetry/api": {
       "optional": false
     },
     "@opentelemetry/sdk-trace-base": {
-      "optional": true
-    },
-    "effect": {
       "optional": true
     },
     "@effect/opentelemetry": {
