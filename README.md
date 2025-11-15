@@ -63,6 +63,81 @@ instrumentation:
 
 That's it!
 
+## HTTP Request Filtering
+
+Prevent noisy HTTP traces (health checks, OTLP exports, internal endpoints):
+
+### Automatic OTLP Filtering (Default)
+
+By default, the library automatically filters requests to your OTLP collector to prevent trace loops:
+
+```typescript
+await initializeInstrumentation({
+  otlp: { endpoint: 'http://otel-collector:4318' }
+})
+// Automatically ignores: POST http://otel-collector:4318/v1/traces
+// Also ignores: /health, /healthz, /v1/metrics, /v1/logs
+```
+
+### Pattern-Based Filtering (YAML)
+
+Add HTTP filtering patterns to `instrumentation.yaml`:
+
+```yaml
+version: "1.0"
+instrumentation:
+  enabled: true
+  instrument_patterns:
+    - pattern: "^app\\."
+  ignore_patterns:
+    - pattern: "^internal\\."
+
+# HTTP request filtering
+http:
+  ignore_outgoing_urls:
+    - "^http://internal-service"  # Ignore specific services
+    - "/metrics$"                 # Ignore metrics endpoints
+  ignore_incoming_paths:
+    - "^/health$"                 # Ignore health checks
+    - "^/api/internal"            # Ignore internal APIs
+```
+
+### Programmatic Filtering (TypeScript)
+
+Use RegExp patterns or custom hooks:
+
+```typescript
+// Pattern-based filtering
+await initializeInstrumentation({
+  http: {
+    ignoreOutgoingUrls: [/\/health$/, /\/v1\/traces$/],
+    ignoreIncomingPaths: [/^\/health$/]
+  }
+})
+
+// Custom hook for advanced filtering
+await initializeInstrumentation({
+  http: {
+    ignoreOutgoingRequestHook: (req) => {
+      const url = `${req.protocol}//${req.host}${req.path}`
+      return url.includes('otel-collector') || url.includes('internal')
+    },
+    ignoreIncomingRequestHook: (req) => {
+      const path = req.url || ''
+      return path.startsWith('/api/internal')
+    }
+  }
+})
+```
+
+### Why Filter HTTP Requests?
+
+Without filtering, you'll see noisy traces for:
+- **OTLP exports** - `POST http://otel-collector:4318/v1/traces` creating trace loops
+- **Health checks** - `GET /health` every few seconds
+- **Metrics** - `GET /metrics` polling
+- **Internal endpoints** - Service-to-service health probes
+
 ## Examples
 
 See working code in [`/examples`](./examples):
