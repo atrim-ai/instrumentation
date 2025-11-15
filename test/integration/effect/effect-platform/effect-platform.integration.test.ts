@@ -65,7 +65,7 @@ describe('Pure Effect-TS Example', () => {
   it('should send Effect.withSpan() traces', async () => {
     // Make request to trigger Effect spans
     await fetch(`http://localhost:${port}/users`)
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Wait for simple processor export
+    await new Promise((resolve) => setTimeout(resolve, 1000)) // Wait for simple processor export
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -93,7 +93,7 @@ describe('Pure Effect-TS Example', () => {
     expect(response.status).toBe(404)
 
     // Wait for simple processor to export
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Should still have traces even for errors
     const receivedTraces = await collectorReceivedTraces(collector)
@@ -105,7 +105,7 @@ describe('Pure Effect-TS Example', () => {
     // Auto-instrumentation should be auto-detected as disabled
 
     await fetch(`http://localhost:${port}/users`)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     const logs = await getCollectorLogs(collector, 100)
 

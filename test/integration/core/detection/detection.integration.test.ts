@@ -16,7 +16,10 @@ import { writeFile, mkdir } from 'fs/promises'
 /**
  * Execute a TypeScript file using tsx from node_modules
  */
-async function runTsFile(filePath: string, cwd: string = process.cwd()): Promise<{ stdout: string; stderr: string }> {
+async function runTsFile(
+  filePath: string,
+  cwd: string = process.cwd()
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const tsxPath = path.join(process.cwd(), 'node_modules', '.bin', 'tsx')
     const child = spawn(tsxPath, [filePath], { cwd })
@@ -149,7 +152,10 @@ initializeInstrumentation({
 `
     )
 
-    const { stdout, stderr } = await runTsFile(testFile, path.join(process.cwd(), './examples/effect-ts'))
+    const { stdout, stderr } = await runTsFile(
+      testFile,
+      path.join(process.cwd(), './examples/effect-ts')
+    )
 
     const output = stdout + stderr
 
