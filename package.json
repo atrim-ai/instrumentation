@@ -61,6 +61,7 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "OTEL_BSP_SCHEDULE_DELAY=500 vitest run --config vitest.integration.config.ts",
     "test:all": "pnpm test && pnpm test:integration",
+    "cleanup:containers": "docker ps -a --filter 'ancestor=otel/opentelemetry-collector:latest' -q | xargs -r docker rm -f",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
