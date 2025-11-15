@@ -43,5 +43,13 @@ export default defineConfig({
 
     // Reporters
     reporters: ['verbose'],
+
+    // Suppress ECONNREFUSED errors from child processes during shutdown
+    // These are expected when BatchSpanProcessor tries to flush after collectors stop
+    onConsoleLog(log) {
+      if (log.includes('ECONNREFUSED') && log.includes('4318')) {
+        return false // Suppress
+      }
+    },
   },
 })
