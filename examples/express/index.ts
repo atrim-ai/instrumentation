@@ -24,7 +24,8 @@ import {
   annotateDbQuery,
   markSpanSuccess,
   markSpanError,
-  setSpanAttributes
+  setSpanAttributes,
+  suppressShutdownErrors
 } from '@atrim/instrumentation'
 
 // Setup instrumentation - THAT'S IT! One line does everything:
@@ -197,6 +198,9 @@ function createApp() {
 async function main() {
   console.log('📦 @atrim/instrumentation - Express Example\n')
   console.log('='.repeat(60) + '\n')
+
+  // Suppress ECONNREFUSED errors during shutdown in test environment
+  suppressShutdownErrors()
 
   try {
     // Setup instrumentation

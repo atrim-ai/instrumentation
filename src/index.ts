@@ -43,3 +43,6 @@ export {
   annotateDbQuery,
   annotateCacheOperation
 } from './integrations/standard/span-helpers.js'
+
+// Test utilities (for examples and test fixtures)
+export { suppressShutdownErrors } from './core/test-utils.js'
