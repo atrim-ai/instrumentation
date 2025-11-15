@@ -47,3 +47,6 @@ lerna-debug.log*
 test/temp/
 tmp/
 test/integration/core/detection/temp/
+
+# Local version tracking (from pnpm publish:dev)
+.version

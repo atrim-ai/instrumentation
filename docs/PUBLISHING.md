@@ -83,7 +83,7 @@ Before creating a release tag, ensure:
 
 ## Dev Snapshot Releases (Recommended for Testing)
 
-The project uses **Changesets** for publishing development snapshots with git commit traceability.
+Publish development snapshots with automatic version generation based on git state.
 
 ### Quick Dev Publish
 
@@ -91,23 +91,45 @@ The project uses **Changesets** for publishing development snapshots with git co
 # Login to npm (if not already logged in)
 npm login
 
-# Publish a dev snapshot (includes SHA + timestamp)
+# Publish a dev snapshot (includes latest tag + SHA + timestamp)
 pnpm publish:dev
 ```
 
-This creates a version like: `0.0.0-abc1234-20250114102345`
+This creates a version like: `0.1.0-1c3e3b9-20251115005430`
 
 **Where:**
-- `0.0.0` = Snapshot base version
-- `abc1234` = Short git commit SHA (7 chars)
-- `20250114102345` = Timestamp (YYYYMMDDHHMMSS)
+- `0.1.0` = Latest git tag (automatically detected)
+- `1c3e3b9` = Short git commit SHA (7 chars)
+- `20251115005430` = UTC timestamp (YYYYMMDDHHMMSS)
+
+**What happens:**
+1. Detects latest git tag (e.g., `v0.1.0`)
+2. Gets current commit SHA
+3. Generates timestamp
+4. Sets version to `{tag}-{sha}-{timestamp}`
+5. Saves version to `.version` file (gitignored)
+6. Builds and tests the package
+7. Publishes to npm with `dev` tag
+8. Resets package.json version to `0.0.0-dev`
+
+**Tracking published versions:**
+
+After publishing, check `.version` to see the last published dev version:
+
+```bash
+cat .version
+# Output: 0.1.0-1c3e3b9-20251115010008
+```
+
+This file is gitignored but helps you track what you've published locally.
 
 **Advantages:**
 - ✅ Traceable to exact commit via SHA
 - ✅ Sortable by timestamp
+- ✅ Version matches latest release tag
 - ✅ Single command
-- ✅ Uses industry-standard tool (what Effect-TS uses)
 - ✅ Won't affect `latest` tag on npm
+- ✅ No manual version management
 
 ### Installing Dev Snapshots
 
@@ -116,14 +138,14 @@ This creates a version like: `0.0.0-abc1234-20250114102345`
 npm install @atrim/instrumentation@dev
 
 # Install specific snapshot
-npm install @atrim/instrumentation@0.0.0-abc1234-20250114102345
+npm install @atrim/instrumentation@0.1.0-1c3e3b9-20251115005430
 ```
 
 ## Manual Local Publishing (Alternative)
 
-If you need to manually control the version, you can publish directly without Changesets.
+If you need to manually control the version, you can publish directly.
 
-**⚠️ Note**: Manual publishing cannot generate provenance attestations (GitHub Actions only), so use `--no-provenance`.
+**⚠️ Note**: Manual publishing cannot generate provenance attestations (GitHub Actions only).
 
 ### Steps for Manual Publishing
 
@@ -138,7 +160,7 @@ npm version 0.1.0-dev.1 --no-git-tag-version
 pnpm build
 
 # 4. Publish with dev tag (won't be the default "latest")
-npm publish --tag dev --access public --no-provenance
+npm publish --tag dev --access public
 
 # 5. Reset version back to development
 npm version 0.0.0-dev --no-git-tag-version
@@ -189,9 +211,8 @@ git push origin v0.1.0-beta.1
 git tag v0.1.0-rc.1
 git push origin v0.1.0-rc.1
 
-# Dev release (local testing only)
-npm version 0.1.0-dev.1 --no-git-tag-version
-npm publish --tag dev --no-provenance
+# Dev snapshot (local testing with changesets - recommended)
+pnpm publish:dev
 ```
 
 Pre-release versions can be installed with:
@@ -335,15 +356,31 @@ npm install /path/to/atrim-instrumentation-0.0.0-dev.tgz
 node -e "import('@atrim/instrumentation').then(console.log)"
 ```
 
-## Automated Releases (Future)
+## Version Management
 
-For more automation, consider:
+### Current Approach
 
-- **Changesets**: https://github.com/changesets/changesets
-- **Release Please**: https://github.com/googleapis/release-please
-- **Semantic Release**: https://github.com/semantic-release/semantic-release
+- **Dev snapshots**: `pnpm publish:dev` - Automatic versioning with git tag + SHA + timestamp
+- **Production releases**: Manual git tags trigger GitHub Actions workflow
 
-These tools can auto-generate changelogs and determine version bumps from commit messages.
+### Version Format
+
+All dev snapshots follow the format: `{latest-tag}-{git-sha}-{timestamp}`
+
+Example: `0.1.0-1c3e3b9-20251115005430`
+
+This provides:
+- **Traceability**: Git SHA links to exact commit
+- **Ordering**: Timestamp ensures chronological sorting
+- **Context**: Base version from latest git tag
+
+### Future Enhancements
+
+Consider these tools for additional automation:
+
+- **Changesets**: Automated changelog generation and version bumps
+- **Release Please**: Google's release automation tool
+- **Semantic Release**: Fully automated version management based on commit messages
 
 ## Questions?
 

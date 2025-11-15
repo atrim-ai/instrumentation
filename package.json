@@ -14,8 +14,7 @@
   },
   "homepage": "https://github.com/atrim-ai/instrumentation#readme",
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "keywords": [
     "opentelemetry",
@@ -71,7 +70,11 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "prepublishOnly": "pnpm run build && pnpm run test && pnpm run typecheck",
     "prepare": "husky",
-    "publish:dev": "changeset version --snapshot $(git rev-parse --short HEAD) && changeset publish --no-git-tag --tag dev"
+    "publish:dev:version": "npm version $(git describe --tags --abbrev=0 | sed 's/^v//')-$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S) --no-git-tag-version",
+    "publish:dev:save": "node -p \"require('./package.json').version\" > .version",
+    "publish:dev:publish": "pnpm build && npm publish --tag dev --access public",
+    "publish:dev:reset": "npm version 0.0.0-dev --no-git-tag-version",
+    "publish:dev": "pnpm publish:dev:version && pnpm publish:dev:save && pnpm publish:dev:publish && pnpm publish:dev:reset"
   },
   "dependencies": {
     "@opentelemetry/auto-instrumentations-node": "^0.65.0",
@@ -83,7 +86,6 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.7",
     "@effect/opentelemetry": "^0.59.0",
     "@effect/platform": "^0.93.0",
     "@eslint/js": "^9.0.0",
