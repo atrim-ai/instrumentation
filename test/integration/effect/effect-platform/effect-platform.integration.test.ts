@@ -51,8 +51,14 @@ describe('Pure Effect-TS Example', () => {
       // Allow SDK time to flush remaining spans before stopping collector
       await new Promise((resolve) => setTimeout(resolve, 1000))
     }
-    if (collector) {
+
+    // Only cleanup collectors in local development
+    // In CI, GitHub Actions automatically cleans up all containers when the workflow completes
+    if (collector && !process.env.CI) {
       await stopCollectorContainer(collector)
+      console.log('🧹 Cleaned up collector (local dev mode)')
+    } else if (collector && process.env.CI) {
+      console.log('⏭️  Leaving collector for CI cleanup')
     }
   })
 

@@ -23,8 +23,7 @@ import {
   annotateCacheOperation,
   markSpanSuccess,
   markSpanError,
-  setSpanAttributes,
-  suppressShutdownErrors
+  setSpanAttributes
 } from '@atrim/instrumentation'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -273,9 +272,6 @@ function createServer() {
 async function main() {
   console.log('📦 @atrim/instrumentation - Vanilla TypeScript Example\n')
   console.log('='.repeat(60) + '\n')
-
-  // Suppress ECONNREFUSED errors during shutdown in test environment
-  suppressShutdownErrors()
 
   try {
     // Setup instrumentation

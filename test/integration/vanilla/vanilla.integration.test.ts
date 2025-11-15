@@ -47,8 +47,14 @@ describe('Vanilla TypeScript Example', () => {
       // Add extra time to ensure all exports complete
       await new Promise((resolve) => setTimeout(resolve, 2000))
     }
-    if (collector) {
+
+    // Only cleanup collectors in local development
+    // In CI, GitHub Actions automatically cleans up all containers when the workflow completes
+    if (collector && !process.env.CI) {
       await stopCollectorContainer(collector)
+      console.log('🧹 Cleaned up collector (local dev mode)')
+    } else if (collector && process.env.CI) {
+      console.log('⏭️  Leaving collector for CI cleanup')
     }
   })
 
