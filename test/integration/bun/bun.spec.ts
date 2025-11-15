@@ -40,8 +40,7 @@ async function startBunExample(
       env: {
         ...process.env,
         PORT: String(port),
-        OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint || 'http://localhost:14318',
-        OTEL_USE_SIMPLE_PROCESSOR: 'true'
+        OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint || 'http://localhost:14318'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     })
