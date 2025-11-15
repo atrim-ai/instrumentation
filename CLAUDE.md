@@ -54,8 +54,6 @@ src/
 **Build artifact locations:**
 - `target/dist/` - Compiled TypeScript output (tsup)
 - `target/coverage/` - Test coverage reports (vitest)
-- `target/test-results/` - Integration test results (Playwright)
-- `target/playwright-report/` - Playwright HTML reports
 - `target/.tsbuildinfo` - TypeScript incremental build info
 
 **Why `target/`?**
@@ -68,8 +66,8 @@ src/
 - `package.json` - Update `exports`, `main`, `module`, `types`, `files`
 - `tsup.config.ts` - Set `outDir: 'target/dist'`
 - `tsconfig.json` - Set `outDir: './target/dist'`, `tsBuildInfoFile: './target/.tsbuildinfo'`
-- `vitest.config.ts` - Set `coverage.reportsDirectory: 'target/coverage'`
-- `playwright.config.ts` - Set `outputDir: 'target/test-results'`, reporter paths
+- `vitest.config.ts` - Set `coverage.reportsDirectory: 'target/coverage'` (unit tests)
+- `vitest.integration.config.ts` - Integration test configuration
 
 ### Package Exports
 
@@ -357,6 +355,30 @@ This library works seamlessly with the **Atrim Onboarding CLI**:
 - Fastify integration
 - Effect-TS integration
 - Vanilla TypeScript
+
+**Running Tests:**
+
+Integration tests use Vitest (migrated from Playwright) with an optimized OTel collector configuration:
+
+```bash
+# Run unit tests only
+pnpm test
+
+# Run integration tests
+pnpm test:integration
+
+# Run all tests (unit + integration)
+pnpm test:all
+
+# Watch mode for integration tests (useful during development)
+pnpm test:integration:watch
+```
+
+**Span Export Configuration for Tests:**
+
+Integration tests use `OTEL_BSP_SCHEDULE_DELAY=500` to configure the BatchSpanProcessor in test apps to export spans every 500ms (instead of the default 5000ms). This is already configured in the `test:integration` script in `package.json`.
+
+**Note:** The test collector config is unchanged from defaults and doesn't need modification - the key is configuring the **test apps** to export quickly via `OTEL_BSP_SCHEDULE_DELAY`.
 
 ### Performance Tests
 - Overhead <5% target
