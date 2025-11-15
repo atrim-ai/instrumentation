@@ -1,8 +1,8 @@
 echo "🔍 Running pre-commit checks..."
 
-# Format all code
-echo "📝 Formatting code..."
-pnpm format
+# Check code formatting (fails if not formatted)
+echo "📝 Checking code formatting..."
+pnpm format:check
 
 # Run type checking
 echo "🔧 Type checking..."
