@@ -47,6 +47,23 @@ export const AutoIsolationConfigSchema = z.object({
     .default({})
 })
 
+/**
+ * HTTP instrumentation filtering configuration
+ *
+ * Allows filtering of HTTP requests to prevent noisy traces
+ * (e.g., health checks, OTLP exports, internal endpoints)
+ */
+export const HttpFilteringConfigSchema = z.object({
+  // Patterns to ignore for outgoing HTTP requests (string patterns only in YAML)
+  ignore_outgoing_urls: z.array(z.string()).optional(),
+
+  // Patterns to ignore for incoming HTTP requests (string patterns only in YAML)
+  ignore_incoming_paths: z.array(z.string()).optional(),
+
+  // Require parent span for outgoing requests (prevents root spans for HTTP calls)
+  require_parent_for_outgoing_spans: z.boolean().optional()
+})
+
 export const InstrumentationConfigSchema = z.object({
   version: z.string(),
   instrumentation: z.object({
@@ -61,9 +78,11 @@ export const InstrumentationConfigSchema = z.object({
       auto_extract_metadata: z.boolean(),
       auto_isolation: AutoIsolationConfigSchema.optional()
     })
-    .optional()
+    .optional(),
+  http: HttpFilteringConfigSchema.optional()
 })
 
 export type InstrumentationConfig = z.infer<typeof InstrumentationConfigSchema>
 export type PatternConfig = z.infer<typeof PatternConfigSchema>
 export type AutoIsolationConfig = z.infer<typeof AutoIsolationConfigSchema>
+export type HttpFilteringConfig = z.infer<typeof HttpFilteringConfigSchema>
