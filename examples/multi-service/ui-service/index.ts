@@ -6,7 +6,7 @@
  */
 
 import * as http from 'node:http'
-import { initializeInstrumentation } from '@atrim/instrumentation'
+import { initializeInstrumentation } from '@atrim/instrument-node'
 import { trace } from '@opentelemetry/api'
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3101'

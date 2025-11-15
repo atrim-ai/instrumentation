@@ -1,0 +1,51 @@
+# OpenTelemetry Collector configuration for integration tests
+# Forwards traces to both debug exporter (for test logs) and dev instance (for inspection)
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1
+
+exporters:
+  # Debug exporter for test logs
+  debug:
+    verbosity: detailed
+    sampling_initial: 100
+    sampling_thereafter: 100
+
+  # Forward traces to dev instance on host machine via HTTP
+  # Uses host.testcontainers.internal (exposed via TestContainers.exposeHostPorts)
+  otlphttp/dev:
+    endpoint: http://host.testcontainers.internal:4318
+    tls:
+      insecure: true
+    timeout: 10s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 5s
+      max_elapsed_time: 30s
+    sending_queue:
+      enabled: true
+      num_consumers: 10
+      queue_size: 1000
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, otlphttp/dev]

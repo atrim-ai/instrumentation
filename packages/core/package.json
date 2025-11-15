@@ -1,0 +1,39 @@
+{
+  "name": "@atrim/instrument-core",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Core instrumentation logic shared across platform packages (internal)",
+  "type": "module",
+  "license": "MIT",
+  "author": "Atrim AI",
+  "exports": {
+    ".": {
+      "types": "./target/dist/index.d.ts",
+      "import": "./target/dist/index.js"
+    }
+  },
+  "main": "./target/dist/index.js",
+  "types": "./target/dist/index.d.ts",
+  "files": [
+    "target/dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "echo 'No tests for core package'",
+    "test:watch": "echo 'No tests for core package'",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "clean": "rm -rf target"
+  },
+  "dependencies": {
+    "effect": "^3.19.0",
+    "yaml": "^2.3.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.7.2",
+    "tsup": "^8.0.1"
+  }
+}
