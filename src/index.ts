@@ -40,7 +40,10 @@ export {
 // Configuration types and loader
 export type { InstrumentationConfig, PatternConfig } from './core/instrumentation-schema.js'
 export type { ConfigLoaderOptions } from './core/config-loader.js'
+// Promise API
 export { loadConfig } from './core/config-loader.js'
+// Effect API
+export { loadConfigEffect } from './core/config-loader.js'
 
 // Pattern matching utilities
 export { shouldInstrumentSpan, PatternMatcher, getPatternMatcher } from './core/pattern-matcher.js'
