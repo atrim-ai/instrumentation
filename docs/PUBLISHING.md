@@ -81,13 +81,51 @@ Before creating a release tag, ensure:
 - [ ] README reflects current version capabilities
 - [ ] All PRs for this release are merged
 
-## Local Publishing (For Testing)
+## Dev Snapshot Releases (Recommended for Testing)
 
-If you need to test publishing before using the automated CI workflow, you can publish directly from your local machine.
+The project uses **Changesets** for publishing development snapshots with git commit traceability.
 
-**⚠️ Note**: Local publishing cannot generate provenance attestations (GitHub Actions only), so use `--no-provenance`.
+### Quick Dev Publish
 
-### Steps for Local Publishing
+```bash
+# Login to npm (if not already logged in)
+npm login
+
+# Publish a dev snapshot (includes SHA + timestamp)
+pnpm publish:dev
+```
+
+This creates a version like: `0.0.0-abc1234-20250114102345`
+
+**Where:**
+- `0.0.0` = Snapshot base version
+- `abc1234` = Short git commit SHA (7 chars)
+- `20250114102345` = Timestamp (YYYYMMDDHHMMSS)
+
+**Advantages:**
+- ✅ Traceable to exact commit via SHA
+- ✅ Sortable by timestamp
+- ✅ Single command
+- ✅ Uses industry-standard tool (what Effect-TS uses)
+- ✅ Won't affect `latest` tag on npm
+
+### Installing Dev Snapshots
+
+```bash
+# Install latest dev snapshot
+npm install @atrim/instrumentation@dev
+
+# Install specific snapshot
+npm install @atrim/instrumentation@0.0.0-abc1234-20250114102345
+```
+
+## Manual Local Publishing (Alternative)
+
+If you need to manually control the version, you can publish directly without Changesets.
+
+**⚠️ Note**: Manual publishing cannot generate provenance attestations (GitHub Actions only), so use `--no-provenance`.
+
+### Steps for Manual Publishing
 
 ```bash
 # 1. Login to npm (if not already logged in)
