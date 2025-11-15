@@ -3,13 +3,19 @@
  *
  * This module provides the main entry point for complete OpenTelemetry
  * initialization including NodeSDK, OTLP export, and pattern-based filtering.
+ *
+ * Available in two flavors:
+ * - Effect API (primary): For typed error handling and composability
+ * - Promise API (backward compatible): For traditional async/await usage
  */
 
+import { Effect } from 'effect'
 import type { NodeSDK } from '@opentelemetry/sdk-node'
 import { initializeSdk, type SdkInitializationOptions } from './core/sdk-initializer.js'
 import { initializePatternMatcher } from './core/pattern-matcher.js'
 import { loadConfig } from './core/config-loader.js'
 import { logger } from './core/logger.js'
+import { InitializationError, ConfigError } from './core/errors.js'
 
 /**
  * Initialize OpenTelemetry instrumentation with complete SDK setup
@@ -131,3 +137,129 @@ export async function initializePatternMatchingOnly(
     '  Note: NodeSDK is not initialized. Use initializeInstrumentation() for complete setup.'
   )
 }
+
+// ============================================================================
+// Effect-Based API (Primary)
+// ============================================================================
+
+/**
+ * Initialize OpenTelemetry instrumentation (Effect version)
+ *
+ * Provides typed error handling and composability with Effect ecosystem.
+ * All errors are returned in the error channel, not thrown.
+ *
+ * @param options - Initialization options
+ * @returns Effect that yields the initialized NodeSDK or null
+ *
+ * @example
+ * ```typescript
+ * import { Effect } from 'effect'
+ * import { initializeInstrumentationEffect } from '@atrim/instrumentation'
+ *
+ * // Basic usage
+ * const program = initializeInstrumentationEffect()
+ *
+ * await Effect.runPromise(program)
+ *
+ * // With error handling
+ * const program = initializeInstrumentationEffect().pipe(
+ *   Effect.catchTag('ConfigError', (error) => {
+ *     console.error('Config error:', error.reason)
+ *     return Effect.succeed(null)
+ *   }),
+ *   Effect.catchTag('InitializationError', (error) => {
+ *     console.error('Init error:', error.reason)
+ *     return Effect.succeed(null)
+ *   })
+ * )
+ *
+ * await Effect.runPromise(program)
+ *
+ * // With custom options
+ * const program = initializeInstrumentationEffect({
+ *   otlp: { endpoint: 'https://otel.company.com:4318' },
+ *   serviceName: 'my-service'
+ * })
+ * ```
+ */
+export const initializeInstrumentationEffect = (
+  options: SdkInitializationOptions = {}
+): Effect.Effect<NodeSDK | null, InitializationError | ConfigError> =>
+  Effect.gen(function* () {
+    // Initialize SDK with error handling
+    const sdk = yield* Effect.tryPromise({
+      try: () => initializeSdk(options),
+      catch: (error) =>
+        new InitializationError({
+          reason: 'SDK initialization failed',
+          cause: error
+        })
+    })
+
+    // If SDK was initialized, set up pattern matcher
+    if (sdk) {
+      yield* Effect.tryPromise({
+        try: () => loadConfig(options),
+        catch: (error) =>
+          new ConfigError({
+            reason: 'Failed to load config for pattern matcher',
+            cause: error
+          })
+      }).pipe(
+        Effect.tap((config) =>
+          Effect.sync(() => {
+            initializePatternMatcher(config)
+          })
+        )
+      )
+    }
+
+    return sdk
+  })
+
+/**
+ * Initialize pattern matching only (Effect version)
+ *
+ * Use this if you want manual OpenTelemetry setup with pattern filtering.
+ *
+ * @param options - Configuration options
+ * @returns Effect that yields void
+ *
+ * @example
+ * ```typescript
+ * import { Effect } from 'effect'
+ * import { initializePatternMatchingOnlyEffect } from '@atrim/instrumentation'
+ *
+ * const program = initializePatternMatchingOnlyEffect({
+ *   configPath: './instrumentation.yaml'
+ * }).pipe(
+ *   Effect.catchAll((error) => {
+ *     console.error('Pattern matching setup failed:', error.reason)
+ *     return Effect.succeed(undefined)
+ *   })
+ * )
+ *
+ * await Effect.runPromise(program)
+ * ```
+ */
+export const initializePatternMatchingOnlyEffect = (
+  options: SdkInitializationOptions = {}
+): Effect.Effect<void, ConfigError> =>
+  Effect.gen(function* () {
+    const config = yield* Effect.tryPromise({
+      try: () => loadConfig(options),
+      catch: (error) =>
+        new ConfigError({
+          reason: 'Failed to load configuration',
+          cause: error
+        })
+    })
+
+    yield* Effect.sync(() => {
+      initializePatternMatcher(config)
+      logger.log('@atrim/instrumentation: Pattern matching initialized (legacy mode)')
+      logger.log(
+        '  Note: NodeSDK is not initialized. Use initializeInstrumentation() for complete setup.'
+      )
+    })
+  })
