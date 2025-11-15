@@ -13,10 +13,20 @@ npm install @atrim/instrumentation
 ```
 
 **2. Initialize** (at the top of your app)
+
+### Promise API (Traditional)
 ```typescript
 import { initializeInstrumentation } from '@atrim/instrumentation'
 
 await initializeInstrumentation()
+```
+
+### Effect API (Recommended)
+```typescript
+import { Effect } from 'effect'
+import { initializeInstrumentationEffect } from '@atrim/instrumentation'
+
+await Effect.runPromise(initializeInstrumentationEffect())
 ```
 
 **3. Done!** Your app is now sending traces to OpenTelemetry.
@@ -65,11 +75,38 @@ See working code in [`/examples`](./examples):
 
 Need more control? Pass options:
 
+### Promise API
 ```typescript
 await initializeInstrumentation({
   serviceName: 'my-api',
   otlp: { endpoint: 'http://collector:4318' }
 })
+```
+
+### Effect API (with typed error handling)
+```typescript
+import { Effect } from 'effect'
+import {
+  initializeInstrumentationEffect,
+  ConfigError,
+  InitializationError
+} from '@atrim/instrumentation'
+
+const program = initializeInstrumentationEffect({
+  serviceName: 'my-api',
+  otlp: { endpoint: 'http://collector:4318' }
+}).pipe(
+  Effect.catchTag('ConfigError', (error) => {
+    console.error('Config error:', error.reason)
+    return Effect.succeed(null)
+  }),
+  Effect.catchTag('InitializationError', (error) => {
+    console.error('Init error:', error.reason)
+    return Effect.succeed(null)
+  })
+)
+
+await Effect.runPromise(program)
 ```
 
 See [Configuration Guide](./docs/CONFIGURATION.md) for all options.
