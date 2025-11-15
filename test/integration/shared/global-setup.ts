@@ -24,10 +24,12 @@ async function globalSetup() {
 
     // Check for AggregateError with nested connection errors
     if (error && error.errors && Array.isArray(error.errors)) {
-      return error.errors.every((e: any) =>
-        e && e.code === 'ECONNREFUSED' &&
-        (e.address === '127.0.0.1' || e.address === '::1') &&
-        e.port === 4318
+      return error.errors.every(
+        (e: any) =>
+          e &&
+          e.code === 'ECONNREFUSED' &&
+          (e.address === '127.0.0.1' || e.address === '::1') &&
+          e.port === 4318
       )
     }
 
@@ -53,8 +55,9 @@ async function globalSetup() {
       return
     }
 
-    // For all other uncaught exceptions, log them
+    // For all other uncaught exceptions, log and exit (can't recover from uncaught exception)
     console.error('Uncaught Exception:', error)
+    process.exit(1)
   })
 }
 
