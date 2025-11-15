@@ -7,7 +7,7 @@
  * Related: https://github.com/Effect-TS/effect/pull/5433/files
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest'
 import { spawn } from 'child_process'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -115,19 +115,87 @@ async function fetchTraces(collectorUrl: string): Promise<Span[]> {
 describe('FiberSet.run Context Leakage', () => {
   let collector: CollectorContainer
   let collectorUrl: string
+  let errorHandlers: Array<() => void> = []
+
+  // Helper to suppress harmless connection errors during test cleanup
+  const suppressShutdownErrors = () => {
+    const isHarmlessConnectionError = (error: any): boolean => {
+      // Check for direct error properties
+      if (
+        error &&
+        typeof error === 'object' &&
+        error.code === 'ECONNREFUSED' &&
+        (error.address === '127.0.0.1' || error.address === '::1') &&
+        error.port === 4318
+      ) {
+        return true
+      }
+
+      // Check for AggregateError with nested connection errors
+      if (error && error.errors && Array.isArray(error.errors)) {
+        return error.errors.every(
+          (e: any) =>
+            e &&
+            e.code === 'ECONNREFUSED' &&
+            (e.address === '127.0.0.1' || e.address === '::1') &&
+            e.port === 4318
+        )
+      }
+
+      return false
+    }
+
+    const rejectionHandler = (reason: any) => {
+      if (!isHarmlessConnectionError(reason)) {
+        // Re-throw if it's not a harmless error
+        throw reason
+      }
+      // Silently ignore harmless connection errors
+    }
+
+    const exceptionHandler = (error: any) => {
+      if (!isHarmlessConnectionError(error)) {
+        // Re-throw if it's not a harmless error
+        throw error
+      }
+      // Silently ignore harmless connection errors
+    }
+
+    process.on('unhandledRejection', rejectionHandler)
+    process.on('uncaughtException', exceptionHandler)
+
+    // Keep track of handlers for cleanup
+    errorHandlers.push(() => {
+      process.removeListener('unhandledRejection', rejectionHandler)
+      process.removeListener('uncaughtException', exceptionHandler)
+    })
+  }
 
   beforeEach(async () => {
     // Start isolated collector container using helper
     collector = await startCollectorContainer()
     collectorUrl = `http://localhost:${collector.httpPort}`
+
+    // Install error suppressors for this test
+    suppressShutdownErrors()
   })
 
   afterEach(async () => {
-    // Allow SDK time to flush remaining spans before stopping collector
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    // Wait for BatchSpanProcessor to export (default schedule delay is 5000ms)
+    // We've configured OTEL_BSP_SCHEDULE_DELAY=500 in package.json for tests
+    // Add extra time to ensure all exports complete
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
     if (collector) {
       await stopCollectorContainer(collector)
     }
+
+    // Give a bit more time for any pending exports to fail gracefully
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    // Clean up error handlers
+    errorHandlers.forEach(handler => handler())
+    errorHandlers = []
   })
 
   it('should demonstrate context leakage with problematic pattern', async () => {
