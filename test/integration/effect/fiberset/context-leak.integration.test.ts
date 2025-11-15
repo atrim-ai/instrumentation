@@ -63,6 +63,7 @@ async function runExample(
       cwd: exampleDir,
       env: {
         ...process.env,
+        NODE_ENV: 'test', // Ensure test environment is set
         OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint
       }
     })
