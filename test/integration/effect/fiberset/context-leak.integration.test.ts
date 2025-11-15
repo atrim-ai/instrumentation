@@ -194,7 +194,7 @@ describe('FiberSet.run Context Leakage', () => {
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Clean up error handlers
-    errorHandlers.forEach(handler => handler())
+    errorHandlers.forEach((handler) => handler())
     errorHandlers = []
   })
 
