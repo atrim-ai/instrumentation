@@ -123,6 +123,8 @@ describe('FiberSet.run Context Leakage', () => {
   })
 
   afterEach(async () => {
+    // Allow SDK time to flush remaining spans before stopping collector
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     if (collector) {
       await stopCollectorContainer(collector)
     }
