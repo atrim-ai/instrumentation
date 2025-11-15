@@ -225,9 +225,6 @@ describe('Bun Runtime Example', () => {
   it('should filter internal operations', async () => {
     console.log('🧪 Testing filtered operations...')
 
-    // Clear collector logs by checking before
-    const logsBefore = await getCollectorLogs(collector, 100)
-
     // Trigger internal operation (should be filtered)
     const response = await fetch(`http://localhost:${port}/api/internal`)
     expect(response.status).toBe(200)
