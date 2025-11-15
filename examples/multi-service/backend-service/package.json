@@ -9,7 +9,7 @@
     "dev": "tsx watch index.ts"
   },
   "dependencies": {
-    "@atrim/instrumentation": "file:../../..",
+    "@atrim/instrument-node": "file:../../..",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/sdk-node": "^0.54.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.54.0",

@@ -25,7 +25,7 @@ import {
   markSpanSuccess,
   markSpanError,
   setSpanAttributes
-} from '@atrim/instrumentation'
+} from '@atrim/instrument-node'
 
 // Setup instrumentation - THAT'S IT! One line does everything:
 // - Loads instrumentation.yaml configuration
