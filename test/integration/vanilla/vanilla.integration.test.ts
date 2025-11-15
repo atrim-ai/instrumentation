@@ -43,6 +43,8 @@ describe('Vanilla TypeScript Example', () => {
   afterAll(async () => {
     if (server) {
       await stopServer(server)
+      // Allow SDK time to flush remaining spans before stopping collector
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     }
     if (collector) {
       await stopCollectorContainer(collector)
