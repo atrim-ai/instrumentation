@@ -9,7 +9,7 @@ import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trac
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
 import type { Instrumentation } from '@opentelemetry/instrumentation'
 import { trace } from '@opentelemetry/api'
-import type * as http from 'node:http'
+import type { RequestOptions, IncomingMessage } from 'node:http'
 import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
 import { SafeSpanExporter } from './safe-exporter.js'
@@ -81,8 +81,8 @@ export interface SdkInitializationOptions extends ConfigLoaderOptions {
    * // Custom hook for advanced filtering
    * http: {
    *   ignoreOutgoingRequestHook: (req) => {
-   *     const url = `${req.protocol}//${req.host}${req.path}`
-   *     return url.includes('otel-collector')
+   *     const path = req.path || ''
+   *     return path.includes('otel-collector')
    *   }
    * }
    * ```
@@ -103,14 +103,17 @@ export interface SdkInitializationOptions extends ConfigLoaderOptions {
     /**
      * Custom hook for filtering outgoing HTTP requests
      * Return true to ignore the request (no span created)
+     *
+     * Note: The request parameter is RequestOptions (from http.request()),
+     * not the ClientRequest object
      */
-    ignoreOutgoingRequestHook?: (req: http.ClientRequest) => boolean
+    ignoreOutgoingRequestHook?: (req: RequestOptions) => boolean
 
     /**
      * Custom hook for filtering incoming HTTP requests
      * Return true to ignore the request (no span created)
      */
-    ignoreIncomingRequestHook?: (req: http.IncomingMessage) => boolean
+    ignoreIncomingRequestHook?: (req: IncomingMessage) => boolean
 
     /**
      * Require parent span for outgoing requests
@@ -131,6 +134,17 @@ let sdkInstance: NodeSDK | null = null
 let initializationPromise: Promise<NodeSDK | null> | null = null
 
 /**
+ * HTTP instrumentation config that matches @opentelemetry/instrumentation-http
+ * We define this inline to avoid importing from the package (which is a transitive dependency)
+ */
+interface HttpInstrumentationConfigBuilder {
+  enabled: boolean
+  ignoreOutgoingRequestHook?: (req: RequestOptions) => boolean
+  ignoreIncomingRequestHook?: (req: IncomingMessage) => boolean
+  requireParentforOutgoingSpans?: boolean
+}
+
+/**
  * Build HTTP instrumentation configuration from options and config
  *
  * Merges YAML config, programmatic options, and smart defaults
@@ -139,8 +153,8 @@ function buildHttpInstrumentationConfig(
   options: SdkInitializationOptions,
   config: InstrumentationConfig,
   otlpEndpoint: string
-) {
-  const httpConfig = { enabled: true } as Record<string, unknown>
+): HttpInstrumentationConfigBuilder {
+  const httpConfig: HttpInstrumentationConfigBuilder = { enabled: true }
 
   // Step 1: Apply default OTLP endpoint filtering
   // Always filter requests to the OTLP collector to prevent trace loops
@@ -173,17 +187,24 @@ function buildHttpInstrumentationConfig(
     httpConfig.ignoreOutgoingRequestHook = options.http.ignoreOutgoingRequestHook
   } else if (allOutgoingPatterns.length > 0) {
     // Build hook from patterns
-    httpConfig.ignoreOutgoingRequestHook = (req: http.ClientRequest) => {
-      const url = `${req.protocol}//${req.host}${req.path}`
-      const host = req.host || ''
+    httpConfig.ignoreOutgoingRequestHook = (req: RequestOptions) => {
+      // RequestOptions has: hostname, host, port, path, protocol, etc.
+      const hostname = req.hostname || req.host || ''
+      const port = req.port || ''
+      const protocol = req.protocol || 'http:'
       const path = req.path || ''
 
+      // Build full URL for pattern matching
+      const portStr = port ? `:${port}` : ''
+      const url = `${protocol}//${hostname}${portStr}${path}`
+      const host = port ? `${hostname}:${port}` : hostname
+
       // Always ignore OTLP collector host
-      if (host.includes(otlpHost)) {
+      if (host.includes(otlpHost) || hostname.includes(otlpUrl.hostname)) {
         return true
       }
 
-      // Check patterns
+      // Check patterns against both URL and path
       return allOutgoingPatterns.some((pattern) => pattern.test(url) || pattern.test(path))
     }
   }
@@ -202,7 +223,7 @@ function buildHttpInstrumentationConfig(
     httpConfig.ignoreIncomingRequestHook = options.http.ignoreIncomingRequestHook
   } else if (allIncomingPatterns.length > 0) {
     // Build hook from patterns
-    httpConfig.ignoreIncomingRequestHook = (req: http.IncomingMessage) => {
+    httpConfig.ignoreIncomingRequestHook = (req: IncomingMessage) => {
       const path = req.url || ''
       return allIncomingPatterns.some((pattern) => pattern.test(path))
     }
