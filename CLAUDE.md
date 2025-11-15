@@ -6,10 +6,29 @@ This is the `@atrim/instrumentation` library - a universal OpenTelemetry instrum
 
 ## Core Principles
 
+### Effect-First Architecture
+
+**IMPORTANT:** This is primarily an **Effect-TS project**. The core library implementation should use Effect-TS for all async operations, error handling, and business logic.
+
+**When to use Effect:**
+- ✅ **Core library code** (`src/core/`, `src/integrations/effect/`)
+- ✅ **Public API** (`src/api.ts` - Effect APIs are primary)
+- ✅ **Async operations** (file I/O, network I/O, initialization)
+- ✅ **Error handling** (typed errors using `Data.TaggedError`)
+- ✅ **Resource management** (use Effect's Scope for cleanup)
+
+**When Promises are acceptable:**
+- ✅ **Examples** (`examples/express/`, `examples/vanilla/`, etc.) - Intentionally Promise-based to demonstrate library compatibility with traditional Node.js applications
+- ✅ **Test infrastructure** (`test/`) - Vitest test framework is Promise-based
+- ✅ **Backward compatibility APIs** (`*Async()` functions) - Bridge to Promise-based users
+- ✅ **OpenTelemetry API compliance** - Where OTel spec requires Promise-based interfaces
+
+**Key principle:** While the library is **universal** and works with any framework, the **internal implementation** is Effect-first. Examples remain Promise-based to prove compatibility, NOT because Promises are preferred.
+
 ### Universal Design
 - Works with **any Node.js runtime** (Node.js 18+, Bun 1.0+, Deno 1.40+)
 - Works with **any framework** (Express, Fastify, Koa, Hono, vanilla TypeScript)
-- **Optional** Effect-TS integration (not required)
+- **Effect-TS is optional for users** - Library works without Effect knowledge
 - No framework dependencies in core library
 
 ### Zero-Config Philosophy
