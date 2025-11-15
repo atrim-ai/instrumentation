@@ -75,10 +75,10 @@
     "publish:dev": "pnpm publish:dev:version && pnpm publish:dev:save && pnpm publish:dev:publish && pnpm publish:dev:reset"
   },
   "dependencies": {
-    "@opentelemetry/auto-instrumentations-node": "^0.65.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.206.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.67.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
     "@opentelemetry/instrumentation": "^0.208.0",
-    "@opentelemetry/sdk-node": "^0.206.0",
+    "@opentelemetry/sdk-node": "^0.208.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
     "yaml": "^2.3.0",
     "zod": "^3.22.0"
