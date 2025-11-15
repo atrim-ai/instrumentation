@@ -7,7 +7,7 @@
  * Related: https://github.com/Effect-TS/effect/pull/5433/files
  */
 
-import { test, expect } from '@playwright/test'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { spawn } from 'child_process'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -112,23 +112,23 @@ async function fetchTraces(collectorUrl: string): Promise<Span[]> {
   return []
 }
 
-test.describe('FiberSet.run Context Leakage', () => {
+describe('FiberSet.run Context Leakage', () => {
   let collector: CollectorContainer
   let collectorUrl: string
 
-  test.beforeEach(async () => {
+  beforeEach(async () => {
     // Start isolated collector container using helper
     collector = await startCollectorContainer()
     collectorUrl = `http://localhost:${collector.httpPort}`
   })
 
-  test.afterEach(async () => {
+  afterEach(async () => {
     if (collector) {
       await stopCollectorContainer(collector)
     }
   })
 
-  test('should demonstrate context leakage with problematic pattern', async () => {
+  it('should demonstrate context leakage with problematic pattern', async () => {
     console.log('\n📋 Testing problematic FiberSet.run pattern...\n')
 
     // Run the problematic example
@@ -148,7 +148,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('   Background tasks incorrectly inherit parent span context')
   })
 
-  test('should properly isolate context with correct pattern', async () => {
+  it('should properly isolate context with correct pattern', async () => {
     console.log('\n📋 Testing correct FiberSet.run pattern...\n')
 
     // Run the correct example
@@ -170,7 +170,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('   Untraced tasks do not create spans at all')
   })
 
-  test('should demonstrate schedule context isolation', async () => {
+  it('should demonstrate schedule context isolation', async () => {
     console.log('\n📋 Testing schedule iteration isolation...\n')
 
     // Run the schedule isolation example
@@ -189,7 +189,7 @@ test.describe('FiberSet.run Context Leakage', () => {
     console.log('\n✅ Schedule iterations should be independent root spans')
   })
 
-  test.skip('should verify trace parent-child relationships programmatically', async () => {
+  it.skip('should verify trace parent-child relationships programmatically', async () => {
     // This test is skipped because it requires:
     // 1. Configuring the collector to export to a queryable endpoint
     // 2. Implementing trace parsing logic
