@@ -94,23 +94,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
-
       - name: Build
         run: pnpm build
 
       - name: Run integration tests
         run: pnpm test:integration
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: playwright-results
-          path: target/test-results/
-          retention-days: 7
-          if-no-files-found: ignore
 
   # Package validation - ensure package can be installed
   package:
