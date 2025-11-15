@@ -19,6 +19,9 @@ export default defineConfig({
       },
     },
 
+    // Global setup file
+    globalSetup: './test/integration/shared/global-setup.ts',
+
     // Include integration test files
     include: [
       '**/*.integration.test.{js,ts}',

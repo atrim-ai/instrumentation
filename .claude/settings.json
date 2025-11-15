@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)",
+      "Bash(sed:*)",
+      "Bash(xargs:*)",
+      "Bash(npm:*)",
+      "WebSearch",
+      "WebFetch",
+      "mcp__effect-docs__get_effect_doc",
+      "mcp__effect-docs__effect_docs_search"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
