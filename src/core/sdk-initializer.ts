@@ -11,6 +11,7 @@ import type { Instrumentation } from '@opentelemetry/instrumentation'
 import { trace } from '@opentelemetry/api'
 import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
+import { SafeSpanExporter } from './safe-exporter.js'
 import { detectServiceInfoAsync } from './service-detector.js'
 import { loadConfig, type ConfigLoaderOptions } from './config-loader.js'
 import type { InstrumentationConfig, PatternConfig } from './instrumentation-schema.js'
@@ -264,8 +265,11 @@ async function performInitialization(options: SdkInitializationOptions): Promise
   const serviceName = options.serviceName || serviceInfo.name
   const serviceVersion = options.serviceVersion || serviceInfo.version
 
-  // 4. Create OTLP exporter
-  const exporter = createOtlpExporter(options.otlp)
+  // 4. Create OTLP exporter wrapped in SafeSpanExporter
+  // The safe exporter catches and handles connection errors gracefully
+  // instead of letting them escape as uncaught exceptions
+  const rawExporter = createOtlpExporter(options.otlp)
+  const exporter = new SafeSpanExporter(rawExporter)
 
   // 5. Create span processor chain
   // Use SimpleSpanProcessor in test mode to avoid shutdown race conditions
