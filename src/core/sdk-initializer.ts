@@ -11,7 +11,7 @@ import type { Instrumentation } from '@opentelemetry/instrumentation'
 import { trace } from '@opentelemetry/api'
 import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
-import { detectServiceInfo } from './service-detector.js'
+import { detectServiceInfoAsync } from './service-detector.js'
 import { loadConfig, type ConfigLoaderOptions } from './config-loader.js'
 import type { InstrumentationConfig, PatternConfig } from './instrumentation-schema.js'
 import { initializePatternMatcher } from './pattern-matcher.js'
@@ -260,7 +260,7 @@ async function performInitialization(options: SdkInitializationOptions): Promise
   }
 
   // 3. Detect service info
-  const serviceInfo = await detectServiceInfo()
+  const serviceInfo = await detectServiceInfoAsync()
   const serviceName = options.serviceName || serviceInfo.name
   const serviceVersion = options.serviceVersion || serviceInfo.version
 
