@@ -62,7 +62,7 @@ describe('Vanilla TypeScript Example', () => {
     await fetch(`http://localhost:${port}/users/1`)
 
     // Wait longer for all spans (parent + children) to export
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -82,7 +82,10 @@ describe('Vanilla TypeScript Example', () => {
 
     // Log for debugging if neither found
     if (!hasAppSpans) {
-      console.log('Available spans:', logs.split('\n').filter(l => l.includes('Name')))
+      console.log(
+        'Available spans:',
+        logs.split('\n').filter((l) => l.includes('Name'))
+      )
     }
 
     expect(hasAppSpans).toBeTruthy()
@@ -90,7 +93,7 @@ describe('Vanilla TypeScript Example', () => {
 
   it('should trace database operations', async () => {
     await fetch(`http://localhost:${port}/users/1`)
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     const logs = await getCollectorLogs(collector, 100)
 
@@ -102,11 +105,11 @@ describe('Vanilla TypeScript Example', () => {
   it('should trace cache operations', async () => {
     // First request - cache miss
     await fetch(`http://localhost:${port}/users/1`)
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     // Second request - cache hit (if implemented)
     await fetch(`http://localhost:${port}/users/1`)
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     const logs = await getCollectorLogs(collector, 100)
     const hasCacheSpans = logs.includes('cache.')

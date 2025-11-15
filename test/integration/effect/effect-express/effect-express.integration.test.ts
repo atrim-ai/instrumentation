@@ -66,7 +66,7 @@ describe('Effect-TS + Express Example', () => {
   it('should send both Effect and HTTP traces', async () => {
     // Make request that triggers both Express and Effect tracing
     await fetch(`http://localhost:${port}/users`)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -96,7 +96,7 @@ describe('Effect-TS + Express Example', () => {
   it('auto-instrumentation should be enabled', async () => {
     // This is Effect + Express, so auto-instrumentation should be enabled
     await fetch(`http://localhost:${port}/users`)
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     const logs = await getCollectorLogs(collector, 100)
 
@@ -119,7 +119,7 @@ describe('Effect-TS + Express Example', () => {
     const response = await fetch(`http://localhost:${port}/race`)
 
     if (response.status === 200) {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       const logs = await getCollectorLogs(collector, 100)
 
@@ -136,7 +136,7 @@ describe('Effect-TS + Express Example', () => {
     const response = await fetch(`http://localhost:${port}/retry`)
 
     if (response.status === 200 || response.status === 500) {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       const logs = await getCollectorLogs(collector, 100)
 
@@ -153,7 +153,7 @@ describe('Effect-TS + Express Example', () => {
     const response = await fetch(`http://localhost:${port}/timeout`)
 
     if (response.status === 200 || response.status === 408) {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       const logs = await getCollectorLogs(collector, 100)
 
@@ -172,7 +172,7 @@ describe('Effect-TS + Express Example', () => {
     // Should return 404 or similar
     expect([404, 500]).toContain(response.status)
 
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Should still have traces even for errors
     const receivedTraces = await collectorReceivedTraces(collector)

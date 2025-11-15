@@ -63,7 +63,7 @@ describe('Express Example', () => {
     await fetch(`http://localhost:${port}/users`)
 
     // Wait longer for all spans (parent + children) to export
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Check if collector received traces
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -83,7 +83,10 @@ describe('Express Example', () => {
 
     // Log for debugging if neither found
     if (!hasAppSpans) {
-      console.log('Available spans:', logs.split('\n').filter(l => l.includes('Name')))
+      console.log(
+        'Available spans:',
+        logs.split('\n').filter((l) => l.includes('Name'))
+      )
     }
 
     expect(hasAppSpans).toBeTruthy()
@@ -92,7 +95,7 @@ describe('Express Example', () => {
   it('should filter health check spans', async () => {
     // Make health check request (should be filtered)
     await fetch(`http://localhost:${port}/health`)
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     const logs = await getCollectorLogs(collector, 100)
 
@@ -122,7 +125,7 @@ describe('Express Example', () => {
     expect(response.status).toBe(201)
 
     // Wait for traces (BatchSpanProcessor with 500ms delay)
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     // Verify traces were sent
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)

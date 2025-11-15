@@ -166,7 +166,7 @@ describe('Bun Runtime Example', () => {
     expect(body).toHaveProperty('runtime', 'bun')
 
     // Wait for traces to be exported
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Verify traces were received
     const receivedTraces = await waitFor(() => collectorReceivedTraces(collector), 10000, 1000)
@@ -186,7 +186,7 @@ describe('Bun Runtime Example', () => {
     console.log('🧪 Testing database operations...')
 
     await fetch(`http://localhost:${port}/users/456`)
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     const logs = await getCollectorLogs(collector, 200)
 
@@ -204,7 +204,7 @@ describe('Bun Runtime Example', () => {
     })
 
     expect(response.ok).toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     const logs = await getCollectorLogs(collector, 100)
     expect(logs).toContain('app.cache.set')
@@ -223,7 +223,7 @@ describe('Bun Runtime Example', () => {
     const body = await response.json()
     expect(body).toHaveProperty('traced', false)
 
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     const logsAfter = await getCollectorLogs(collector, 100)
 
@@ -242,7 +242,7 @@ describe('Bun Runtime Example', () => {
     const body = await response.json()
     expect(body).toHaveProperty('traced', false)
 
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     const logs = await getCollectorLogs(collector, 100)
 
