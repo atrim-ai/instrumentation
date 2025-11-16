@@ -21,8 +21,14 @@ async function runTsFile(
   cwd: string = process.cwd()
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const tsxPath = path.join(process.cwd(), 'node_modules', '.bin', 'tsx')
-    const child = spawn(tsxPath, [filePath], { cwd })
+    // Use pnpm exec to run tsx (works in monorepo)
+    const child = spawn('pnpm', ['exec', 'tsx', filePath], {
+      cwd,
+      env: {
+        ...process.env,
+        PATH: process.env.PATH
+      }
+    })
 
     let stdout = ''
     let stderr = ''
