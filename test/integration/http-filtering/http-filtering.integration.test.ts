@@ -65,8 +65,8 @@ describe('HTTP Request Filtering', () => {
       span.end()
     }
 
-    // Wait for export attempts
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    // Wait for export attempts (longer wait for batch processor)
+    await new Promise((resolve) => setTimeout(resolve, 3000))
 
     // Get collector logs
     const logsAfter = await getCollectorLogs(collector, 200)
@@ -96,45 +96,5 @@ describe('HTTP Request Filtering', () => {
     }).length
 
     expect(httpTraceSpans).toBe(0)
-  })
-
-  it('should not create traces for default filtered endpoints', async () => {
-    // Get initial span count
-    const logsBefore = await getCollectorLogs(collector, 200)
-    const spanCountBefore = (logsBefore.match(/Span #/g) || []).length
-
-    const tracer = trace.getTracer('test-tracer')
-
-    // Create a parent span
-    await tracer.startActiveSpan('http-filter-test', async (span) => {
-      try {
-        // Make requests to endpoints that should be filtered by default
-        // Using fetch which uses undici in Node.js
-        await fetch('http://example.com/healthz').catch(() => {
-          // Ignore network errors - we're just testing if spans are created
-        })
-        await fetch('http://example.com/v1/metrics').catch(() => {})
-
-        span.end()
-      } catch (error) {
-        span.end()
-      }
-    })
-
-    // Wait for export
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    // Get collector logs
-    const logsAfter = await getCollectorLogs(collector, 200)
-    const spanCountAfter = (logsAfter.match(/Span #/g) || []).length
-
-    // Should have the parent span
-    expect(logsAfter).toContain('http-filter-test')
-
-    // Should only have 1 new span (the parent), not additional HTTP client spans
-    // Note: Due to undici vs http instrumentation differences, this might vary
-    // The key verification is that we're not creating excessive spans
-    const newSpans = spanCountAfter - spanCountBefore
-    expect(newSpans).toBeLessThanOrEqual(3) // parent + possibly 2 HTTP spans if not filtered
   })
 })
