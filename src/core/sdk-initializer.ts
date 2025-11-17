@@ -152,41 +152,27 @@ interface HttpInstrumentationConfigBuilder {
 function buildHttpInstrumentationConfig(
   options: SdkInitializationOptions,
   config: InstrumentationConfig,
-  otlpEndpoint: string
+  _otlpEndpoint: string
 ): HttpInstrumentationConfigBuilder {
   const httpConfig: HttpInstrumentationConfigBuilder = { enabled: true }
 
-  // Step 1: Apply default OTLP endpoint filtering
-  // Always filter requests to the OTLP collector to prevent trace loops
-  const defaultIgnoredPatterns = [
-    /\/v1\/traces$/,
-    /\/v1\/metrics$/,
-    /\/v1\/logs$/,
-    /\/health$/,
-    /\/healthz$/
-  ]
-
-  // Extract hostname and port from OTLP endpoint for filtering
-  const otlpUrl = new URL(otlpEndpoint)
-  const otlpHost = `${otlpUrl.hostname}:${otlpUrl.port || '4318'}`
-
-  // Step 2: Build outgoing request filter
+  // Build outgoing request filter from YAML config and programmatic options ONLY
+  // No hardcoded defaults - everything must be explicit in instrumentation.yaml
   const programmaticPatterns = options.http?.ignoreOutgoingUrls || []
   const yamlPatterns = config.http?.ignore_outgoing_urls || []
 
-  // Combine all patterns
+  // Combine all patterns (NO defaults)
   const allOutgoingPatterns = [
     ...programmaticPatterns.map((p) => (typeof p === 'string' ? new RegExp(p) : p)),
-    ...yamlPatterns.map((p) => new RegExp(p)),
-    ...defaultIgnoredPatterns
+    ...yamlPatterns.map((p) => new RegExp(p))
   ]
 
-  // Build the hook
+  // Build the hook (always create it if we have any patterns)
   if (options.http?.ignoreOutgoingRequestHook) {
     // Use custom hook if provided
     httpConfig.ignoreOutgoingRequestHook = options.http.ignoreOutgoingRequestHook
   } else if (allOutgoingPatterns.length > 0) {
-    // Build hook from patterns
+    // Build hook from YAML/programmatic patterns ONLY
     httpConfig.ignoreOutgoingRequestHook = (req: RequestOptions) => {
       // RequestOptions has: hostname, host, port, path, protocol, etc.
       const hostname = req.hostname || req.host || ''
@@ -197,49 +183,27 @@ function buildHttpInstrumentationConfig(
       // Build full URL for pattern matching
       const portStr = port ? `:${port}` : ''
       const url = `${protocol}//${hostname}${portStr}${path}`
-      const host = port ? `${hostname}:${port}` : hostname
 
       // ALWAYS log for debugging
       console.log('[HTTP FILTER HOOK CALLED]', {
         url,
-        host,
         hostname,
         port,
-        path
+        path,
+        patterns: allOutgoingPatterns.map((p) => p.source)
       })
-
-      // Check if path matches OTLP endpoints
-      if (
-        path.startsWith('/v1/traces') ||
-        path.startsWith('/v1/metrics') ||
-        path.startsWith('/v1/logs')
-      ) {
-        console.log('[HTTP FILTER] ✅ Filtered OTLP endpoint by path:', path)
-        return true
-      }
-
-      // Check if path includes health
-      if (path.includes('/health')) {
-        console.log('[HTTP FILTER] ✅ Filtered health check:', path)
-        return true
-      }
-
-      // Always ignore OTLP collector host
-      if (host.includes(otlpHost) || hostname.includes(otlpUrl.hostname)) {
-        console.log('[HTTP FILTER] ✅ Filtered OTLP collector by host:', host)
-        return true
-      }
 
       // Check patterns against both URL and path
       const matchesPattern = allOutgoingPatterns.some(
         (pattern) => pattern.test(url) || pattern.test(path)
       )
+
       if (matchesPattern) {
-        console.log('[HTTP FILTER] ✅ Filtered by pattern:', url)
+        console.log('[HTTP FILTER] ✅ Filtered by YAML/programmatic pattern:', url)
         return true
       }
 
-      console.log('[HTTP FILTER] ❌ NOT filtered:', url)
+      console.log('[HTTP FILTER] ❌ NOT filtered - no matching pattern:', url)
       return false
     }
   }
@@ -287,80 +251,54 @@ function buildHttpInstrumentationConfig(
 function buildUndiciInstrumentationConfig(
   options: SdkInitializationOptions,
   config: InstrumentationConfig,
-  otlpEndpoint: string
+  _otlpEndpoint: string
 ) {
   const undiciConfig = { enabled: true } as Record<string, unknown>
 
-  // Extract hostname and port from OTLP endpoint for filtering
-  const otlpUrl = new URL(otlpEndpoint)
-  const otlpHost = `${otlpUrl.hostname}:${otlpUrl.port || '4318'}`
-
-  // Default patterns to ignore
-  const defaultIgnoredPatterns = [
-    /\/v1\/traces$/,
-    /\/v1\/metrics$/,
-    /\/v1\/logs$/,
-    /\/health$/,
-    /\/healthz$/
-  ]
-
-  // Get programmatic and YAML patterns
+  // Get programmatic and YAML patterns ONLY (NO hardcoded defaults)
   const programmaticPatterns = options.http?.ignoreOutgoingUrls || []
   const yamlPatterns = config.http?.ignore_outgoing_urls || []
 
-  // Combine all patterns
+  // Combine all patterns (NO defaults)
   const allPatterns = [
     ...programmaticPatterns.map((p) => (typeof p === 'string' ? new RegExp(p) : p)),
-    ...yamlPatterns.map((p) => new RegExp(p)),
-    ...defaultIgnoredPatterns
+    ...yamlPatterns.map((p) => new RegExp(p))
   ]
 
-  // Build ignoreRequestHook for undici
-  // Note: undici's hook receives a UndiciRequest object with origin, path, method
-  undiciConfig.ignoreRequestHook = (request: { origin: string; path: string; method: string }) => {
-    const origin = request.origin
-    const path = request.path
-    const url = `${origin}${path}`
+  // Only create ignoreRequestHook if we have patterns to check
+  if (allPatterns.length > 0) {
+    // Build ignoreRequestHook for undici
+    // Note: undici's hook receives a UndiciRequest object with origin, path, method
+    undiciConfig.ignoreRequestHook = (request: {
+      origin: string
+      path: string
+      method: string
+    }) => {
+      const origin = request.origin
+      const path = request.path
+      const url = `${origin}${path}`
 
-    // ALWAYS log to verify hook is being called
-    console.log('[UNDICI FILTER HOOK CALLED]', {
-      method: request.method,
-      origin,
-      path,
-      url
-    })
+      // ALWAYS log to verify hook is being called
+      console.log('[UNDICI FILTER HOOK CALLED]', {
+        method: request.method,
+        origin,
+        path,
+        url,
+        patterns: allPatterns.map((p) => p.source)
+      })
 
-    // Always ignore OTLP collector by path (most reliable check)
-    if (
-      path.startsWith('/v1/traces') ||
-      path.startsWith('/v1/metrics') ||
-      path.startsWith('/v1/logs')
-    ) {
-      console.log('[UNDICI FILTER] ✅ Filtered OTLP endpoint by path:', path)
-      return true
+      // Check patterns from YAML/programmatic config ONLY
+      const matchesPattern = allPatterns.some((pattern) => pattern.test(url) || pattern.test(path))
+      if (matchesPattern) {
+        console.log('[UNDICI FILTER] ✅ Filtered by YAML/programmatic pattern:', url)
+        return true
+      }
+
+      console.log('[UNDICI FILTER] ❌ NOT filtered - no matching pattern:', url)
+      return false
     }
-
-    // Always ignore health checks
-    if (path.includes('/health')) {
-      console.log('[UNDICI FILTER] ✅ Filtered health check:', path)
-      return true
-    }
-
-    // Always ignore OTLP collector by origin
-    if (origin.includes(otlpHost) || origin.includes(otlpUrl.hostname)) {
-      console.log('[UNDICI FILTER] ✅ Filtered OTLP collector by origin:', origin)
-      return true
-    }
-
-    // Check patterns
-    const matchesPattern = allPatterns.some((pattern) => pattern.test(url) || pattern.test(path))
-    if (matchesPattern) {
-      console.log('[UNDICI FILTER] ✅ Filtered by pattern:', url)
-      return true
-    }
-
-    console.log('[UNDICI FILTER] ❌ NOT filtered:', url)
-    return false
+  } else {
+    console.log('[UNDICI FILTER] No patterns configured - all requests will be traced')
   }
 
   return undiciConfig
@@ -599,6 +537,15 @@ async function performInitialization(options: SdkInitializationOptions): Promise
     // The OTLP HTTP exporter uses fetch, which uses undici
     const undiciConfig = buildUndiciInstrumentationConfig(options, config, otlpEndpoint)
 
+    // DEBUG: Log the configurations being applied
+    console.log('[HTTP/UNDICI CONFIG DEBUG]', {
+      otlpEndpoint,
+      httpConfigHasHook: !!httpConfig.ignoreOutgoingRequestHook,
+      undiciConfigHasHook: !!(undiciConfig as Record<string, unknown>).ignoreRequestHook,
+      yamlHttpPatterns: config.http?.ignore_outgoing_urls,
+      programmaticHttpPatterns: options.http?.ignoreOutgoingUrls
+    })
+
     instrumentations.push(
       ...getNodeAutoInstrumentations({
         // Enable HTTP instrumentation with filtering (for http/https modules)
@@ -617,6 +564,8 @@ async function performInitialization(options: SdkInitializationOptions): Promise
         '@opentelemetry/instrumentation-dns': { enabled: false }
       })
     )
+
+    console.log('[INSTRUMENTATIONS] Configured HTTP and undici filtering')
   }
 
   // Add custom instrumentations

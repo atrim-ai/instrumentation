@@ -65,21 +65,17 @@ That's it!
 
 ## HTTP Request Filtering
 
-Prevent noisy HTTP traces (health checks, OTLP exports, internal endpoints):
+**IMPORTANT:** HTTP filtering is NOT automatic. You must explicitly configure patterns to prevent noisy traces.
 
-### Automatic OTLP Filtering (Default)
+### Why You Need HTTP Filtering
 
-By default, the library automatically filters requests to your OTLP collector to prevent trace loops:
+Without filtering, you'll see noisy traces for:
+- **OTLP exports** - `POST http://otel-collector:4318/v1/traces` creating **infinite trace loops**
+- **Health checks** - `GET /health` every few seconds
+- **Metrics** - `GET /metrics` polling
+- **Internal endpoints** - Service-to-service health probes
 
-```typescript
-await initializeInstrumentation({
-  otlp: { endpoint: 'http://otel-collector:4318' }
-})
-// Automatically ignores: POST http://otel-collector:4318/v1/traces
-// Also ignores: /health, /healthz, /v1/metrics, /v1/logs
-```
-
-### Pattern-Based Filtering (YAML)
+### Pattern-Based Filtering (YAML) - REQUIRED
 
 Add HTTP filtering patterns to `instrumentation.yaml`:
 
@@ -92,14 +88,23 @@ instrumentation:
   ignore_patterns:
     - pattern: "^internal\\."
 
-# HTTP request filtering
+# HTTP request filtering (REQUIRED to prevent trace loops)
 http:
   ignore_outgoing_urls:
-    - "^http://internal-service"  # Ignore specific services
-    - "/metrics$"                 # Ignore metrics endpoints
+    # CRITICAL: Filter OTLP export endpoints to prevent infinite trace loops
+    - "/v1/traces$"
+    - "/v1/metrics$"
+    - "/v1/logs$"
+
+    # Filter health checks and metrics
+    - "/health$"
+    - "/healthz$"
+    - "/metrics$"
+
   ignore_incoming_paths:
-    - "^/health$"                 # Ignore health checks
-    - "^/api/internal"            # Ignore internal APIs
+    - "^/health$"
+    - "^/healthz$"
+    - "^/metrics$"
 ```
 
 ### Programmatic Filtering (TypeScript)
@@ -119,8 +124,8 @@ await initializeInstrumentation({
 await initializeInstrumentation({
   http: {
     ignoreOutgoingRequestHook: (req) => {
-      const url = `${req.protocol}//${req.host}${req.path}`
-      return url.includes('otel-collector') || url.includes('internal')
+      const path = req.path || ''
+      return path.includes('/internal') || path.startsWith('/v1/')
     },
     ignoreIncomingRequestHook: (req) => {
       const path = req.url || ''
@@ -129,14 +134,6 @@ await initializeInstrumentation({
   }
 })
 ```
-
-### Why Filter HTTP Requests?
-
-Without filtering, you'll see noisy traces for:
-- **OTLP exports** - `POST http://otel-collector:4318/v1/traces` creating trace loops
-- **Health checks** - `GET /health` every few seconds
-- **Metrics** - `GET /metrics` polling
-- **Internal endpoints** - Service-to-service health probes
 
 ## Examples
 
