@@ -199,13 +199,37 @@ function buildHttpInstrumentationConfig(
       const url = `${protocol}//${hostname}${portStr}${path}`
       const host = port ? `${hostname}:${port}` : hostname
 
+      // Debug logging (only in verbose mode)
+      const shouldDebug = process.env.ATRIM_DEBUG_HTTP_FILTERING === 'true'
+      if (shouldDebug) {
+        logger.log('🔍 HTTP outgoing request filter check:', {
+          url,
+          host,
+          hostname,
+          port,
+          path,
+          otlpHost,
+          otlpHostname: otlpUrl.hostname
+        })
+      }
+
       // Always ignore OTLP collector host
       if (host.includes(otlpHost) || hostname.includes(otlpUrl.hostname)) {
+        if (shouldDebug) {
+          logger.log('✅ Filtered OTLP collector request:', url)
+        }
         return true
       }
 
       // Check patterns against both URL and path
-      return allOutgoingPatterns.some((pattern) => pattern.test(url) || pattern.test(path))
+      const matchesPattern = allOutgoingPatterns.some(
+        (pattern) => pattern.test(url) || pattern.test(path)
+      )
+      if (matchesPattern && shouldDebug) {
+        logger.log('✅ Filtered by pattern:', url)
+      }
+
+      return matchesPattern
     }
   }
 
@@ -241,6 +265,95 @@ function buildHttpInstrumentationConfig(
   }
 
   return httpConfig
+}
+
+/**
+ * Build undici instrumentation configuration from options and config
+ *
+ * Undici powers the fetch API in Node.js 18+ and is used by the OTLP HTTP exporter
+ * We must filter OTLP requests here to prevent trace loops
+ */
+function buildUndiciInstrumentationConfig(
+  options: SdkInitializationOptions,
+  config: InstrumentationConfig,
+  otlpEndpoint: string
+) {
+  const undiciConfig = { enabled: true } as Record<string, unknown>
+
+  // Extract hostname and port from OTLP endpoint for filtering
+  const otlpUrl = new URL(otlpEndpoint)
+  const otlpHost = `${otlpUrl.hostname}:${otlpUrl.port || '4318'}`
+
+  // Default patterns to ignore
+  const defaultIgnoredPatterns = [
+    /\/v1\/traces$/,
+    /\/v1\/metrics$/,
+    /\/v1\/logs$/,
+    /\/health$/,
+    /\/healthz$/
+  ]
+
+  // Get programmatic and YAML patterns
+  const programmaticPatterns = options.http?.ignoreOutgoingUrls || []
+  const yamlPatterns = config.http?.ignore_outgoing_urls || []
+
+  // Combine all patterns
+  const allPatterns = [
+    ...programmaticPatterns.map((p) => (typeof p === 'string' ? new RegExp(p) : p)),
+    ...yamlPatterns.map((p) => new RegExp(p)),
+    ...defaultIgnoredPatterns
+  ]
+
+  // Build ignoreRequestHook for undici
+  // Note: undici's hook receives a UndiciRequest object with origin, path, method
+  undiciConfig.ignoreRequestHook = (request: { origin: string; path: string; method: string }) => {
+    const origin = request.origin
+    const path = request.path
+    const url = `${origin}${path}`
+
+    // Debug logging
+    const shouldDebug = process.env.ATRIM_DEBUG_HTTP_FILTERING === 'true'
+    if (shouldDebug) {
+      logger.log('🔍 Undici request filter check:', {
+        method: request.method,
+        url,
+        origin,
+        path,
+        otlpHost,
+        otlpHostname: otlpUrl.hostname
+      })
+    }
+
+    // Always ignore OTLP collector by origin
+    if (origin.includes(otlpHost) || origin.includes(otlpUrl.hostname)) {
+      if (shouldDebug) {
+        logger.log('✅ Filtered undici OTLP collector request (by host):', url)
+      }
+      return true
+    }
+
+    // Always ignore OTLP collector by path
+    if (
+      path.startsWith('/v1/traces') ||
+      path.startsWith('/v1/metrics') ||
+      path.startsWith('/v1/logs')
+    ) {
+      if (shouldDebug) {
+        logger.log('✅ Filtered undici OTLP collector request (by path):', url)
+      }
+      return true
+    }
+
+    // Check patterns
+    const matchesPattern = allPatterns.some((pattern) => pattern.test(url) || pattern.test(path))
+    if (matchesPattern && shouldDebug) {
+      logger.log('✅ Filtered undici request by pattern:', url)
+    }
+
+    return matchesPattern
+  }
+
+  return undiciConfig
 }
 
 /**
@@ -472,10 +585,19 @@ async function performInitialization(options: SdkInitializationOptions): Promise
     // Build HTTP instrumentation config with filtering
     const httpConfig = buildHttpInstrumentationConfig(options, config, otlpEndpoint)
 
+    // Build undici instrumentation config (for fetch/undici in Node.js 18+)
+    // The OTLP HTTP exporter uses fetch, which uses undici
+    const undiciConfig = buildUndiciInstrumentationConfig(options, config, otlpEndpoint)
+
     instrumentations.push(
       ...getNodeAutoInstrumentations({
-        // Enable HTTP instrumentation with filtering
+        // Enable HTTP instrumentation with filtering (for http/https modules)
         '@opentelemetry/instrumentation-http': httpConfig,
+
+        // Enable undici instrumentation with filtering (for fetch API)
+        '@opentelemetry/instrumentation-undici': undiciConfig,
+
+        // Enable web framework instrumentations
         '@opentelemetry/instrumentation-express': { enabled: true },
         '@opentelemetry/instrumentation-fastify': { enabled: true },
         '@opentelemetry/instrumentation-koa': { enabled: true },
