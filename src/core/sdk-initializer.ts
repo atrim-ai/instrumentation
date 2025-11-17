@@ -199,25 +199,34 @@ function buildHttpInstrumentationConfig(
       const url = `${protocol}//${hostname}${portStr}${path}`
       const host = port ? `${hostname}:${port}` : hostname
 
-      // Debug logging (only in verbose mode)
-      const shouldDebug = process.env.ATRIM_DEBUG_HTTP_FILTERING === 'true'
-      if (shouldDebug) {
-        logger.log('🔍 HTTP outgoing request filter check:', {
-          url,
-          host,
-          hostname,
-          port,
-          path,
-          otlpHost,
-          otlpHostname: otlpUrl.hostname
-        })
+      // ALWAYS log for debugging
+      console.log('[HTTP FILTER HOOK CALLED]', {
+        url,
+        host,
+        hostname,
+        port,
+        path
+      })
+
+      // Check if path matches OTLP endpoints
+      if (
+        path.startsWith('/v1/traces') ||
+        path.startsWith('/v1/metrics') ||
+        path.startsWith('/v1/logs')
+      ) {
+        console.log('[HTTP FILTER] ✅ Filtered OTLP endpoint by path:', path)
+        return true
+      }
+
+      // Check if path includes health
+      if (path.includes('/health')) {
+        console.log('[HTTP FILTER] ✅ Filtered health check:', path)
+        return true
       }
 
       // Always ignore OTLP collector host
       if (host.includes(otlpHost) || hostname.includes(otlpUrl.hostname)) {
-        if (shouldDebug) {
-          logger.log('✅ Filtered OTLP collector request:', url)
-        }
+        console.log('[HTTP FILTER] ✅ Filtered OTLP collector by host:', host)
         return true
       }
 
@@ -225,11 +234,13 @@ function buildHttpInstrumentationConfig(
       const matchesPattern = allOutgoingPatterns.some(
         (pattern) => pattern.test(url) || pattern.test(path)
       )
-      if (matchesPattern && shouldDebug) {
-        logger.log('✅ Filtered by pattern:', url)
+      if (matchesPattern) {
+        console.log('[HTTP FILTER] ✅ Filtered by pattern:', url)
+        return true
       }
 
-      return matchesPattern
+      console.log('[HTTP FILTER] ❌ NOT filtered:', url)
+      return false
     }
   }
 
@@ -311,46 +322,45 @@ function buildUndiciInstrumentationConfig(
     const path = request.path
     const url = `${origin}${path}`
 
-    // Debug logging
-    const shouldDebug = process.env.ATRIM_DEBUG_HTTP_FILTERING === 'true'
-    if (shouldDebug) {
-      logger.log('🔍 Undici request filter check:', {
-        method: request.method,
-        url,
-        origin,
-        path,
-        otlpHost,
-        otlpHostname: otlpUrl.hostname
-      })
-    }
+    // ALWAYS log to verify hook is being called
+    console.log('[UNDICI FILTER HOOK CALLED]', {
+      method: request.method,
+      origin,
+      path,
+      url
+    })
 
-    // Always ignore OTLP collector by origin
-    if (origin.includes(otlpHost) || origin.includes(otlpUrl.hostname)) {
-      if (shouldDebug) {
-        logger.log('✅ Filtered undici OTLP collector request (by host):', url)
-      }
-      return true
-    }
-
-    // Always ignore OTLP collector by path
+    // Always ignore OTLP collector by path (most reliable check)
     if (
       path.startsWith('/v1/traces') ||
       path.startsWith('/v1/metrics') ||
       path.startsWith('/v1/logs')
     ) {
-      if (shouldDebug) {
-        logger.log('✅ Filtered undici OTLP collector request (by path):', url)
-      }
+      console.log('[UNDICI FILTER] ✅ Filtered OTLP endpoint by path:', path)
+      return true
+    }
+
+    // Always ignore health checks
+    if (path.includes('/health')) {
+      console.log('[UNDICI FILTER] ✅ Filtered health check:', path)
+      return true
+    }
+
+    // Always ignore OTLP collector by origin
+    if (origin.includes(otlpHost) || origin.includes(otlpUrl.hostname)) {
+      console.log('[UNDICI FILTER] ✅ Filtered OTLP collector by origin:', origin)
       return true
     }
 
     // Check patterns
     const matchesPattern = allPatterns.some((pattern) => pattern.test(url) || pattern.test(path))
-    if (matchesPattern && shouldDebug) {
-      logger.log('✅ Filtered undici request by pattern:', url)
+    if (matchesPattern) {
+      console.log('[UNDICI FILTER] ✅ Filtered by pattern:', url)
+      return true
     }
 
-    return matchesPattern
+    console.log('[UNDICI FILTER] ❌ NOT filtered:', url)
+    return false
   }
 
   return undiciConfig
