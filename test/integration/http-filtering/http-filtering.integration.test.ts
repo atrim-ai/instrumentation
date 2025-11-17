@@ -35,8 +35,15 @@ describe('HTTP Request Filtering', () => {
         endpoint: `http://localhost:${collector.httpPort}`
       },
       http: {
-        // Pattern-based filtering (for future use)
-        ignoreOutgoingUrls: [/test-ignored-service/],
+        // Explicitly configure patterns to filter OTLP endpoints
+        // (NO defaults are applied automatically)
+        ignoreOutgoingUrls: [
+          /\/v1\/traces$/,
+          /\/v1\/metrics$/,
+          /\/v1\/logs$/,
+          /\/health$/,
+          /\/healthz$/
+        ],
         ignoreIncomingPaths: [/^\/health$/, /^\/api\/internal/]
       }
     })
