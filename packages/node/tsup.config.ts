@@ -16,7 +16,7 @@ export default defineConfig([
     target: 'es2020',
     outDir: 'target/dist',
     tsconfig: 'tsconfig.build.json',
-    external: ['@atrim/instrument-core', '@opentelemetry/api', '@opentelemetry/sdk-trace-base']
+    external: ['@opentelemetry/api', '@opentelemetry/sdk-trace-base']
   },
   // Effect integration (builds JS but skips DTS if Effect not installed)
   {
@@ -34,7 +34,6 @@ export default defineConfig([
     outDir: 'target/dist',
     tsconfig: 'tsconfig.build.json',
     external: [
-      '@atrim/instrument-core',
       'effect',
       '@effect/opentelemetry',
       '@effect/platform',
