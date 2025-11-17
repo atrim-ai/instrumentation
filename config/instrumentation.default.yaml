@@ -36,10 +36,9 @@ instrumentation:
 http:
   # Outgoing HTTP requests to ignore (prevents HTTP client spans)
   ignore_outgoing_urls:
-    # OTLP export endpoints (CRITICAL for preventing trace loops)
-    - "/v1/traces$"
-    - "/v1/metrics$"
-    - "/v1/logs$"
+    # NOTE: OTLP export requests (/v1/traces, /v1/metrics, /v1/logs) are
+    # automatically suppressed by OpenTelemetry SDK and do not need filtering.
+    # The SDK runs exports in a suppressed context to prevent trace loops.
 
     # Health check endpoints
     - "/health$"
@@ -47,7 +46,7 @@ http:
     - "/readiness$"
     - "/liveness$"
 
-    # Metrics endpoints
+    # Metrics endpoints (non-OTLP)
     - "/metrics$"
 
   # Incoming HTTP requests to ignore (prevents HTTP server spans)
