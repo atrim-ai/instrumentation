@@ -15,7 +15,7 @@ import {
 import { spawn, ChildProcess } from 'child_process'
 import path from 'path'
 
-const EXAMPLE_DIR = path.join(process.cwd(), './examples/bun')
+const EXAMPLE_DIR = path.join(process.cwd(), '../../examples/bun')
 const BASE_PORT = 3103
 
 let server: TestServer
@@ -34,9 +34,10 @@ async function startBunExample(
   console.log(`🚀 Starting ${name} with Bun on port ${port}...`)
 
   return new Promise((resolve, reject) => {
-    // Start the server with bun
+    // Start the server with bun (explicitly use bash shell)
     const serverProcess = spawn('bun', ['run', 'index.ts'], {
       cwd: dir,
+      shell: '/bin/bash',
       env: {
         ...process.env,
         PORT: String(port),

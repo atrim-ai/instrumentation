@@ -158,12 +158,12 @@ export async function startExample(
   console.log(`🚀 Starting ${name} on port ${port}...`)
 
   return new Promise((resolve, reject) => {
-    // Use pnpm from PATH
+    // Use pnpm from PATH (explicitly use bash shell)
     const serverProcess = spawn('pnpm', ['start'], {
       cwd: dir,
+      shell: '/bin/bash',
       env: {
         ...process.env,
-        PATH: process.env.PATH,
         PORT: String(port),
         OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint || 'http://localhost:14318'
       },
