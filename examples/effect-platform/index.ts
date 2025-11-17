@@ -27,7 +27,7 @@ import * as HttpServer from '@effect/platform/HttpServer'
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse'
 import * as NodeHttp from '@effect/platform-node/NodeHttpServer'
 import { createServer } from 'node:http'
-import { EffectInstrumentationLive } from '../../src/integrations/effect/index.js'
+import { EffectInstrumentationLive } from '@atrim/instrument-node/effect'
 
 // ============================================================================
 // Domain Types

@@ -24,8 +24,8 @@
 
 import express from 'express'
 import { Effect, Schedule, Duration, Exit, Layer } from 'effect'
-import { EffectInstrumentationLive } from '../../src/integrations/effect/index.js'
-import { initializeInstrumentation } from '../../src/index.js'
+import { EffectInstrumentationLive } from '@atrim/instrument-node/effect'
+import { initializeInstrumentation } from '@atrim/instrument-node'
 
 // ============================================================================
 // Domain Types
