@@ -10,12 +10,12 @@ export default defineConfig({
     testTimeout: 60000, // 60 seconds for individual tests
     hookTimeout: 90000, // 90 seconds for setup/teardown (Docker containers can be slow)
 
-    // Enable parallel execution with thread pool
-    pool: 'threads',
+    // Use forks pool for integration tests (threads don't support child_process spawning well)
+    pool: 'forks',
     poolOptions: {
-      threads: {
-        minThreads: 2,
-        maxThreads: 8 // Allow multiple threads for concurrent testing
+      forks: {
+        minForks: 1,
+        maxForks: 4
       }
     },
 
