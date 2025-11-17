@@ -25,6 +25,7 @@ describe('HTTP Request Filtering', () => {
     // Initialize instrumentation with HTTP filtering
     await initializeInstrumentation({
       serviceName: 'http-filtering-test',
+      serviceVersion: '1.0.0-test',
       otlp: {
         endpoint: `http://localhost:${collector.httpPort}`
       },
@@ -40,8 +41,9 @@ describe('HTTP Request Filtering', () => {
   })
 
   afterAll(async () => {
-    // Wait for BatchSpanProcessor to export
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    // Wait for BatchSpanProcessor to export and collector to forward
+    // Extra time ensures traces are forwarded to dev instance before cleanup
+    await new Promise((resolve) => setTimeout(resolve, 3000))
 
     // Cleanup collector
     if (collector && !process.env.CI) {
