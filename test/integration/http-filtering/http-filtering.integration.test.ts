@@ -19,8 +19,13 @@ let collector: CollectorContainer
 
 describe('HTTP Request Filtering', () => {
   beforeAll(async () => {
+    // Enable HTTP filtering debug logging
+    process.env.ATRIM_DEBUG_HTTP_FILTERING = 'true'
+
     // Start isolated collector container
     collector = await startCollectorContainer()
+
+    console.log(`🔧 Collector endpoint: http://localhost:${collector.httpPort}`)
 
     // Initialize instrumentation with HTTP filtering
     await initializeInstrumentation({
@@ -90,11 +95,47 @@ describe('HTTP Request Filtering', () => {
       logsAfter.includes('test-operation-2')
     expect(hasTestSpans).toBe(true)
 
-    // Verify no HTTP POST spans to /v1/traces are present
-    const httpTraceSpans = logsAfter.split('\n').filter((line) => {
-      return line.includes('POST') && line.includes('/v1/traces')
-    }).length
+    // CRITICAL: Verify no HTTP client spans to /v1/traces are present
+    // Parse the collector logs to find all span names and attributes
+    const lines = logsAfter.split('\n')
 
-    expect(httpTraceSpans).toBe(0)
+    // Extract all span names
+    const spanNames: string[] = []
+    lines.forEach((line) => {
+      const nameMatch = line.match(/Name\s+:\s+(.+)/)
+      if (nameMatch) {
+        spanNames.push(nameMatch[1].trim())
+      }
+    })
+
+    console.log('📋 All span names found:', spanNames)
+
+    // Check for HTTP client spans to OTLP endpoint
+    // Look for span names like "POST", "HTTP POST", etc.
+    const httpSpanNames = spanNames.filter(
+      (name) =>
+        name === 'POST' || name === 'HTTP POST' || name.includes('POST') || name.includes('HTTP')
+    )
+
+    console.log('🌐 HTTP span names:', httpSpanNames)
+
+    // Check for URL attributes pointing to /v1/traces
+    const tracesUrlLines = lines.filter(
+      (line) =>
+        (line.includes('url.full') ||
+          line.includes('url.path') ||
+          line.includes('http.url') ||
+          line.includes('http.target')) &&
+        (line.includes('/v1/traces') || line.includes(`${collector.httpPort}/v1/traces`))
+    )
+
+    if (tracesUrlLines.length > 0) {
+      console.error('❌ Found URL attributes pointing to /v1/traces:')
+      tracesUrlLines.forEach((line) => console.error('  ', line.trim()))
+    }
+
+    // The critical assertion: NO HTTP spans to /v1/traces should exist
+    // If we find HTTP span names AND they have /v1/traces URLs, filtering failed
+    expect(tracesUrlLines.length).toBe(0)
   })
 })
