@@ -167,11 +167,21 @@ function buildHttpInstrumentationConfig(
     ...yamlPatterns.map((p) => new RegExp(p))
   ]
 
+  // Log what we're building
+  console.log('[HTTP CONFIG BUILDER]', {
+    programmaticPatterns: programmaticPatterns.length,
+    yamlPatterns: yamlPatterns.length,
+    totalPatterns: allOutgoingPatterns.length,
+    patterns: allOutgoingPatterns.map((p) => p.source)
+  })
+
   // Build the hook (always create it if we have any patterns)
   if (options.http?.ignoreOutgoingRequestHook) {
     // Use custom hook if provided
+    console.log('[HTTP CONFIG] Using custom hook')
     httpConfig.ignoreOutgoingRequestHook = options.http.ignoreOutgoingRequestHook
   } else if (allOutgoingPatterns.length > 0) {
+    console.log('[HTTP CONFIG] Building hook from patterns')
     // Build hook from YAML/programmatic patterns ONLY
     httpConfig.ignoreOutgoingRequestHook = (req: RequestOptions) => {
       // RequestOptions has: hostname, host, port, path, protocol, etc.
@@ -546,6 +556,28 @@ async function performInitialization(options: SdkInitializationOptions): Promise
       programmaticHttpPatterns: options.http?.ignoreOutgoingUrls
     })
 
+    // Log the actual config objects being passed
+    console.log('[INSTRUMENTATION CONFIG]', {
+      httpConfig: JSON.stringify(
+        {
+          enabled: httpConfig.enabled,
+          hasIgnoreHook: !!httpConfig.ignoreOutgoingRequestHook,
+          hookType: typeof httpConfig.ignoreOutgoingRequestHook
+        },
+        null,
+        2
+      ),
+      undiciConfig: JSON.stringify(
+        {
+          enabled: (undiciConfig as Record<string, unknown>).enabled,
+          hasIgnoreHook: !!(undiciConfig as Record<string, unknown>).ignoreRequestHook,
+          hookType: typeof (undiciConfig as Record<string, unknown>).ignoreRequestHook
+        },
+        null,
+        2
+      )
+    })
+
     instrumentations.push(
       ...getNodeAutoInstrumentations({
         // Enable HTTP instrumentation with filtering (for http/https modules)
@@ -565,7 +597,10 @@ async function performInitialization(options: SdkInitializationOptions): Promise
       })
     )
 
-    console.log('[INSTRUMENTATIONS] Configured HTTP and undici filtering')
+    console.log('[INSTRUMENTATIONS] Created', instrumentations.length, 'instrumentations')
+    instrumentations.forEach((inst) => {
+      console.log('  -', inst.instrumentationName)
+    })
   }
 
   // Add custom instrumentations
