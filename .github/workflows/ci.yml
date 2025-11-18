@@ -137,14 +137,19 @@ jobs:
       - name: Build all packages
         run: pnpm build
 
-      - name: Pack node package
-        run: cd packages/node && pnpm pack
+      - name: Pack packages
+        run: |
+          cd packages/core && pnpm pack
+          cd ../node && pnpm pack
 
       - name: Test package installation
         run: |
           mkdir -p /tmp/test-install
           cd /tmp/test-install
           npm init -y
+          # Install core package first (dependency)
+          npm install ${{ github.workspace }}/packages/core/atrim-instrument-core-*.tgz
+          # Then install node package
           npm install ${{ github.workspace }}/packages/node/atrim-instrument-node-*.tgz
           node -e "require('@atrim/instrument-node')"
           echo "✅ Package installation successful"
