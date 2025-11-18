@@ -1,0 +1,91 @@
+{
+  "name": "@atrim/instrument-web",
+  "version": "0.1.0",
+  "description": "OpenTelemetry instrumentation for browsers with centralized YAML configuration",
+  "type": "module",
+  "license": "MIT",
+  "author": "Atrim AI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atrim-ai/instrumentation.git",
+    "directory": "packages/web"
+  },
+  "bugs": {
+    "url": "https://github.com/atrim-ai/instrumentation/issues"
+  },
+  "homepage": "https://github.com/atrim-ai/instrumentation#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "opentelemetry",
+    "instrumentation",
+    "tracing",
+    "observability",
+    "browser",
+    "web",
+    "frontend",
+    "spa",
+    "react",
+    "fetch",
+    "xhr"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./target/dist/index.d.ts",
+      "import": "./target/dist/index.js"
+    }
+  },
+  "main": "./target/dist/index.js",
+  "module": "./target/dist/index.js",
+  "types": "./target/dist/index.d.ts",
+  "files": [
+    "target/dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "clean": "rm -rf target",
+    "publish:dev:version": "npm version $(git describe --tags --abbrev=0 | sed 's/^.*@//' | sed 's/^v//')-$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S) --no-git-tag-version",
+    "publish:dev:save": "node -p \"require('./package.json').version\" > .version",
+    "publish:dev:publish": "pnpm build && pnpm publish --tag dev --access public --no-git-checks",
+    "publish:dev:reset": "npm version 0.1.0 --no-git-tag-version",
+    "publish:dev": "pnpm publish:dev:version && pnpm publish:dev:save && pnpm publish:dev:publish && pnpm publish:dev:reset"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.93.0",
+    "effect": "^3.19.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-web": "^0.54.0",
+    "@opentelemetry/context-zone": "^2.2.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
+    "@opentelemetry/instrumentation": "^0.208.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@opentelemetry/sdk-trace-base": "^2.2.0",
+    "@opentelemetry/sdk-trace-web": "^2.2.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@atrim/instrument-core": "workspace:*",
+    "@opentelemetry/semantic-conventions": "^1.38.0",
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^4.0.8",
+    "jsdom": "^24.0.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.8"
+  }
+}

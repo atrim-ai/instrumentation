@@ -37,13 +37,17 @@ export {
   getServiceInfoWithFallback
 } from './core/service-detector.js'
 
-// Configuration types and loader (re-exported from core)
-export type {
-  InstrumentationConfig,
-  PatternConfig,
-  ConfigLoaderOptions
-} from '@atrim/instrument-core'
-export { loadConfig } from '@atrim/instrument-core'
+// Configuration types (re-exported from core)
+export type { InstrumentationConfig, PatternConfig } from '@atrim/instrument-core'
+
+// Configuration loader (Node.js-specific with platform layers)
+export {
+  loadConfig,
+  loadConfigFromInline,
+  loadConfigWithOptions,
+  _resetConfigLoaderCache as clearConfigCache,
+  type ConfigLoaderOptions
+} from './core/config-loader.js'
 
 // Pattern matching utilities (re-exported from core)
 export { shouldInstrumentSpan, PatternMatcher, getPatternMatcher } from '@atrim/instrument-core'
