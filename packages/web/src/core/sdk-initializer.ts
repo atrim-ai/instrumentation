@@ -125,6 +125,36 @@ export async function initializeSdk(options: SdkInitializationOptions): Promise<
       initializePatternMatcher(config)
     }
 
+    // Build HTTP URL ignore patterns for fetch instrumentation
+    // Start with fail-safe defaults to prevent self-instrumentation loops
+    const ignoreUrls: RegExp[] = [
+      // Always ignore standard OTLP endpoints (prevents infinite loops)
+      /\/v1\/traces$/,
+      /\/v1\/metrics$/,
+      /\/v1\/logs$/
+    ]
+
+    // Add user-configured patterns from instrumentation.yaml
+    if (config?.http?.ignore_outgoing_urls) {
+      for (const pattern of config.http.ignore_outgoing_urls) {
+        try {
+          ignoreUrls.push(new RegExp(pattern))
+        } catch (error) {
+          console.warn(
+            `[@atrim/instrument-web] Invalid ignore_outgoing_urls pattern: "${pattern}"`,
+            error
+          )
+        }
+      }
+    } else {
+      // Warn if no HTTP filtering config provided
+      console.warn(
+        '[@atrim/instrument-web] Missing http.ignore_outgoing_urls in instrumentation.yaml. ' +
+          'Using default OTLP endpoint patterns only. ' +
+          'Consider adding http filtering to your config for better control.'
+      )
+    }
+
     // Create OTLP exporter
     const exporterOptions: OtlpExporterOptions = {}
     if (options.otlpEndpoint) {
@@ -177,7 +207,8 @@ export async function initializeSdk(options: SdkInitializationOptions): Promise<
           '@opentelemetry/instrumentation-fetch': {
             enabled: options.enableFetch ?? true,
             propagateTraceHeaderCorsUrls: [/.*/], // Propagate to all origins
-            clearTimingResources: true
+            clearTimingResources: true,
+            ignoreUrls // Prevent self-instrumentation of OTLP exports
           },
           '@opentelemetry/instrumentation-xml-http-request': {
             enabled: options.enableXhr ?? true,

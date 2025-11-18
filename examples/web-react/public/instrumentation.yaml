@@ -39,6 +39,24 @@ instrumentation:
     - pattern: "^debug\\."
       description: "Debug utilities and development helpers"
 
+# HTTP instrumentation filtering
+# CRITICAL: Prevents self-instrumentation loops in browser applications
+http:
+  # WARNING: Always include OTLP endpoints to prevent infinite loops!
+  # The browser will instrument its own trace exports without these exclusions,
+  # creating an infinite loop where sending traces generates more traces.
+  ignore_outgoing_urls:
+    # OTLP export endpoints (REQUIRED to prevent instrumentation loops)
+    - "/v1/traces$"
+    - "/v1/metrics$"
+    - "/v1/logs$"
+
+    # Optional: Add your own patterns for health checks or internal endpoints
+    # Examples:
+    # - "/health$"
+    # - "/api/internal/.*"
+    # - "localhost:.*"  # Ignore all localhost requests
+
 # Notes:
 # - Patterns use regular expressions (remember to escape special characters with \\)
 # - Ignore patterns take precedence over instrument patterns
