@@ -59,7 +59,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "clean": "rm -rf target",
-    "publish:dev:version": "npm version $(git describe --tags --abbrev=0 | sed 's/^v//')-$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S) --no-git-tag-version",
+    "publish:dev:version": "npm version $(git describe --tags --abbrev=0 | sed 's/^.*@//' | sed 's/^v//')-$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S) --no-git-tag-version",
     "publish:dev:save": "node -p \"require('./package.json').version\" > .version",
     "publish:dev:publish": "pnpm build && npm publish --tag dev --access public",
     "publish:dev:reset": "npm version 0.1.0 --no-git-tag-version",
