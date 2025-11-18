@@ -32,10 +32,14 @@ export async function initInstrumentation() {
       enableDocumentLoad: true,
       enableUserInteraction: true,
       enableFetch: true,
-      enableXhr: true
+      enableXhr: true,
 
-      // Optional: Load pattern-based filtering from remote
-      // configUrl: 'https://config.atrim.ai/instrumentation.yaml'
+      // Load pattern-based filtering configuration
+      // Served by Vite from public/instrumentation.yaml
+      configUrl: '/instrumentation.yaml'
+
+      // For production, you can use a remote config server:
+      // configUrl: import.meta.env.VITE_CONFIG_URL || '/instrumentation.yaml'
     })
 
     console.log('✅ OpenTelemetry ready!')

@@ -328,6 +328,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@effect/platform':
+        specifier: ^0.93.0
+        version: 0.93.0(effect@3.19.3)
       effect:
         specifier: ^3.19.0
         version: 3.19.3
@@ -350,6 +353,18 @@ importers:
 
   packages/node:
     dependencies:
+      '@atrim/instrument-core':
+        specifier: workspace:*
+        version: link:../core
+      '@effect/opentelemetry':
+        specifier: ^0.59.0
+        version: 0.59.0(@effect/platform@0.93.0(effect@3.19.3))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)(effect@3.19.3)
+      '@effect/platform':
+        specifier: ^0.93.0
+        version: 0.93.0(effect@3.19.3)
+      '@effect/platform-node':
+        specifier: latest
+        version: 0.100.0(@effect/cluster@0.52.10(@effect/platform@0.93.0(effect@3.19.3))(@effect/rpc@0.72.1(@effect/platform@0.93.0(effect@3.19.3))(effect@3.19.3))(@effect/sql@0.48.0(@effect/experimental@0.57.3(@effect/platform@0.93.0(effect@3.19.3))(effect@3.19.3))(@effect/platform@0.93.0(effect@3.19.3))(effect@3.19.3))(@effect/workflow@0.12.5(@effect/experimental@0.57.3(@effect/platform@0.93.0(effect@3.19.3))(effect@3.19.3))(@effect/platform@0.93.0(effect@3.19.3))(@effect/rpc@0.72.1(@effect/platform@0.93.0(effect@3.19.3))(effect@3.19.3))(effect@3.19.3))(effect@3.19.3))(@effect/platform@0.93.0(effect@3.19.3))(@effect/rpc@0.72.1(@effect/platform@0.93.0(effect@3.19.3))(effect@3.19.3))(@effect/sql@0.48.0(@effect/experimental@0.57.3(@effect/platform@0.93.0(effect@3.19.3))(effect@3.19.3))(@effect/platform@0.93.0(effect@3.19.3))(effect@3.19.3))(effect@3.19.3)
       '@opentelemetry/auto-instrumentations-node':
         specifier: ^0.67.0
         version: 0.67.0(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.2.0(@opentelemetry/api@1.9.0))
@@ -375,15 +390,6 @@ importers:
         specifier: ^3.22.0
         version: 3.25.76
     devDependencies:
-      '@atrim/instrument-core':
-        specifier: workspace:*
-        version: link:../core
-      '@effect/opentelemetry':
-        specifier: ^0.59.0
-        version: 0.59.0(@effect/platform@0.93.0(effect@3.19.3))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)(effect@3.19.3)
-      '@effect/platform':
-        specifier: ^0.93.0
-        version: 0.93.0(effect@3.19.3)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -432,6 +438,9 @@ importers:
       '@atrim/instrument-core':
         specifier: workspace:*
         version: link:../core
+      '@effect/platform':
+        specifier: ^0.93.0
+        version: 0.93.0(effect@3.19.3)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -456,6 +465,12 @@ importers:
       '@opentelemetry/sdk-trace-web':
         specifier: ^2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
+      effect:
+        specifier: ^3.19.0
+        version: 3.19.3
+      yaml:
+        specifier: ^2.8.1
+        version: 2.8.1
     devDependencies:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.38.0

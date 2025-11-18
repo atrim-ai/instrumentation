@@ -12,7 +12,8 @@
 import { Effect } from 'effect'
 import type { NodeSDK } from '@opentelemetry/sdk-node'
 import { initializeSdk, type SdkInitializationOptions } from './core/sdk-initializer.js'
-import { initializePatternMatcher, loadConfig, logger } from '@atrim/instrument-core'
+import { initializePatternMatcher, logger } from '@atrim/instrument-core'
+import { loadConfigWithOptions } from './core/config-loader.js'
 import { InitializationError, ConfigError } from './core/errors.js'
 
 /**
@@ -108,7 +109,7 @@ export async function initializeInstrumentation(
   // (in case users are using shouldInstrumentSpan directly)
   // Note: If SDK was skipped, initializeSdk already initialized the pattern matcher
   if (sdk) {
-    const config = await loadConfig(options)
+    const config = await loadConfigWithOptions(options)
     initializePatternMatcher(config)
   }
 
@@ -127,7 +128,7 @@ export async function initializeInstrumentation(
 export async function initializePatternMatchingOnly(
   options: SdkInitializationOptions = {}
 ): Promise<void> {
-  const config = await loadConfig(options)
+  const config = await loadConfigWithOptions(options)
   initializePatternMatcher(config)
 
   logger.log('@atrim/instrumentation: Pattern matching initialized (legacy mode)')
@@ -197,7 +198,7 @@ export const initializeInstrumentationEffect = (
     // If SDK was initialized, set up pattern matcher
     if (sdk) {
       yield* Effect.tryPromise({
-        try: () => loadConfig(options),
+        try: () => loadConfigWithOptions(options),
         catch: (error) =>
           new ConfigError({
             reason: 'Failed to load config for pattern matcher',
@@ -245,7 +246,7 @@ export const initializePatternMatchingOnlyEffect = (
 ): Effect.Effect<void, ConfigError> =>
   Effect.gen(function* () {
     const config = yield* Effect.tryPromise({
-      try: () => loadConfig(options),
+      try: () => loadConfigWithOptions(options),
       catch: (error) =>
         new ConfigError({
           reason: 'Failed to load configuration',

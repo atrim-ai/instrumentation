@@ -143,47 +143,96 @@ VITE_APP_VERSION=${CI_COMMIT_TAG}
 
 ### Step 7: Add Pattern-Based Filtering (Optional)
 
-Create `public/instrumentation.yaml`:
+Pattern-based filtering lets you control which spans are created without changing your code. This is useful for reducing noise and focusing on high-value operations.
+
+#### Browser Configuration (Static Assets)
+
+For browser applications, place `instrumentation.yaml` in your `public/` directory. Vite automatically serves files from `public/` at the root URL.
+
+**Create `public/instrumentation.yaml`:**
 
 ```yaml
 version: "1.0"
 
 instrumentation:
   enabled: true
+  description: "Pattern-based filtering for browser spans"
 
   # Only instrument important operations
   instrument_patterns:
-    - pattern: "^documentLoad"
-      description: "Page load metrics"
-    - pattern: "^HTTP (GET|POST|PUT|DELETE)"
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application operations"
+    - pattern: "^ui\\."
+      enabled: true
+      description: "UI interactions"
+    - pattern: "^api\\."
+      enabled: true
       description: "API requests"
-    - pattern: "^navigation\\."
-      description: "Route changes"
-    - pattern: "^UserProfile\\."
-      description: "User profile operations"
-    - pattern: "^Dashboard\\."
-      description: "Dashboard operations"
 
   # Ignore noise
   ignore_patterns:
-    - pattern: "^HTTP GET /health"
-      description: "Health checks"
-    - pattern: "^HTTP.*\\.js$"
-      description: "Static assets"
-    - pattern: "^HTTP.*\\.css$"
-      description: "Stylesheets"
-    - pattern: "^click.*close"
-      description: "Close button clicks"
+    - pattern: "^internal\\."
+      description: "Internal operations"
+    - pattern: "^debug\\."
+      description: "Debug utilities"
 ```
 
-Then load it:
+**Load the config in your initialization:**
 
 ```typescript
 await initializeInstrumentation({
   serviceName: 'atrim-platform-ui',
-  configPath: '/instrumentation.yaml' // Public path
+  otlpEndpoint: '...',
+  configUrl: '/instrumentation.yaml' // Served by Vite from public/
 })
 ```
+
+**How it works:**
+- **Development:** `http://localhost:5173/instrumentation.yaml`
+- **Production:** `/instrumentation.yaml` (deployed with your app)
+- Config is loaded once at initialization
+- Pattern matching happens on every span creation
+
+#### Remote Configuration (Enterprise)
+
+For centralized management across environments, use a remote config server:
+
+```typescript
+const environment = import.meta.env.VITE_APP_ENV || 'production'
+const configUrl = import.meta.env.VITE_CONFIG_URL || '/instrumentation.yaml'
+
+await initializeInstrumentation({
+  serviceName: 'atrim-platform-ui',
+  otlpEndpoint: '...',
+  configUrl // Can be static or remote URL
+})
+```
+
+**Environment-specific configuration:**
+
+```bash
+# .env.development
+VITE_CONFIG_URL=/instrumentation.yaml
+
+# .env.staging
+VITE_CONFIG_URL=https://config-staging.atrim.ai/instrumentation.yaml
+
+# .env.production
+VITE_CONFIG_URL=https://config.atrim.ai/instrumentation.yaml
+```
+
+**Benefits:**
+- ✅ Update filtering rules without redeploying
+- ✅ Centralized config management
+- ✅ Different rules per environment
+- ✅ Audit trail for config changes
+
+**For a complete remote config server example, see:**
+- `examples/remote-config/` - Config server implementation
+- Includes Express server serving YAML files
+- Environment-based routing
+- Proper headers and caching
 
 ---
 
