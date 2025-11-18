@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@atrim/instrument-web - Vanilla Example</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #2563eb;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    button:active {
+      background: #1e40af;
+    }
+    #output {
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 8px;
+      min-height: 200px;
+      margin-top: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .status {
+      padding: 10px;
+      margin: 20px 0;
+      border-radius: 6px;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .status.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <h1>@atrim/instrument-web - Vanilla Example</h1>
+
+  <div id="status" class="status">
+    Initializing OpenTelemetry...
+  </div>
+
+  <p>
+    This example demonstrates browser instrumentation using <code>@atrim/instrument-web</code>.
+    Click the buttons below to generate traces:
+  </p>
+
+  <div class="button-group">
+    <button id="fetch-btn">Fetch Data</button>
+    <button id="error-btn">Trigger Error</button>
+    <button id="custom-span-btn">Custom Span</button>
+    <button id="clear-btn">Clear Output</button>
+  </div>
+
+  <h2>Output</h2>
+  <div id="output">Waiting for actions...</div>
+
+  <script type="module" src="/main.ts"></script>
+</body>
+</html>

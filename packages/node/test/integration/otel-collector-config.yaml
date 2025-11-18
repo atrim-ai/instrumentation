@@ -20,6 +20,10 @@ exporters:
     verbosity: detailed
     sampling_initial: 100
     sampling_thereafter: 100
+    sending_queue:
+      enabled: true
+      num_consumers: 5
+      queue_size: 100
 
   # Forward traces to dev instance on host machine via HTTP
   # Uses host.testcontainers.internal (exposed via TestContainers.exposeHostPorts)

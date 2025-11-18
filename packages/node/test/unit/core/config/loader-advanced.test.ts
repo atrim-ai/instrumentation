@@ -2,7 +2,7 @@
  * Advanced unit tests for config-loader (error handling, edge cases)
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { loadConfig, clearConfigCache } from '@atrim/instrument-core'
+import { loadConfigWithOptions, clearConfigCache } from '@atrim/instrument-node'
 import { writeFileSync, mkdirSync, rmSync } from 'fs'
 import { join } from 'path'
 
@@ -11,9 +11,10 @@ describe('config-loader (advanced)', () => {
   const testConfigPath = join(testDir, 'test-config.yaml')
 
   beforeEach(() => {
-    clearConfigCache()
     // Create test directory
     mkdirSync(testDir, { recursive: true })
+    // Reset config cache before each test
+    clearConfigCache()
   })
 
   afterEach(() => {
@@ -38,7 +39,7 @@ instrumentation:
 `
       writeFileSync(testConfigPath, yamlContent, 'utf8')
 
-      const config = await loadConfig({ configPath: testConfigPath })
+      const config = await loadConfigWithOptions({ configPath: testConfigPath })
 
       expect(config.instrumentation.instrument_patterns[0]?.pattern).toBe('^custom\\.')
     })
@@ -48,7 +49,7 @@ instrumentation:
       const largeContent = 'version: "1.0"\n' + 'x: "' + 'a'.repeat(2_000_000) + '"'
       writeFileSync(testConfigPath, largeContent, 'utf8')
 
-      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow(
+      await expect(loadConfigWithOptions({ configPath: testConfigPath })).rejects.toThrow(
         'exceeds maximum size'
       )
     })
@@ -63,7 +64,7 @@ instrumentation:
 `
       writeFileSync(testConfigPath, invalidYaml, 'utf8')
 
-      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow()
+      await expect(loadConfigWithOptions({ configPath: testConfigPath })).rejects.toThrow()
     })
 
     it('should validate config schema', async () => {
@@ -76,7 +77,7 @@ instrumentation:
 `
       writeFileSync(testConfigPath, invalidConfig, 'utf8')
 
-      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow(
+      await expect(loadConfigWithOptions({ configPath: testConfigPath })).rejects.toThrow(
         'Invalid configuration'
       )
     })
@@ -89,7 +90,7 @@ instrumentation:
 `
       writeFileSync(testConfigPath, incompleteConfig, 'utf8')
 
-      await expect(loadConfig({ configPath: testConfigPath })).rejects.toThrow(
+      await expect(loadConfigWithOptions({ configPath: testConfigPath })).rejects.toThrow(
         'Invalid configuration'
       )
     })
@@ -98,7 +99,7 @@ instrumentation:
   describe('remote URL loading', () => {
     it('should reject non-HTTPS URLs', async () => {
       await expect(
-        loadConfig({ configUrl: 'http://insecure.example.com/config.yaml' })
+        loadConfigWithOptions({ configUrl: 'http://insecure.example.com/config.yaml' })
       ).rejects.toThrow('Insecure protocol')
     })
 
@@ -113,9 +114,9 @@ instrumentation:
       )
 
       try {
-        await expect(loadConfig({ configUrl: 'https://example.com/config.yaml' })).rejects.toThrow(
-          'Failed to load config from URL'
-        )
+        await expect(
+          loadConfigWithOptions({ configUrl: 'https://example.com/config.yaml' })
+        ).rejects.toThrow('Failed to load config from URL')
       } finally {
         global.fetch = originalFetch
       }
@@ -130,9 +131,9 @@ instrumentation:
       } as Response)
 
       try {
-        await expect(loadConfig({ configUrl: 'https://example.com/config.yaml' })).rejects.toThrow(
-          'HTTP 404'
-        )
+        await expect(
+          loadConfigWithOptions({ configUrl: 'https://example.com/config.yaml' })
+        ).rejects.toThrow('HTTP 404')
       } finally {
         global.fetch = originalFetch
       }
@@ -160,11 +161,11 @@ instrumentation:
 
       try {
         // First call should fetch
-        await loadConfig({ configUrl: 'https://example.com/config.yaml' })
+        await loadConfigWithOptions({ configUrl: 'https://example.com/config.yaml' })
         expect(mockFetch).toHaveBeenCalledTimes(1)
 
         // Second call should use cache
-        await loadConfig({ configUrl: 'https://example.com/config.yaml' })
+        await loadConfigWithOptions({ configUrl: 'https://example.com/config.yaml' })
         expect(mockFetch).toHaveBeenCalledTimes(1) // Still only called once
       } finally {
         global.fetch = originalFetch
@@ -193,14 +194,14 @@ instrumentation:
 
       try {
         // Load with 0 cache timeout (immediate expiry)
-        await loadConfig({
+        await loadConfigWithOptions({
           configUrl: 'https://example.com/config.yaml',
           cacheTimeout: 0
         })
         expect(mockFetch).toHaveBeenCalledTimes(1)
 
         // Second call should fetch again (cache expired)
-        await loadConfig({
+        await loadConfigWithOptions({
           configUrl: 'https://example.com/config.yaml',
           cacheTimeout: 0
         })
@@ -229,7 +230,7 @@ instrumentation:
       writeFileSync(testConfigPath, yamlContent, 'utf8')
       process.env.ATRIM_INSTRUMENTATION_CONFIG = testConfigPath
 
-      const config = await loadConfig()
+      const config = await loadConfigWithOptions()
 
       expect(config.instrumentation.instrument_patterns[0]?.pattern).toBe('^env\\.')
     })
@@ -258,7 +259,7 @@ instrumentation:
         }
       }
 
-      const config = await loadConfig({ config: explicitConfig })
+      const config = await loadConfigWithOptions({ config: explicitConfig })
 
       expect(config.instrumentation.description).toBe('Explicit config')
 

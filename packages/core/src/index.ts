@@ -8,9 +8,9 @@
  * @internal This is a private package
  */
 
-// Configuration loading
-export { loadConfig, clearConfigCache } from './config-loader.js'
-export type { ConfigLoaderOptions } from './config-loader.js'
+// Configuration loading (Effect Platform-based services)
+export { ConfigLoader, ConfigLoaderLive } from './services/config-loader.js'
+export type { ConfigLoaderService } from './services/config-loader.js'
 
 // Pattern matching
 export {
