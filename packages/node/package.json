@@ -74,7 +74,6 @@
     "publish:dev": "pnpm publish:dev:version && pnpm publish:dev:save && pnpm publish:dev:publish && pnpm publish:dev:reset"
   },
   "dependencies": {
-    "@atrim/instrument-core": "workspace:*",
     "@effect/opentelemetry": "^0.59.0",
     "@effect/platform": "^0.93.0",
     "@effect/platform-node": "latest",
@@ -88,6 +87,7 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@atrim/instrument-core": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.2.0",
     "@opentelemetry/sdk-logs": "^0.208.0",

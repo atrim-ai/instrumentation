@@ -14,5 +14,6 @@ export default defineConfig({
   minify: false, // Don't minify during development
   target: 'es2020', // Modern browsers
   platform: 'browser',
-  tsconfig: 'tsconfig.build.json'
+  tsconfig: 'tsconfig.build.json',
+  noExternal: ['@atrim/instrument-core'] // Bundle core code
 })
