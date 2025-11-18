@@ -32,7 +32,7 @@ import {
   markSpanSuccess,
   markSpanError,
   setSpanAttributes
-} from '@atrim/instrumentation'
+} from '@atrim/instrument-node'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -47,9 +47,10 @@ async function setupInstrumentation() {
   console.log(`📡 Config server: ${CONFIG_SERVER}`)
 
   // Construct config URL based on environment
-  const configUrl = ENVIRONMENT === 'default'
-    ? `${CONFIG_SERVER}/config/instrumentation.yaml`
-    : `${CONFIG_SERVER}/config/${ENVIRONMENT}/instrumentation.yaml`
+  const configUrl =
+    ENVIRONMENT === 'default'
+      ? `${CONFIG_SERVER}/config/instrumentation.yaml`
+      : `${CONFIG_SERVER}/config/${ENVIRONMENT}/instrumentation.yaml`
 
   console.log(`📡 Loading config from: ${configUrl}\n`)
 
@@ -83,7 +84,7 @@ async function fetchUserData(userId: string) {
     try {
       setSpanAttributes(span, {
         'user.id': userId,
-        'environment': ENVIRONMENT
+        environment: ENVIRONMENT
       })
 
       await simulateAsync(100)
@@ -95,7 +96,12 @@ async function fetchUserData(userId: string) {
       })
 
       markSpanSuccess(span)
-      return { id: userId, name: 'Alice Remote', email: 'alice@example.com', environment: ENVIRONMENT }
+      return {
+        id: userId,
+        name: 'Alice Remote',
+        email: 'alice@example.com',
+        environment: ENVIRONMENT
+      }
     } catch (error) {
       markSpanError(span, 'Failed to fetch user')
       throw error
@@ -113,7 +119,7 @@ async function storageOperation(key: string, action: 'read' | 'write') {
       setSpanAttributes(span, {
         'storage.key': key,
         'storage.action': action,
-        'environment': ENVIRONMENT
+        environment: ENVIRONMENT
       })
 
       await simulateAsync(80)
@@ -134,7 +140,7 @@ async function apiCall(endpoint: string) {
     try {
       setSpanAttributes(span, {
         'api.endpoint': endpoint,
-        'environment': ENVIRONMENT
+        environment: ENVIRONMENT
       })
 
       await simulateAsync(120)
@@ -155,7 +161,7 @@ async function debugOperation() {
 
   return await tracer.startActiveSpan('debug.operation', async (span) => {
     try {
-      setSpanAttributes(span, { 'environment': ENVIRONMENT })
+      setSpanAttributes(span, { environment: ENVIRONMENT })
       await simulateAsync(30)
       span.end()
     } catch (error) {
@@ -183,7 +189,7 @@ async function demoWorkflow() {
 
   return await tracer.startActiveSpan('demo.workflow', async (rootSpan) => {
     try {
-      setSpanAttributes(rootSpan, { 'environment': ENVIRONMENT })
+      setSpanAttributes(rootSpan, { environment: ENVIRONMENT })
 
       // Operations that are always traced
       const userData = await fetchUserData('user-789')

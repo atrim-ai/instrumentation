@@ -24,8 +24,8 @@
 
 import express from 'express'
 import { Effect, Schedule, Duration, Exit, Layer } from 'effect'
-import { EffectInstrumentationLive } from '../../src/integrations/effect/index.js'
-import { initializeInstrumentation } from '../../src/index.js'
+import { EffectInstrumentationLive } from '@atrim/instrument-node/effect'
+import { initializeInstrumentation } from '@atrim/instrument-node'
 
 // ============================================================================
 // Domain Types
@@ -40,7 +40,10 @@ interface User {
 
 class DatabaseError {
   readonly _tag = 'DatabaseError'
-  constructor(readonly message: string, readonly cause?: unknown) {}
+  constructor(
+    readonly message: string,
+    readonly cause?: unknown
+  ) {}
 }
 
 class CacheError {
@@ -78,7 +81,10 @@ const mockCache = new Map<string, string>()
  * Database query with retry logic and exponential backoff
  * Demonstrates: Effect.retry with Schedule
  */
-function queryDatabase(sql: string, params: Record<string, unknown> = {}): Effect.Effect<User[], DatabaseError> {
+function queryDatabase(
+  sql: string,
+  params: Record<string, unknown> = {}
+): Effect.Effect<User[], DatabaseError> {
   return Effect.gen(function* () {
     yield* Effect.log(`Executing query: ${sql}`)
     yield* Effect.annotateCurrentSpan('db.system', 'postgresql')
@@ -102,9 +108,7 @@ function queryDatabase(sql: string, params: Record<string, unknown> = {}): Effec
     Effect.withSpan('db.query', { attributes: { 'db.operation': 'SELECT' } }),
     // Retry up to 3 times with exponential backoff
     Effect.retry(
-      Schedule.exponential(Duration.millis(100), 2).pipe(
-        Schedule.intersect(Schedule.recurs(3))
-      )
+      Schedule.exponential(Duration.millis(100), 2).pipe(Schedule.intersect(Schedule.recurs(3)))
     ),
     Effect.tapErrorCause((cause) =>
       Effect.logError(`Database query failed after retries: ${cause}`)
@@ -158,7 +162,9 @@ function setCached(key: string, value: string): Effect.Effect<void, CacheError> 
  * Fetch user from multiple sources using race
  * Demonstrates: Effect.race - first successful result wins
  */
-function fetchUserWithRace(userId: string): Effect.Effect<User, DatabaseError | CacheError | TimeoutError | ValidationError> {
+function fetchUserWithRace(
+  userId: string
+): Effect.Effect<User, DatabaseError | CacheError | TimeoutError | ValidationError> {
   // Try cache first
   const fromCache = Effect.gen(function* () {
     const cached = yield* getCached(`user:${userId}`)
@@ -204,9 +210,7 @@ function fetchAllUsers(): Effect.Effect<User[], DatabaseError> {
 
     // Update cache for all users in parallel (max 5 concurrent operations)
     yield* Effect.all(
-      users.map((user) =>
-        setCached(`user:${user.id}`, JSON.stringify(user))
-      ),
+      users.map((user) => setCached(`user:${user.id}`, JSON.stringify(user))),
       { concurrency: 5 }
     )
 
@@ -223,7 +227,10 @@ function fetchAllUsers(): Effect.Effect<User[], DatabaseError> {
  * Create a new user with validation
  * Demonstrates: Effect.either for error handling
  */
-function createUser(data: { name: string; email: string }): Effect.Effect<User, ValidationError | DatabaseError> {
+function createUser(data: {
+  name: string
+  email: string
+}): Effect.Effect<User, ValidationError | DatabaseError> {
   return Effect.gen(function* () {
     yield* Effect.log(`Creating user: ${data.name}`)
     yield* Effect.annotateCurrentSpan('user.name', data.name)
@@ -266,7 +273,9 @@ function createUser(data: { name: string; email: string }): Effect.Effect<User, 
  * Complex workflow demonstrating multiple Effect patterns
  * Demonstrates: Combining race, retry, timeout, and parallel execution
  */
-function complexUserWorkflow(userId: string): Effect.Effect<
+function complexUserWorkflow(
+  userId: string
+): Effect.Effect<
   { user: User; relatedUsers: User[]; cacheUpdated: boolean },
   DatabaseError | CacheError | TimeoutError | ValidationError
 > {
@@ -343,9 +352,7 @@ function createApp() {
 
   // List all users
   app.get('/users', async (_req, res) => {
-    const program = fetchAllUsers().pipe(
-      Effect.provide(EffectInstrumentationLive)
-    )
+    const program = fetchAllUsers().pipe(Effect.provide(EffectInstrumentationLive))
 
     const exit = await Effect.runPromiseExit(program)
 
@@ -359,9 +366,7 @@ function createApp() {
 
   // Get user by ID (with race condition demo)
   app.get('/users/:id', async (req, res) => {
-    const program = fetchUserWithRace(req.params.id).pipe(
-      Effect.provide(EffectInstrumentationLive)
-    )
+    const program = fetchUserWithRace(req.params.id).pipe(Effect.provide(EffectInstrumentationLive))
 
     const exit = await Effect.runPromiseExit(program)
 
@@ -375,9 +380,7 @@ function createApp() {
 
   // Create user
   app.post('/users', async (req, res) => {
-    const program = createUser(req.body).pipe(
-      Effect.provide(EffectInstrumentationLive)
-    )
+    const program = createUser(req.body).pipe(Effect.provide(EffectInstrumentationLive))
 
     const exit = await Effect.runPromiseExit(program)
 
@@ -445,7 +448,9 @@ async function main() {
       console.log(`   curl http://localhost:${PORT}/users`)
       console.log(`   curl http://localhost:${PORT}/users/1`)
       console.log(`   curl http://localhost:${PORT}/workflow/1`)
-      console.log(`   curl -X POST http://localhost:${PORT}/users -d '{"name":"Alice","email":"alice@example.com"}' -H "Content-Type: application/json"`)
+      console.log(
+        `   curl -X POST http://localhost:${PORT}/users -d '{"name":"Alice","email":"alice@example.com"}' -H "Content-Type: application/json"`
+      )
       console.log('\n' + '='.repeat(60))
       console.log('🔍 Check your OpenTelemetry collector for:')
       console.log('   - Automatic retry spans')

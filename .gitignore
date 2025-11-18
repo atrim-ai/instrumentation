@@ -9,6 +9,9 @@ examples/*/pnpm-lock.yaml
 target/
 *.tsbuildinfo
 
+# Turborepo
+.turbo/
+
 # Legacy build directories (kept for backwards compatibility)
 dist/
 build/
@@ -45,6 +48,7 @@ lerna-debug.log*
 *.temp
 .cache/
 test/temp/
+packages/*/test/temp/
 tmp/
 test/integration/core/detection/temp/
 

@@ -16,7 +16,7 @@ import {
   setSpanAttributes,
   markSpanSuccess,
   markSpanError
-} from '@atrim/instrumentation'
+} from '@atrim/instrument-node'
 import { trace } from '@opentelemetry/api'
 
 const PORT = process.env.PORT || 3102

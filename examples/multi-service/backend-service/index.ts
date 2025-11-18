@@ -13,7 +13,12 @@
  */
 
 import express from 'express'
-import { initializeInstrumentation, setSpanAttributes, markSpanSuccess, markSpanError } from '@atrim/instrumentation'
+import {
+  initializeInstrumentation,
+  setSpanAttributes,
+  markSpanSuccess,
+  markSpanError
+} from '@atrim/instrument-node'
 import { trace } from '@opentelemetry/api'
 
 const DB_URL = process.env.DB_URL || 'http://localhost:3102'
@@ -119,7 +124,10 @@ function createApp() {
           'user.id': req.params.id
         })
 
-        const users = await queryDatabase('users', `SELECT * FROM users WHERE id = '${req.params.id}'`)
+        const users = await queryDatabase(
+          'users',
+          `SELECT * FROM users WHERE id = '${req.params.id}'`
+        )
         const user = users.find((u: any) => u.id === req.params.id)
 
         if (user) {

@@ -1,206 +1,194 @@
 # @atrim/instrumentation
 
-**One-line OpenTelemetry for Node.js**
+**Universal OpenTelemetry instrumentation packages**
 
-[![npm version](https://badge.fury.io/js/%40atrim%2Finstrumentation.svg)](https://www.npmjs.com/package/@atrim/instrumentation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Packages
+
+This is a monorepo containing multiple OpenTelemetry instrumentation packages:
+
+### [@atrim/instrument-node](./packages/node)
+
+[![npm version](https://badge.fury.io/js/%40atrim%2Finstrument-node.svg)](https://www.npmjs.com/package/@atrim/instrument-node)
+
+OpenTelemetry instrumentation for Node.js applications with centralized YAML configuration.
+
+```bash
+npm install @atrim/instrument-node
+```
+
+**Supports:** Node.js 20+, Bun 1.0+, Deno 1.40+
+
+### @atrim/instrument-web _(Coming Soon - Phase 1)_
+
+OpenTelemetry instrumentation for browser/web applications.
+
+```bash
+npm install @atrim/instrument-web
+```
+
+**Supports:** Modern browsers, React, Next.js, Web Vitals
 
 ## Quick Start
 
-**1. Install**
-```bash
-npm install @atrim/instrumentation
-```
+### Node.js Applications
 
-**2. Initialize** (at the top of your app)
-
-### Promise API (Traditional)
 ```typescript
-import { initializeInstrumentation } from '@atrim/instrumentation'
+import { initializeInstrumentation } from '@atrim/instrument-node'
 
 await initializeInstrumentation()
 ```
 
-### Effect API (Recommended)
-```typescript
-import { Effect } from 'effect'
-import { initializeInstrumentationEffect } from '@atrim/instrumentation'
+See the [@atrim/instrument-node README](./packages/node/README.md) for full documentation.
 
-await Effect.runPromise(initializeInstrumentationEffect())
+### Web Applications (Phase 1)
+
+_Coming soon_
+
+## Development
+
+This repository uses pnpm workspaces with Turborepo for build orchestration.
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 10+
+
+```bash
+# Enable corepack (recommended)
+corepack enable
 ```
 
-**3. Done!** Your app is now sending traces to OpenTelemetry.
+### Getting Started
 
-By default, traces go to `http://localhost:4318`. To send to a remote collector:
+```bash
+# Install dependencies
+pnpm install
 
-```typescript
-await initializeInstrumentation({
-  otlp: { endpoint: 'https://otel-collector.company.com:4318' }
-})
+# Build all packages
+pnpm build
+
+# Run tests
+pnpm test              # Unit tests
+pnpm test:integration  # Integration tests (requires Docker)
+pnpm test:all          # Both
+
+# Lint and format
+pnpm lint
+pnpm format
 ```
 
-### What just happened?
+### Working with Packages
 
-Auto-detected and configured:
-- ✅ Service name from `package.json`
-- ✅ OTLP endpoint (local or remote)
-- ✅ Auto-instrumentation for Express, HTTP, Fastify, etc.
-- ✅ Graceful shutdown on SIGTERM/SIGINT
+```bash
+# Build specific package
+pnpm --filter @atrim/instrument-node build
+pnpm --filter @atrim/instrument-core build
 
-## Optional: Control What Gets Traced
+# Test specific package
+pnpm --filter @atrim/instrument-node test
+pnpm --filter @atrim/instrument-node test:integration
 
-Create `instrumentation.yaml` in your project root:
-
-```yaml
-version: "1.0"
-instrumentation:
-  enabled: true
-  instrument_patterns:
-    - pattern: "^app\\."      # ✅ Trace application operations
-  ignore_patterns:
-    - pattern: "^health\\."   # ❌ Skip health checks
+# Develop with watch mode
+pnpm --filter @atrim/instrument-node dev
 ```
 
-That's it!
+### Publishing
 
-## HTTP Request Filtering
+#### Dev Versions (Testing)
 
-**IMPORTANT:** HTTP filtering is NOT automatic. You must explicitly configure patterns to prevent noisy traces.
+Publish dev versions for testing before releasing:
 
-### Why You Need HTTP Filtering
+```bash
+# Publish Node.js package
+pnpm publish:node
 
-Without filtering, you'll see noisy traces for:
-- **OTLP exports** - `POST http://otel-collector:4318/v1/traces` creating **infinite trace loops**
-- **Health checks** - `GET /health` every few seconds
-- **Metrics** - `GET /metrics` polling
-- **Internal endpoints** - Service-to-service health probes
+# Publish Web package (when available)
+pnpm publish:web
 
-### Pattern-Based Filtering (YAML) - REQUIRED
-
-Add HTTP filtering patterns to `instrumentation.yaml`:
-
-```yaml
-version: "1.0"
-instrumentation:
-  enabled: true
-  instrument_patterns:
-    - pattern: "^app\\."
-  ignore_patterns:
-    - pattern: "^internal\\."
-
-# HTTP request filtering (REQUIRED to prevent trace loops)
-http:
-  ignore_outgoing_urls:
-    # CRITICAL: Filter OTLP export endpoints to prevent infinite trace loops
-    - "/v1/traces$"
-    - "/v1/metrics$"
-    - "/v1/logs$"
-
-    # Filter health checks and metrics
-    - "/health$"
-    - "/healthz$"
-    - "/metrics$"
-
-  ignore_incoming_paths:
-    - "^/health$"
-    - "^/healthz$"
-    - "^/metrics$"
+# Publish all packages
+pnpm publish:all
 ```
 
-### Programmatic Filtering (TypeScript)
+Dev versions are published with format: `{tag}-{commit}-{timestamp}` (e.g., `0.1.3-abc1234-20251118005419`)
 
-Use RegExp patterns or custom hooks:
+#### Production Releases
 
-```typescript
-// Pattern-based filtering
-await initializeInstrumentation({
-  http: {
-    ignoreOutgoingUrls: [/\/health$/, /\/v1\/traces$/],
-    ignoreIncomingPaths: [/^\/health$/]
-  }
-})
+Use Changesets for production releases:
 
-// Custom hook for advanced filtering
-await initializeInstrumentation({
-  http: {
-    ignoreOutgoingRequestHook: (req) => {
-      const path = req.path || ''
-      return path.includes('/internal') || path.startsWith('/v1/')
-    },
-    ignoreIncomingRequestHook: (req) => {
-      const path = req.url || ''
-      return path.startsWith('/api/internal')
-    }
-  }
-})
+```bash
+# 1. Create a changeset
+pnpm changeset
+
+# 2. Commit the changeset
+git add .changeset && git commit -m "chore: add changeset"
+
+# 3. After PR merge, Changesets creates version PR automatically
+# 4. Merge version PR to publish to npm
 ```
 
-## Examples
+## Monorepo Structure
 
-See working code in [`/examples`](./examples):
-- **[express](./examples/express)** - Express server
-- **[vanilla](./examples/vanilla)** - Pure Node.js
-- **[effect-ts](./examples/effect-ts)** - Effect + Express
-- **[effect-platform](./examples/effect-platform)** - Pure Effect
-
-## Configuration
-
-Need more control? Pass options:
-
-### Promise API
-```typescript
-await initializeInstrumentation({
-  serviceName: 'my-api',
-  otlp: { endpoint: 'http://collector:4318' }
-})
 ```
-
-### Effect API (with typed error handling)
-```typescript
-import { Effect } from 'effect'
-import {
-  initializeInstrumentationEffect,
-  ConfigError,
-  InitializationError
-} from '@atrim/instrumentation'
-
-const program = initializeInstrumentationEffect({
-  serviceName: 'my-api',
-  otlp: { endpoint: 'http://collector:4318' }
-}).pipe(
-  Effect.catchTag('ConfigError', (error) => {
-    console.error('Config error:', error.reason)
-    return Effect.succeed(null)
-  }),
-  Effect.catchTag('InitializationError', (error) => {
-    console.error('Init error:', error.reason)
-    return Effect.succeed(null)
-  })
-)
-
-await Effect.runPromise(program)
+atrim-instrumentation/
+├── packages/
+│   ├── core/              # @atrim/instrument-core (private, shared logic)
+│   ├── node/              # @atrim/instrument-node (Node.js platform)
+│   └── web/               # @atrim/instrument-web (Phase 1)
+├── examples/              # Example applications
+│   ├── express/
+│   ├── effect-ts/
+│   ├── vanilla/
+│   └── ...
+├── docs/                  # Documentation
+├── turbo.json            # Turborepo configuration
+├── pnpm-workspace.yaml   # pnpm workspaces
+└── .changeset/           # Changesets configuration
 ```
-
-See [Configuration Guide](./docs/CONFIGURATION.md) for all options.
 
 ## Documentation
 
-- **[Examples](./docs/EXAMPLES.md)** - Sending to Atrim, Express, Effect, etc.
-- **[Getting Started](./docs/getting-started.md)** - Detailed setup guide
-- **[Configuration](./docs/configuration.md)** - All configuration options
-- **[Troubleshooting](./docs/TROUBLESHOOTING.md)** - Common issues & solutions
-- **[Effect Integration](./docs/EFFECT_INTEGRATION.md)** - Using with Effect-TS
-- **[API Reference](./docs/api-reference.md)** - Complete API docs
+- 📖 [Getting Started](./docs/getting-started.md)
+- ⚙️ [Configuration](./docs/configuration.md)
+- 📋 [Examples](./docs/EXAMPLES.md)
+- 🔧 [Troubleshooting](./docs/TROUBLESHOOTING.md)
+- 📚 [API Reference](./docs/api-reference.md)
+- 🏗️ [Architecture](./CLAUDE.md)
 
-## Requirements
+## Architecture
 
-- Node.js 18+, Bun 1.0+, or Deno 1.40+
-- OpenTelemetry collector (local or remote)
+### Core Package (Private)
+
+`@atrim/instrument-core` contains platform-agnostic logic shared across all platform packages:
+
+- Configuration loading (YAML/URL)
+- Pattern matching and compilation
+- Schema validation (Zod)
+- Error types (Effect)
+- Logging utilities
+
+This package is **not published** to npm - it's bundled into platform packages.
+
+### Platform Packages (Public)
+
+Platform-specific implementations:
+
+- **@atrim/instrument-node** - Node.js SDK, auto-instrumentation, OTLP exporters
+- **@atrim/instrument-web** _(Phase 1)_ - Browser SDK, React hooks, Web Vitals
+
+Each platform package bundles the core logic and adds platform-specific features.
+
+## Contributing
+
+1. Create feature branch from `main`
+2. Make changes
+3. Run tests: `pnpm test:all`
+4. Create PR
+5. Add changeset if changing public API
+
+See [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for detailed guidelines.
 
 ## License
 
 MIT © Atrim AI
-
----
-
-**Need help?** [Troubleshooting Guide](./docs/TROUBLESHOOTING.md) • [Open an Issue](https://github.com/atrim-ai/instrumentation/issues)
