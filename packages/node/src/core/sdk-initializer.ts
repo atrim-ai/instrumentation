@@ -15,13 +15,12 @@ import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory
 import { SafeSpanExporter } from './safe-exporter.js'
 import { detectServiceInfoAsync } from './service-detector.js'
 import {
-  loadConfig,
-  type ConfigLoaderOptions,
   type InstrumentationConfig,
   type PatternConfig,
   initializePatternMatcher,
   logger
 } from '@atrim/instrument-core'
+import { loadConfigWithOptions, type ConfigLoaderOptions } from './config-loader.js'
 
 export interface SdkInitializationOptions extends ConfigLoaderOptions {
   /**
@@ -439,7 +438,7 @@ export async function initializeSdk(
  */
 async function performInitialization(options: SdkInitializationOptions): Promise<NodeSDK | null> {
   // 1. Load configuration first (including logging level)
-  const config = await loadConfig(options)
+  const config = await loadConfigWithOptions(options)
 
   // 2. Configure logger based on config
   const loggingLevel = config.instrumentation.logging || 'on'

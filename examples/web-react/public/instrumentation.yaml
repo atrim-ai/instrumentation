@@ -1,0 +1,50 @@
+# Atrim Instrumentation Configuration for Web Applications
+# This file controls pattern-based span filtering for browser-based tracing
+
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Pattern-based filtering for React application spans"
+
+  # Patterns to instrument (spans matching these patterns will be created)
+  instrument_patterns:
+    # Application-level operations
+    - pattern: "^app\\."
+      enabled: true
+      description: "Core application operations and business logic"
+
+    # UI interactions and components
+    - pattern: "^ui\\."
+      enabled: true
+      description: "User interface interactions and component rendering"
+
+    # API calls and data fetching
+    - pattern: "^api\\."
+      enabled: true
+      description: "API requests and data fetching operations"
+
+    # User authentication and authorization
+    - pattern: "^auth\\."
+      enabled: true
+      description: "Authentication and authorization flows"
+
+  # Patterns to ignore (takes precedence over instrument_patterns)
+  ignore_patterns:
+    # Internal utility operations
+    - pattern: "^internal\\."
+      description: "Internal utility functions and helpers"
+
+    # Development and debugging operations
+    - pattern: "^debug\\."
+      description: "Debug utilities and development helpers"
+
+# Notes:
+# - Patterns use regular expressions (remember to escape special characters with \\)
+# - Ignore patterns take precedence over instrument patterns
+# - This file is served by Vite from the public/ directory
+# - In development: http://localhost:5173/instrumentation.yaml
+# - In production: /instrumentation.yaml (deployed with your app)
+#
+# For advanced patterns like remote config servers, see:
+# examples/remote-config/ in the @atrim/instrumentation repository

@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrument-web",
-  "version": "0.1.0",
+  "version": "0.4.0-56522df-20251118051035",
   "description": "OpenTelemetry instrumentation for browsers with centralized YAML configuration",
   "type": "module",
   "license": "MIT",
@@ -67,6 +67,8 @@
   },
   "dependencies": {
     "@atrim/instrument-core": "workspace:*",
+    "@effect/platform": "^0.93.0",
+    "effect": "^3.19.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-web": "^0.54.0",
     "@opentelemetry/context-zone": "^2.2.0",
@@ -74,7 +76,8 @@
     "@opentelemetry/instrumentation": "^0.208.0",
     "@opentelemetry/resources": "^2.2.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
-    "@opentelemetry/sdk-trace-web": "^2.2.0"
+    "@opentelemetry/sdk-trace-web": "^2.2.0",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@opentelemetry/semantic-conventions": "^1.38.0",

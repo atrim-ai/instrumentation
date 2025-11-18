@@ -13,7 +13,8 @@ import { registerInstrumentations } from '@opentelemetry/instrumentation'
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web'
 import { ZoneContextManager } from '@opentelemetry/context-zone'
 import type { InstrumentationConfig } from '@atrim/instrument-core'
-import { loadConfig, initializePatternMatcher } from '@atrim/instrument-core'
+import { initializePatternMatcher } from '@atrim/instrument-core'
+import { loadConfig, loadConfigFromInline } from '../services/config-loader.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
 import { PatternSpanProcessor } from './span-processor.js'
 
@@ -112,11 +113,11 @@ export async function initializeSdk(options: SdkInitializationOptions): Promise<
     let config: InstrumentationConfig | null = null
 
     if (options.config) {
-      config = options.config
-    } else if (options.configPath) {
-      config = await loadConfig({ configPath: options.configPath })
-    } else if (options.configUrl) {
-      config = await loadConfig({ configUrl: options.configUrl })
+      config = await loadConfigFromInline(options.config)
+    } else if (options.configPath || options.configUrl) {
+      // In browser, configPath is treated as a URL (can be relative like '/instrumentation.yaml')
+      const url = options.configUrl || options.configPath!
+      config = await loadConfig(url)
     }
 
     // Initialize pattern matcher (if config available)

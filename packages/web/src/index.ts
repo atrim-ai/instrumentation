@@ -18,13 +18,9 @@ export { getSdkInstance, shutdownSdk, resetSdk } from './core/sdk-initializer.js
 export type { OtlpExporterOptions } from './core/exporter-factory.js'
 export { createOtlpExporter, getOtlpEndpoint } from './core/exporter-factory.js'
 
-// Configuration (re-exported from core)
-export type {
-  InstrumentationConfig,
-  PatternConfig,
-  ConfigLoaderOptions
-} from '@atrim/instrument-core'
-export { loadConfig, clearConfigCache } from '@atrim/instrument-core'
+// Configuration
+export type { InstrumentationConfig, PatternConfig } from '@atrim/instrument-core'
+export { loadConfig, loadConfigFromInline, WebConfigLoaderLive } from './services/config-loader.js'
 
 // Pattern matching (re-exported from core)
 export {
