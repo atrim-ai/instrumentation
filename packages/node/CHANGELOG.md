@@ -1,6 +1,6 @@
 # @atrim/instrument-node
 
-## 0.2.0
+## 0.4.0
 
 ### Minor Changes
 
@@ -12,4 +12,3 @@
   - Rename package from @atrim/instrumentation to @atrim/instrument-node
 
   BREAKING CHANGE: Package name changed from @atrim/instrumentation to @atrim/instrument-node
-  EOF

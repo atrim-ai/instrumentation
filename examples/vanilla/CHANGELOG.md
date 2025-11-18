@@ -1,8 +1,8 @@
 # @atrim/instrumentation-example-vanilla
 
-## 1.0.1
+## 0.4.0
 
 ### Patch Changes
 
 - Updated dependencies [2aa7afc]
-  - @atrim/instrument-node@0.2.0
+  - @atrim/instrument-node@0.4.0
