@@ -9,10 +9,12 @@
   "exports": {
     ".": {
       "types": "./target/dist/index.d.ts",
-      "import": "./target/dist/index.js"
+      "import": "./target/dist/index.js",
+      "require": "./target/dist/index.cjs"
     }
   },
-  "main": "./target/dist/index.js",
+  "main": "./target/dist/index.cjs",
+  "module": "./target/dist/index.js",
   "types": "./target/dist/index.d.ts",
   "files": [
     "target/dist"
