@@ -12,6 +12,7 @@
  *    npm start
  */
 
+import { Effect } from 'effect'
 import * as http from 'node:http'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -33,9 +34,11 @@ async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation...\n')
 
   // One line initialization - handles everything!
-  await initializeInstrumentation({
-    serviceName: 'vanilla-example'
-  })
+  await Effect.runPromise(
+    initializeInstrumentation({
+      serviceName: 'vanilla-example'
+    })
+  )
 
   console.log('✅ Ready to trace!\n')
 }

@@ -5,6 +5,7 @@
  * It demonstrates how traces are propagated from the UI to downstream services.
  */
 
+import { Effect } from 'effect'
 import * as http from 'node:http'
 import { initializeInstrumentation } from '@atrim/instrument-node'
 import { trace } from '@opentelemetry/api'
@@ -16,9 +17,11 @@ async function setupInstrumentation() {
   console.log('🎨 [UI Service] Setting up instrumentation...\n')
 
   // One line initialization!
-  await initializeInstrumentation({
-    serviceName: 'ui-service'
-  })
+  await Effect.runPromise(
+    initializeInstrumentation({
+      serviceName: 'ui-service'
+    })
+  )
 
   console.log('✅ [UI Service] Instrumentation initialized')
   console.log(`   🔗 Backend: ${BACKEND_URL}`)

@@ -9,6 +9,7 @@
  * It demonstrates how traces are continued from upstream services.
  */
 
+import { Effect } from 'effect'
 import * as http from 'node:http'
 import {
   initializeInstrumentation,
@@ -35,9 +36,11 @@ async function setupInstrumentation() {
   console.log('💾 [DB Service] Setting up instrumentation...\n')
 
   // One line initialization!
-  await initializeInstrumentation({
-    serviceName: 'db-service'
-  })
+  await Effect.runPromise(
+    initializeInstrumentation({
+      serviceName: 'db-service'
+    })
+  )
 
   console.log('✅ [DB Service] Instrumentation initialized')
   console.log(`   ✅ W3C Trace Context propagation enabled (incoming)\n`)

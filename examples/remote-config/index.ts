@@ -21,6 +21,7 @@
  *    Terminal 2: npm run app
  */
 
+import { Effect } from 'effect'
 import express from 'express'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -56,12 +57,14 @@ async function setupInstrumentation() {
 
   try {
     // Load instrumentation config from remote URL
-    await initializeInstrumentation({
-      configUrl,
-      cacheTimeout: 300_000, // Cache for 5 minutes
-      serviceName: `remote-config-${ENVIRONMENT}`,
-      autoInstrument: true // Explicitly enable auto-instrumentation (standard OpenTelemetry app)
-    })
+    await Effect.runPromise(
+      initializeInstrumentation({
+        configUrl,
+        cacheTimeout: 300_000, // Cache for 5 minutes
+        serviceName: `remote-config-${ENVIRONMENT}`,
+        autoInstrument: true // Explicitly enable auto-instrumentation (standard OpenTelemetry app)
+      })
+    )
 
     console.log('✅ Remote configuration loaded successfully!\n')
   } catch (error) {

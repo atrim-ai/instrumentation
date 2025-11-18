@@ -16,6 +16,7 @@
  *    curl http://localhost:3000/health  # Will be dropped by ignore pattern
  */
 
+import { Effect } from 'effect'
 import { trace } from '@opentelemetry/api'
 import express from 'express'
 import {
@@ -36,14 +37,16 @@ import {
 async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation...\n')
 
-  await initializeInstrumentation({
-    serviceName: 'express-example'
-    // That's it! Everything else is auto-detected:
-    // - OTLP endpoint from OTEL_EXPORTER_OTLP_ENDPOINT env var
-    // - Service version from package.json
-    // - Auto-instrumentation enabled by default
-    // - Pattern filtering from ./instrumentation.yaml
-  })
+  await Effect.runPromise(
+    initializeInstrumentation({
+      serviceName: 'express-example'
+      // That's it! Everything else is auto-detected:
+      // - OTLP endpoint from OTEL_EXPORTER_OTLP_ENDPOINT env var
+      // - Service version from package.json
+      // - Auto-instrumentation enabled by default
+      // - Pattern filtering from ./instrumentation.yaml
+    })
+  )
 
   console.log('✅ Ready to trace!\n')
 }

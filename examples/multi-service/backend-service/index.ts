@@ -13,6 +13,7 @@
  */
 
 import express from 'express'
+import { Effect } from 'effect'
 import {
   initializeInstrumentation,
   setSpanAttributes,
@@ -28,9 +29,11 @@ async function setupInstrumentation() {
   console.log('🔧 [Backend Service] Setting up instrumentation...\n')
 
   // One line initialization!
-  await initializeInstrumentation({
-    serviceName: 'backend-service'
-  })
+  await Effect.runPromise(
+    initializeInstrumentation({
+      serviceName: 'backend-service'
+    })
+  )
 
   console.log('✅ [Backend Service] Instrumentation initialized')
   console.log(`   🔗 DB Service: ${DB_URL}`)

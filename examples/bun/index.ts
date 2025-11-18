@@ -15,6 +15,7 @@
  *    bun run index.ts
  */
 
+import { Effect } from 'effect'
 import { trace } from '@opentelemetry/api'
 import {
   initializeInstrumentation,
@@ -29,10 +30,12 @@ async function setupInstrumentation() {
   console.log('🚀 Setting up OpenTelemetry with @atrim/instrumentation on Bun...\n')
 
   // One line initialization - handles everything!
-  await initializeInstrumentation({
-    serviceName: 'bun-example',
-    autoInstrument: true // Explicitly enable auto-instrumentation (Bun uses standard OpenTelemetry)
-  })
+  await Effect.runPromise(
+    initializeInstrumentation({
+      serviceName: 'bun-example',
+      autoInstrument: true // Explicitly enable auto-instrumentation (Bun uses standard OpenTelemetry)
+    })
+  )
 
   console.log('✅ Ready to trace with Bun!\n')
 }
