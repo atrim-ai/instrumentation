@@ -8,10 +8,8 @@
  */
 
 // Core exports (complete OpenTelemetry initialization)
-// Promise API (backward compatible)
+// Effect-based API (all async operations return Effect)
 export { initializeInstrumentation, initializePatternMatchingOnly } from './api.js'
-// Effect API (primary)
-export { initializeInstrumentationEffect, initializePatternMatchingOnlyEffect } from './api.js'
 
 // SDK initialization types
 export type { SdkInitializationOptions } from './core/sdk-initializer.js'
@@ -21,29 +19,22 @@ export { getSdkInstance, shutdownSdk, resetSdk } from './core/sdk-initializer.js
 export type { OtlpExporterOptions } from './core/exporter-factory.js'
 export { createOtlpExporter, getOtlpEndpoint } from './core/exporter-factory.js'
 
-// Service detection utilities
+// Service detection utilities (Effect-based)
 export type { ServiceInfo } from './core/service-detector.js'
-// Promise API
 export {
-  detectServiceInfoAsync as detectServiceInfo,
-  getServiceNameAsync as getServiceName,
-  getServiceVersionAsync as getServiceVersion
-} from './core/service-detector.js'
-// Effect API
-export {
-  detectServiceInfo as detectServiceInfoEffect,
-  getServiceName as getServiceNameEffect,
-  getServiceVersion as getServiceVersionEffect,
+  detectServiceInfo,
+  getServiceName,
+  getServiceVersion,
   getServiceInfoWithFallback
 } from './core/service-detector.js'
 
-// Configuration types and loader (re-exported from core)
+// Configuration types and loader (re-exported from core, Effect-based)
 export type {
   InstrumentationConfig,
   PatternConfig,
   ConfigLoaderOptions
 } from '@atrim/instrument-core'
-export { loadConfig } from '@atrim/instrument-core'
+export { loadConfigEffect as loadConfig } from '@atrim/instrument-core'
 
 // Pattern matching utilities (re-exported from core)
 export { shouldInstrumentSpan, PatternMatcher, getPatternMatcher } from '@atrim/instrument-core'

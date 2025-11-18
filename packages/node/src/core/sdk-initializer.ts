@@ -606,42 +606,8 @@ const performInitializationEffect = (
     return sdk
   })
 
-// ============================================================================
-// Promise API (Backward Compatible)
-// ============================================================================
-
-/**
- * Initialize OpenTelemetry NodeSDK with pattern-based span filtering (Promise version)
- *
- * This function:
- * 1. Detects if OpenTelemetry is already initialized (skips SDK setup if so)
- * 2. Loads instrumentation configuration (patterns, etc.)
- * 3. Creates OTLP exporter with smart defaults
- * 4. Sets up BatchSpanProcessor → PatternSpanProcessor chain
- * 5. Initializes NodeSDK with auto-instrumentations
- * 6. Registers graceful shutdown handlers
- *
- * If tracing is already initialized, this function will only set up pattern
- * matching and skip NodeSDK initialization.
- *
- * @deprecated Use `initializeSdkEffect` for better error handling
- * @returns The initialized NodeSDK instance, or null if skipped
- */
-export async function initializeSdk(
-  options: SdkInitializationOptions = {}
-): Promise<NodeSDK | null> {
-  return Effect.runPromise(
-    initializeSdkEffect(options).pipe(
-      // Convert typed errors to regular Error for backward compatibility
-      Effect.mapError((error) => {
-        const message = error.reason
-        const newError = new Error(message)
-        newError.cause = error.cause
-        return newError
-      })
-    )
-  )
-}
+// Re-export Effect API with simpler name
+export const initializeSdk = initializeSdkEffect
 
 /**
  * Get the current SDK instance
