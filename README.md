@@ -63,6 +63,78 @@ instrumentation:
 
 That's it!
 
+## HTTP Request Filtering
+
+**IMPORTANT:** HTTP filtering is NOT automatic. You must explicitly configure patterns to prevent noisy traces.
+
+### Why You Need HTTP Filtering
+
+Without filtering, you'll see noisy traces for:
+- **OTLP exports** - `POST http://otel-collector:4318/v1/traces` creating **infinite trace loops**
+- **Health checks** - `GET /health` every few seconds
+- **Metrics** - `GET /metrics` polling
+- **Internal endpoints** - Service-to-service health probes
+
+### Pattern-Based Filtering (YAML) - REQUIRED
+
+Add HTTP filtering patterns to `instrumentation.yaml`:
+
+```yaml
+version: "1.0"
+instrumentation:
+  enabled: true
+  instrument_patterns:
+    - pattern: "^app\\."
+  ignore_patterns:
+    - pattern: "^internal\\."
+
+# HTTP request filtering (REQUIRED to prevent trace loops)
+http:
+  ignore_outgoing_urls:
+    # CRITICAL: Filter OTLP export endpoints to prevent infinite trace loops
+    - "/v1/traces$"
+    - "/v1/metrics$"
+    - "/v1/logs$"
+
+    # Filter health checks and metrics
+    - "/health$"
+    - "/healthz$"
+    - "/metrics$"
+
+  ignore_incoming_paths:
+    - "^/health$"
+    - "^/healthz$"
+    - "^/metrics$"
+```
+
+### Programmatic Filtering (TypeScript)
+
+Use RegExp patterns or custom hooks:
+
+```typescript
+// Pattern-based filtering
+await initializeInstrumentation({
+  http: {
+    ignoreOutgoingUrls: [/\/health$/, /\/v1\/traces$/],
+    ignoreIncomingPaths: [/^\/health$/]
+  }
+})
+
+// Custom hook for advanced filtering
+await initializeInstrumentation({
+  http: {
+    ignoreOutgoingRequestHook: (req) => {
+      const path = req.path || ''
+      return path.includes('/internal') || path.startsWith('/v1/')
+    },
+    ignoreIncomingRequestHook: (req) => {
+      const path = req.url || ''
+      return path.startsWith('/api/internal')
+    }
+  }
+})
+```
+
 ## Examples
 
 See working code in [`/examples`](./examples):

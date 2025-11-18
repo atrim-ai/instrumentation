@@ -9,6 +9,7 @@ import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trac
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
 import type { Instrumentation } from '@opentelemetry/instrumentation'
 import { trace } from '@opentelemetry/api'
+import type { RequestOptions, IncomingMessage } from 'node:http'
 import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
 import { SafeSpanExporter } from './safe-exporter.js'
@@ -66,6 +67,64 @@ export interface SdkInitializationOptions extends ConfigLoaderOptions {
    * Default: false (automatic shutdown is enabled)
    */
   disableAutoShutdown?: boolean
+
+  /**
+   * HTTP instrumentation filtering configuration
+   *
+   * Allows filtering of HTTP requests to prevent noisy traces
+   * (e.g., health checks, OTLP exports, internal endpoints)
+   *
+   * @example
+   * ```typescript
+   * // Pattern-based filtering
+   * http: {
+   *   ignoreOutgoingUrls: [/\/health$/, /\/v1\/traces$/],
+   *   ignoreIncomingPaths: [/^\/health$/]
+   * }
+   *
+   * // Custom hook for advanced filtering
+   * http: {
+   *   ignoreOutgoingRequestHook: (req) => {
+   *     const path = req.path || ''
+   *     return path.includes('otel-collector')
+   *   }
+   * }
+   * ```
+   */
+  http?: {
+    /**
+     * URL patterns to ignore for outgoing HTTP requests
+     * Can be strings or RegExp patterns
+     */
+    ignoreOutgoingUrls?: (string | RegExp)[]
+
+    /**
+     * Path patterns to ignore for incoming HTTP requests
+     * Can be strings or RegExp patterns
+     */
+    ignoreIncomingPaths?: (string | RegExp)[]
+
+    /**
+     * Custom hook for filtering outgoing HTTP requests
+     * Return true to ignore the request (no span created)
+     *
+     * Note: The request parameter is RequestOptions (from http.request()),
+     * not the ClientRequest object
+     */
+    ignoreOutgoingRequestHook?: (req: RequestOptions) => boolean
+
+    /**
+     * Custom hook for filtering incoming HTTP requests
+     * Return true to ignore the request (no span created)
+     */
+    ignoreIncomingRequestHook?: (req: IncomingMessage) => boolean
+
+    /**
+     * Require parent span for outgoing requests
+     * Prevents root spans for HTTP calls (useful for avoiding noise)
+     */
+    requireParentForOutgoingSpans?: boolean
+  }
 }
 
 /**
@@ -77,6 +136,148 @@ let sdkInstance: NodeSDK | null = null
  * Ongoing initialization promise (prevents race conditions)
  */
 let initializationPromise: Promise<NodeSDK | null> | null = null
+
+/**
+ * HTTP instrumentation config that matches @opentelemetry/instrumentation-http
+ * We define this inline to avoid importing from the package (which is a transitive dependency)
+ */
+interface HttpInstrumentationConfigBuilder {
+  enabled: boolean
+  ignoreOutgoingRequestHook?: (req: RequestOptions) => boolean
+  ignoreIncomingRequestHook?: (req: IncomingMessage) => boolean
+  requireParentforOutgoingSpans?: boolean
+}
+
+/**
+ * Build HTTP instrumentation configuration from options and config
+ *
+ * Merges YAML config, programmatic options, and smart defaults
+ */
+function buildHttpInstrumentationConfig(
+  options: SdkInitializationOptions,
+  config: InstrumentationConfig,
+  _otlpEndpoint: string
+): HttpInstrumentationConfigBuilder {
+  const httpConfig: HttpInstrumentationConfigBuilder = { enabled: true }
+
+  // Build outgoing request filter from YAML config and programmatic options ONLY
+  // No hardcoded defaults - everything must be explicit in instrumentation.yaml
+  const programmaticPatterns = options.http?.ignoreOutgoingUrls || []
+  const yamlPatterns = config.http?.ignore_outgoing_urls || []
+
+  // Combine all patterns (NO defaults)
+  const allOutgoingPatterns = [
+    ...programmaticPatterns.map((p) => (typeof p === 'string' ? new RegExp(p) : p)),
+    ...yamlPatterns.map((p) => new RegExp(p))
+  ]
+
+  logger.log(`HTTP filtering: ${allOutgoingPatterns.length} outgoing patterns configured`)
+
+  // Build the hook (always create it if we have any patterns)
+  if (options.http?.ignoreOutgoingRequestHook) {
+    // Use custom hook if provided
+    httpConfig.ignoreOutgoingRequestHook = options.http.ignoreOutgoingRequestHook
+  } else if (allOutgoingPatterns.length > 0) {
+    // Build hook from YAML/programmatic patterns ONLY
+    httpConfig.ignoreOutgoingRequestHook = (req: RequestOptions) => {
+      // RequestOptions has: hostname, host, port, path, protocol, etc.
+      const hostname = req.hostname || req.host || ''
+      const port = req.port || ''
+      const protocol = req.protocol || 'http:'
+      const path = req.path || ''
+
+      // Build full URL for pattern matching
+      const portStr = port ? `:${port}` : ''
+      const url = `${protocol}//${hostname}${portStr}${path}`
+
+      // Check patterns against both URL and path
+      const matchesPattern = allOutgoingPatterns.some(
+        (pattern) => pattern.test(url) || pattern.test(path)
+      )
+
+      return matchesPattern
+    }
+  }
+
+  // Step 3: Build incoming request filter
+  const programmaticIncomingPatterns = options.http?.ignoreIncomingPaths || []
+  const yamlIncomingPatterns = config.http?.ignore_incoming_paths || []
+
+  const allIncomingPatterns = [
+    ...programmaticIncomingPatterns.map((p) => (typeof p === 'string' ? new RegExp(p) : p)),
+    ...yamlIncomingPatterns.map((p) => new RegExp(p))
+  ]
+
+  if (options.http?.ignoreIncomingRequestHook) {
+    // Use custom hook if provided
+    httpConfig.ignoreIncomingRequestHook = options.http.ignoreIncomingRequestHook
+  } else if (allIncomingPatterns.length > 0) {
+    // Build hook from patterns
+    httpConfig.ignoreIncomingRequestHook = (req: IncomingMessage) => {
+      const path = req.url || ''
+      return allIncomingPatterns.some((pattern) => pattern.test(path))
+    }
+  }
+
+  // Step 4: Apply requireParentForOutgoingSpans setting
+  if (
+    options.http?.requireParentForOutgoingSpans !== undefined ||
+    config.http?.require_parent_for_outgoing_spans !== undefined
+  ) {
+    httpConfig.requireParentforOutgoingSpans =
+      options.http?.requireParentForOutgoingSpans ??
+      config.http?.require_parent_for_outgoing_spans ??
+      false
+  }
+
+  return httpConfig
+}
+
+/**
+ * Build undici instrumentation configuration from options and config
+ *
+ * Undici powers the fetch API in Node.js 18+ and is used by the OTLP HTTP exporter
+ * We must filter OTLP requests here to prevent trace loops
+ */
+function buildUndiciInstrumentationConfig(
+  options: SdkInitializationOptions,
+  config: InstrumentationConfig,
+  _otlpEndpoint: string
+) {
+  const undiciConfig = { enabled: true } as Record<string, unknown>
+
+  // Get programmatic and YAML patterns ONLY (NO hardcoded defaults)
+  const programmaticPatterns = options.http?.ignoreOutgoingUrls || []
+  const yamlPatterns = config.http?.ignore_outgoing_urls || []
+
+  // Combine all patterns (NO defaults)
+  const allPatterns = [
+    ...programmaticPatterns.map((p) => (typeof p === 'string' ? new RegExp(p) : p)),
+    ...yamlPatterns.map((p) => new RegExp(p))
+  ]
+
+  // Only create ignoreRequestHook if we have patterns to check
+  if (allPatterns.length > 0) {
+    // Build ignoreRequestHook for undici
+    // Note: undici's hook receives a UndiciRequest object with origin, path, method
+    undiciConfig.ignoreRequestHook = (request: {
+      origin: string
+      path: string
+      method: string
+    }) => {
+      const origin = request.origin
+      const path = request.path
+      const url = `${origin}${path}`
+
+      // ALWAYS log to verify hook is being called
+      // Check patterns from YAML/programmatic config ONLY
+      const matchesPattern = allPatterns.some((pattern) => pattern.test(url) || pattern.test(path))
+      return matchesPattern
+    }
+  }
+
+  return undiciConfig
+}
 
 /**
  * Detect if Effect-TS is being used in the project
@@ -297,10 +498,29 @@ async function performInitialization(options: SdkInitializationOptions): Promise
 
   // Add auto-instrumentations if enabled
   if (enableAutoInstrumentation) {
+    // Get OTLP endpoint for HTTP filtering
+    const otlpEndpoint =
+      options.otlp?.endpoint ||
+      process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ||
+      process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
+      'http://localhost:4318/v1/traces'
+
+    // Build HTTP instrumentation config with filtering
+    const httpConfig = buildHttpInstrumentationConfig(options, config, otlpEndpoint)
+
+    // Build undici instrumentation config (for fetch/undici in Node.js 18+)
+    // The OTLP HTTP exporter uses fetch, which uses undici
+    const undiciConfig = buildUndiciInstrumentationConfig(options, config, otlpEndpoint)
+
     instrumentations.push(
       ...getNodeAutoInstrumentations({
-        // Enable common instrumentations
-        '@opentelemetry/instrumentation-http': { enabled: true },
+        // Enable HTTP instrumentation with filtering (for http/https modules)
+        '@opentelemetry/instrumentation-http': httpConfig,
+
+        // Enable undici instrumentation with filtering (for fetch API)
+        '@opentelemetry/instrumentation-undici': undiciConfig,
+
+        // Enable web framework instrumentations
         '@opentelemetry/instrumentation-express': { enabled: true },
         '@opentelemetry/instrumentation-fastify': { enabled: true },
         '@opentelemetry/instrumentation-koa': { enabled: true },
@@ -310,6 +530,8 @@ async function performInitialization(options: SdkInitializationOptions): Promise
         '@opentelemetry/instrumentation-dns': { enabled: false }
       })
     )
+
+    logger.log(`Auto-instrumentation: ${instrumentations.length} instrumentations enabled`)
   }
 
   // Add custom instrumentations
