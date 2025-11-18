@@ -38,9 +38,10 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish",
+    "publish:core": "pnpm --filter @atrim/instrument-core publish:dev",
     "publish:node": "pnpm --filter @atrim/instrument-node publish:dev",
     "publish:web": "pnpm --filter @atrim/instrument-web publish:dev",
-    "publish:all": "pnpm publish:node && pnpm publish:web"
+    "publish:all": "pnpm publish:core && pnpm publish:node && pnpm publish:web"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
