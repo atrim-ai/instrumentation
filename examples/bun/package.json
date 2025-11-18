@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrumentation-example-bun",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Bun runtime example for @atrim/instrumentation",
   "type": "module",
   "private": true,

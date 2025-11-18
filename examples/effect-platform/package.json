@@ -1,6 +1,6 @@
 {
   "name": "effect-platform-example",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pure Effect-TS example using @effect/platform HTTP server",
   "type": "module",
   "private": true,
