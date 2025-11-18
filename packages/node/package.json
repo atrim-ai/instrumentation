@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrument-node",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "OpenTelemetry instrumentation for Node.js with centralized YAML configuration",
   "type": "module",
   "license": "MIT",
@@ -69,7 +69,7 @@
     "clean": "rm -rf target",
     "publish:dev:version": "npm version $(git describe --tags --abbrev=0 | sed 's/^.*@//' | sed 's/^v//')-$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S) --no-git-tag-version",
     "publish:dev:save": "node -p \"require('./package.json').version\" > .version",
-    "publish:dev:publish": "pnpm build && npm publish --tag dev --access public",
+    "publish:dev:publish": "pnpm build && pnpm publish --tag dev --access public --no-git-checks",
     "publish:dev:reset": "npm version 1.0.0 --no-git-tag-version",
     "publish:dev": "pnpm publish:dev:version && pnpm publish:dev:save && pnpm publish:dev:publish && pnpm publish:dev:reset"
   },
