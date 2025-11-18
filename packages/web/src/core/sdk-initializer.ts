@@ -83,10 +83,121 @@ export interface SdkInitializationOptions {
    * @default true
    */
   enableXhr?: boolean
+
+  /**
+   * Control trace context propagation for cross-origin requests
+   *
+   * Determines which cross-origin requests receive W3C Trace Context headers
+   * (traceparent, tracestate). Note: Backends must allow these headers in CORS
+   * configuration or requests will fail with CORS errors.
+   *
+   * - 'all': Propagate to all cross-origin requests (may cause CORS errors)
+   * - 'none': Never propagate trace headers
+   * - 'same-origin': Only propagate to same-origin requests (default)
+   * - Array of URL patterns: Custom propagation patterns (regex strings)
+   *
+   * @default 'same-origin'
+   *
+   * @example Propagate to specific API domains
+   * ```typescript
+   * propagateTraceContext: ['^https://api\\.myapp\\.com', '^http://localhost:300[0-9]']
+   * ```
+   *
+   * @example Disable propagation (for debugging CORS issues)
+   * ```typescript
+   * propagateTraceContext: 'none'
+   * ```
+   */
+  propagateTraceContext?: 'all' | 'none' | 'same-origin' | string[]
 }
 
 // Singleton instance
 let sdkInstance: WebTracerProvider | null = null
+
+/**
+ * Build trace context propagation URL patterns
+ *
+ * Determines which cross-origin requests should receive W3C Trace Context headers.
+ * Priority order:
+ * 1. API option (options.propagateTraceContext)
+ * 2. YAML config (config.http.propagate_trace_context)
+ * 3. Default ('same-origin')
+ *
+ * @param options - SDK initialization options
+ * @param config - Loaded instrumentation config
+ * @returns Array of RegExp patterns for trace propagation
+ */
+function buildPropagateTraceUrls(
+  options: SdkInitializationOptions,
+  config: InstrumentationConfig | null
+): RegExp[] {
+  // Priority 1: API option
+  const apiOption = options.propagateTraceContext
+
+  // Priority 2: YAML config
+  const yamlStrategy = config?.http?.propagate_trace_context?.strategy
+  const yamlIncludeUrls = config?.http?.propagate_trace_context?.include_urls
+
+  // Determine effective strategy
+  let effectiveStrategy: 'all' | 'none' | 'same-origin' | 'patterns'
+  let patterns: string[] = []
+
+  if (apiOption !== undefined) {
+    // API option takes precedence
+    if (typeof apiOption === 'string') {
+      effectiveStrategy = apiOption
+    } else {
+      // Array of patterns
+      effectiveStrategy = 'patterns'
+      patterns = apiOption
+    }
+  } else if (yamlStrategy) {
+    // Use YAML config
+    effectiveStrategy = yamlStrategy
+    if (effectiveStrategy === 'patterns' && yamlIncludeUrls) {
+      patterns = yamlIncludeUrls
+    }
+  } else {
+    // Default to same-origin only
+    effectiveStrategy = 'same-origin'
+  }
+
+  // Convert strategy to RegExp array
+  switch (effectiveStrategy) {
+    case 'all':
+      // Propagate to all CORS requests
+      return [/.*/]
+
+    case 'none':
+    case 'same-origin':
+      // No CORS propagation (same-origin requests get headers automatically)
+      return []
+
+    case 'patterns': {
+      // Convert patterns to RegExp
+      const regexes: RegExp[] = []
+      for (const pattern of patterns) {
+        try {
+          regexes.push(new RegExp(pattern))
+        } catch (error) {
+          console.warn(
+            `[@atrim/instrument-web] Invalid trace propagation pattern: "${pattern}"`,
+            error
+          )
+        }
+      }
+      return regexes
+    }
+
+    default:
+      // Fallback to same-origin (safe default)
+      console.warn(
+        `[@atrim/instrument-web] Unknown trace propagation strategy: "${effectiveStrategy}". ` +
+          'Defaulting to same-origin only.'
+      )
+      return []
+  }
+}
 
 /**
  * Initialize the OpenTelemetry SDK for browser
@@ -155,6 +266,11 @@ export async function initializeSdk(options: SdkInitializationOptions): Promise<
       )
     }
 
+    // Build trace context propagation patterns
+    // Note: propagateTraceHeaderCorsUrls controls which CORS requests get trace headers
+    // Same-origin requests ALWAYS get trace headers regardless of this setting
+    const propagateTraceUrls: RegExp[] = buildPropagateTraceUrls(options, config)
+
     // Create OTLP exporter
     const exporterOptions: OtlpExporterOptions = {}
     if (options.otlpEndpoint) {
@@ -206,13 +322,13 @@ export async function initializeSdk(options: SdkInitializationOptions): Promise<
           },
           '@opentelemetry/instrumentation-fetch': {
             enabled: options.enableFetch ?? true,
-            propagateTraceHeaderCorsUrls: [/.*/], // Propagate to all origins
+            propagateTraceHeaderCorsUrls: propagateTraceUrls, // Controlled by config/API
             clearTimingResources: true,
             ignoreUrls // Prevent self-instrumentation of OTLP exports
           },
           '@opentelemetry/instrumentation-xml-http-request': {
             enabled: options.enableXhr ?? true,
-            propagateTraceHeaderCorsUrls: [/.*/]
+            propagateTraceHeaderCorsUrls: propagateTraceUrls // Controlled by config/API
           }
         })
       ]
