@@ -134,6 +134,173 @@ await initializeInstrumentation({
 })
 ```
 
+## Trace Context Propagation CORS Errors
+
+### Symptom
+
+When using the web package (`@atrim/instrument-web`), you see CORS errors in the browser console:
+
+```
+Access to XMLHttpRequest at 'https://api.example.com' has been blocked by CORS policy:
+Request header field traceparent is not allowed by Access-Control-Allow-Headers in preflight response.
+```
+
+or
+
+```
+Access to fetch at 'https://api.example.com' has been blocked by CORS policy:
+Request header field traceparent is not allowed by Access-Control-Allow-Headers in preflight response.
+```
+
+### Root Cause
+
+The W3C Trace Context headers (`traceparent`, `tracestate`) are added to cross-origin requests by the instrumentation. When these headers are present, the browser triggers a CORS preflight request (OPTIONS), and the backend server must explicitly allow these headers.
+
+### Solution 1: Configure Backend CORS
+
+Update your backend to allow trace context headers in CORS configuration:
+
+**Express (Node.js):**
+```typescript
+import cors from 'cors'
+
+app.use(cors({
+  origin: 'https://your-frontend.com',
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'traceparent',    // W3C Trace Context (required)
+    'tracestate'      // W3C Trace State (optional)
+  ]
+}))
+```
+
+**Fastify (Node.js):**
+```typescript
+import fastifyCors from '@fastify/cors'
+
+await fastify.register(fastifyCors, {
+  origin: 'https://your-frontend.com',
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'traceparent',
+    'tracestate'
+  ]
+})
+```
+
+**Effect HTTP (Effect-TS):**
+```typescript
+import { HttpMiddleware } from '@effect/platform'
+
+const corsMiddleware = HttpMiddleware.cors({
+  allowedOrigins: ['https://your-frontend.com'],
+  allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'traceparent',
+    'tracestate'
+  ],
+  exposedHeaders: ['Content-Length', 'Date']
+})
+```
+
+**Cloudflare Workers:**
+```typescript
+// In your response headers
+return new Response(body, {
+  headers: {
+    'Access-Control-Allow-Origin': 'https://your-frontend.com',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, traceparent, tracestate',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+  }
+})
+```
+
+### Solution 2: Disable Trace Propagation
+
+If you **cannot** modify the backend CORS configuration (e.g., third-party APIs), disable trace propagation:
+
+**Disable all cross-origin propagation:**
+```typescript
+import { initializeInstrumentation } from '@atrim/instrument-web'
+
+await initializeInstrumentation({
+  serviceName: 'my-app',
+  propagateTraceContext: 'none'  // Only same-origin gets trace headers
+})
+```
+
+**Selectively propagate to specific domains:**
+```typescript
+await initializeInstrumentation({
+  serviceName: 'my-app',
+  propagateTraceContext: [
+    '^https://api\\.myapp\\.com',      // Your own API
+    '^http://localhost:300[0-9]'      // Local dev servers
+  ]
+  // Third-party APIs (e.g., Stripe, Auth0) won't receive trace headers
+})
+```
+
+**Using YAML configuration:**
+```yaml
+# instrumentation.yaml
+http:
+  propagate_trace_context:
+    strategy: "patterns"
+    include_urls:
+      - "^https://api\\.myapp\\.com"
+      - "^http://localhost:300[0-9]"
+```
+
+### Understanding Trace Propagation
+
+**Default behavior (v0.4.0+):** Same-origin only
+- Same-origin requests (e.g., `/api/users`) → ✅ Always get trace headers
+- Cross-origin requests (e.g., `https://api.other.com`) → ❌ No trace headers (unless configured)
+
+**Available strategies:**
+- `'none'` - No cross-origin propagation (safest, same-origin only)
+- `'same-origin'` - Same as 'none' (default)
+- `'all'` - Propagate to all cross-origin requests (may cause CORS errors)
+- `string[]` - Propagate only to matching URL patterns
+
+### Verifying Headers Are Sent
+
+To verify trace headers are being sent to your API:
+
+**Browser DevTools:**
+1. Open DevTools → Network tab
+2. Make a request to your API
+3. Click the request → Headers tab
+4. Look for `traceparent` and `tracestate` in "Request Headers"
+
+**Expected header format:**
+```
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+tracestate: (vendor-specific data, may be empty)
+```
+
+If you see these headers but get CORS errors, your backend needs to allow them (Solution 1).
+
+### Breaking Change Notice
+
+**v0.3.x and earlier:** Propagated to ALL cross-origin requests by default
+**v0.4.0+:** Only propagates to same-origin requests by default
+
+If you were relying on cross-origin propagation, explicitly configure it:
+```typescript
+propagateTraceContext: 'all'  // Restore old behavior (not recommended)
+```
+
+Or better, configure specific domains:
+```typescript
+propagateTraceContext: ['^https://api\\.myapp\\.com']  // Recommended
+```
+
 ## Performance Issues
 
 ### Too Many Spans
