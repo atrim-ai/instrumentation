@@ -103,9 +103,7 @@ export interface EffectInstrumentationOptions extends ConfigLoaderOptions {
  * )
  * ```
  */
-export function createEffectInstrumentation(
-  options: EffectInstrumentationOptions = {}
-): Layer.Layer<never, unknown, never> {
+export function createEffectInstrumentation(options: EffectInstrumentationOptions = {}) {
   return Layer.unwrapEffect(
     Effect.gen(function* () {
       // 1. Load configuration
@@ -222,12 +220,13 @@ export function createEffectInstrumentation(
  * )
  * ```
  */
-export const EffectInstrumentationLive: Layer.Layer<never, never, never> = Effect.sync(() => {
+export const EffectInstrumentationLive = Effect.sync(() => {
   const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
   const serviceName = process.env.OTEL_SERVICE_NAME || 'effect-service'
   const serviceVersion = process.env.npm_package_version || '1.0.0'
 
-  logger.log('🔍 Effect OpenTelemetry tracer (Otlp.layer)')
+  logger.minimal(`@atrim/instrumentation/effect: Effect tracing enabled (${serviceName})`)
+  logger.log('🔍 Effect OpenTelemetry tracer')
   logger.log(`   📡 Endpoint: ${endpoint}`)
   logger.log(`   🏷️  Service: ${serviceName}`)
 
