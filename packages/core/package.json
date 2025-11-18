@@ -1,11 +1,30 @@
 {
   "name": "@atrim/instrument-core",
   "version": "0.4.0",
-  "private": true,
-  "description": "Core instrumentation logic shared across platform packages (internal)",
+  "description": "Core instrumentation logic shared across platform packages",
   "type": "module",
   "license": "MIT",
   "author": "Atrim AI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atrim-ai/instrumentation.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/atrim-ai/instrumentation/issues"
+  },
+  "homepage": "https://github.com/atrim-ai/instrumentation#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "opentelemetry",
+    "instrumentation",
+    "tracing",
+    "observability",
+    "effect",
+    "effect-platform"
+  ],
   "exports": {
     ".": {
       "types": "./target/dist/index.d.ts",
@@ -26,7 +45,12 @@
     "test:watch": "echo 'No tests for core package'",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "clean": "rm -rf target"
+    "clean": "rm -rf target",
+    "publish:dev:version": "npm version $(git describe --tags --abbrev=0 | sed 's/^.*@//' | sed 's/^v//')-$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S) --no-git-tag-version",
+    "publish:dev:save": "node -p \"require('./package.json').version\" > .version",
+    "publish:dev:publish": "pnpm build && npm publish --tag dev --access public",
+    "publish:dev:reset": "npm version 0.4.0 --no-git-tag-version",
+    "publish:dev": "pnpm publish:dev:version && pnpm publish:dev:save && pnpm publish:dev:publish && pnpm publish:dev:reset"
   },
   "dependencies": {
     "effect": "^3.19.0",
