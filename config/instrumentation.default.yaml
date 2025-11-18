@@ -31,6 +31,32 @@ instrumentation:
     - pattern: "^metrics\\."
       description: "Metrics collection"
 
+# HTTP instrumentation filtering (prevents noisy HTTP traces)
+# IMPORTANT: NO patterns are applied by default - you must explicitly configure them
+http:
+  # Outgoing HTTP requests to ignore (prevents HTTP client spans)
+  ignore_outgoing_urls:
+    # NOTE: OTLP export requests (/v1/traces, /v1/metrics, /v1/logs) are
+    # automatically suppressed by OpenTelemetry SDK and do not need filtering.
+    # The SDK runs exports in a suppressed context to prevent trace loops.
+
+    # Health check endpoints
+    - "/health$"
+    - "/healthz$"
+    - "/readiness$"
+    - "/liveness$"
+
+    # Metrics endpoints (non-OTLP)
+    - "/metrics$"
+
+  # Incoming HTTP requests to ignore (prevents HTTP server spans)
+  ignore_incoming_paths:
+    - "^/health$"
+    - "^/healthz$"
+    - "^/readiness$"
+    - "^/liveness$"
+    - "^/metrics$"
+
 # Optional Effect-TS specific features
 # Only used if you import from '@atrim/instrumentation/effect'
 effect:
