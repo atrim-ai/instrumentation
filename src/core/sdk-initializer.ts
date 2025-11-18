@@ -167,21 +167,13 @@ function buildHttpInstrumentationConfig(
     ...yamlPatterns.map((p) => new RegExp(p))
   ]
 
-  // Log what we're building
-  console.log('[HTTP CONFIG BUILDER]', {
-    programmaticPatterns: programmaticPatterns.length,
-    yamlPatterns: yamlPatterns.length,
-    totalPatterns: allOutgoingPatterns.length,
-    patterns: allOutgoingPatterns.map((p) => p.source)
-  })
+  logger.log(`HTTP filtering: ${allOutgoingPatterns.length} outgoing patterns configured`)
 
   // Build the hook (always create it if we have any patterns)
   if (options.http?.ignoreOutgoingRequestHook) {
     // Use custom hook if provided
-    console.log('[HTTP CONFIG] Using custom hook')
     httpConfig.ignoreOutgoingRequestHook = options.http.ignoreOutgoingRequestHook
   } else if (allOutgoingPatterns.length > 0) {
-    console.log('[HTTP CONFIG] Building hook from patterns')
     // Build hook from YAML/programmatic patterns ONLY
     httpConfig.ignoreOutgoingRequestHook = (req: RequestOptions) => {
       // RequestOptions has: hostname, host, port, path, protocol, etc.
@@ -194,27 +186,12 @@ function buildHttpInstrumentationConfig(
       const portStr = port ? `:${port}` : ''
       const url = `${protocol}//${hostname}${portStr}${path}`
 
-      // ALWAYS log for debugging
-      console.log('[HTTP FILTER HOOK CALLED]', {
-        url,
-        hostname,
-        port,
-        path,
-        patterns: allOutgoingPatterns.map((p) => p.source)
-      })
-
       // Check patterns against both URL and path
       const matchesPattern = allOutgoingPatterns.some(
         (pattern) => pattern.test(url) || pattern.test(path)
       )
 
-      if (matchesPattern) {
-        console.log('[HTTP FILTER] ✅ Filtered by YAML/programmatic pattern:', url)
-        return true
-      }
-
-      console.log('[HTTP FILTER] ❌ NOT filtered - no matching pattern:', url)
-      return false
+      return matchesPattern
     }
   }
 
@@ -289,26 +266,10 @@ function buildUndiciInstrumentationConfig(
       const url = `${origin}${path}`
 
       // ALWAYS log to verify hook is being called
-      console.log('[UNDICI FILTER HOOK CALLED]', {
-        method: request.method,
-        origin,
-        path,
-        url,
-        patterns: allPatterns.map((p) => p.source)
-      })
-
       // Check patterns from YAML/programmatic config ONLY
       const matchesPattern = allPatterns.some((pattern) => pattern.test(url) || pattern.test(path))
-      if (matchesPattern) {
-        console.log('[UNDICI FILTER] ✅ Filtered by YAML/programmatic pattern:', url)
-        return true
-      }
-
-      console.log('[UNDICI FILTER] ❌ NOT filtered - no matching pattern:', url)
-      return false
+      return matchesPattern
     }
-  } else {
-    console.log('[UNDICI FILTER] No patterns configured - all requests will be traced')
   }
 
   return undiciConfig
@@ -547,37 +508,6 @@ async function performInitialization(options: SdkInitializationOptions): Promise
     // The OTLP HTTP exporter uses fetch, which uses undici
     const undiciConfig = buildUndiciInstrumentationConfig(options, config, otlpEndpoint)
 
-    // DEBUG: Log the configurations being applied
-    console.log('[HTTP/UNDICI CONFIG DEBUG]', {
-      otlpEndpoint,
-      httpConfigHasHook: !!httpConfig.ignoreOutgoingRequestHook,
-      undiciConfigHasHook: !!(undiciConfig as Record<string, unknown>).ignoreRequestHook,
-      yamlHttpPatterns: config.http?.ignore_outgoing_urls,
-      programmaticHttpPatterns: options.http?.ignoreOutgoingUrls
-    })
-
-    // Log the actual config objects being passed
-    console.log('[INSTRUMENTATION CONFIG]', {
-      httpConfig: JSON.stringify(
-        {
-          enabled: httpConfig.enabled,
-          hasIgnoreHook: !!httpConfig.ignoreOutgoingRequestHook,
-          hookType: typeof httpConfig.ignoreOutgoingRequestHook
-        },
-        null,
-        2
-      ),
-      undiciConfig: JSON.stringify(
-        {
-          enabled: (undiciConfig as Record<string, unknown>).enabled,
-          hasIgnoreHook: !!(undiciConfig as Record<string, unknown>).ignoreRequestHook,
-          hookType: typeof (undiciConfig as Record<string, unknown>).ignoreRequestHook
-        },
-        null,
-        2
-      )
-    })
-
     instrumentations.push(
       ...getNodeAutoInstrumentations({
         // Enable HTTP instrumentation with filtering (for http/https modules)
@@ -597,10 +527,7 @@ async function performInitialization(options: SdkInitializationOptions): Promise
       })
     )
 
-    console.log('[INSTRUMENTATIONS] Created', instrumentations.length, 'instrumentations')
-    instrumentations.forEach((inst) => {
-      console.log('  -', inst.instrumentationName)
-    })
+    logger.log(`Auto-instrumentation: ${instrumentations.length} instrumentations enabled`)
   }
 
   // Add custom instrumentations

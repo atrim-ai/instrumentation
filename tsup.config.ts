@@ -20,13 +20,13 @@ export default defineConfig([
       '@opentelemetry/sdk-trace-base'
     ]
   },
-  // Effect integration (builds JS but skips DTS if Effect not installed)
+  // Effect integration (builds JS and DTS for proper type inference)
   {
     entry: {
       'integrations/effect/index': 'src/integrations/effect/index.ts'
     },
     format: ['esm', 'cjs'],
-    dts: false, // Skip DTS - Effect users will have types from their Effect installation
+    dts: true, // Generate DTS for proper type inference
     splitting: false,
     sourcemap: true,
     clean: false, // Don't clean - main entry already did

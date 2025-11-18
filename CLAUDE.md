@@ -493,6 +493,38 @@ initializeInstrumentation({
 
 This workflow ensures alignment on design decisions before implementation and prevents wasted effort on unapproved approaches.
 
+### Git Commit Workflow
+
+**CRITICAL:** All git commits require explicit user approval. NEVER auto-commit changes.
+
+**Required workflow:**
+
+1. **Make code changes** when requested
+2. **Run tests** to verify changes work correctly
+3. **Show the user what changed** - Summarize the changes made
+4. **Ask for explicit approval** before committing
+5. **Only commit after user approves** the changes
+
+**Example workflow:**
+```
+Assistant: I've made the following changes:
+- Modified src/core/sdk-initializer.ts to add HTTP filtering
+- Updated README.md with usage examples
+- Added integration test in test/integration/http-filtering/
+
+All tests are passing. Would you like me to commit these changes?
+
+User: yes, please commit
+```
+
+**DO NOT commit without approval:**
+- Never use git commit automatically
+- Never create commits "just to save progress"
+- Never commit during implementation without asking first
+- Always wait for explicit user confirmation
+
+**Analysis documents:** Files in `./tmp/[DATE]/` are for analysis only and should NEVER be committed to git. These are temporary working documents for discussion with the user.
+
 ## Gotchas and Common Issues
 
 ### Pattern Escaping
