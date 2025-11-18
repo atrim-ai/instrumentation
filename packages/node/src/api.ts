@@ -11,8 +11,17 @@
 
 import { Effect } from 'effect'
 import type { NodeSDK } from '@opentelemetry/sdk-node'
-import { initializeSdk, type SdkInitializationOptions } from './core/sdk-initializer.js'
-import { initializePatternMatcher, loadConfig, logger } from '@atrim/instrument-core'
+import {
+  initializeSdk,
+  initializeSdkEffect,
+  type SdkInitializationOptions
+} from './core/sdk-initializer.js'
+import {
+  initializePatternMatcher,
+  loadConfig,
+  loadConfigEffect,
+  logger
+} from '@atrim/instrument-core'
 import { InitializationError, ConfigError } from './core/errors.js'
 
 /**
@@ -184,32 +193,23 @@ export const initializeInstrumentationEffect = (
   options: SdkInitializationOptions = {}
 ): Effect.Effect<NodeSDK | null, InitializationError | ConfigError> =>
   Effect.gen(function* () {
-    // Initialize SDK with error handling
-    const sdk = yield* Effect.tryPromise({
-      try: () => initializeSdk(options),
-      catch: (error) =>
-        new InitializationError({
-          reason: 'SDK initialization failed',
-          cause: error
-        })
-    })
+    // Initialize SDK using Effect-based initializer
+    const sdk = yield* initializeSdkEffect(options)
 
-    // If SDK was initialized, set up pattern matcher
+    // If SDK was initialized, set up pattern matcher for backward compatibility
+    // (in case users are using shouldInstrumentSpan directly)
+    // Note: If SDK was skipped, initializeSdkEffect already initialized the pattern matcher
     if (sdk) {
-      yield* Effect.tryPromise({
-        try: () => loadConfig(options),
-        catch: (error) =>
-          new ConfigError({
-            reason: 'Failed to load config for pattern matcher',
-            cause: error
-          })
-      }).pipe(
-        Effect.tap((config) =>
-          Effect.sync(() => {
-            initializePatternMatcher(config)
-          })
+      const config = yield* loadConfigEffect(options).pipe(
+        Effect.mapError(
+          (error) =>
+            new ConfigError({
+              reason: `Failed to load config for pattern matcher: ${error.reason}`,
+              cause: error
+            })
         )
       )
+      initializePatternMatcher(config)
     }
 
     return sdk
@@ -244,14 +244,15 @@ export const initializePatternMatchingOnlyEffect = (
   options: SdkInitializationOptions = {}
 ): Effect.Effect<void, ConfigError> =>
   Effect.gen(function* () {
-    const config = yield* Effect.tryPromise({
-      try: () => loadConfig(options),
-      catch: (error) =>
-        new ConfigError({
-          reason: 'Failed to load configuration',
-          cause: error
-        })
-    })
+    const config = yield* loadConfigEffect(options).pipe(
+      Effect.mapError(
+        (error) =>
+          new ConfigError({
+            reason: `Failed to load configuration: ${error.reason}`,
+            cause: error
+          })
+      )
+    )
 
     yield* Effect.sync(() => {
       initializePatternMatcher(config)

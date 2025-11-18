@@ -4,6 +4,7 @@
  * Provides comprehensive OpenTelemetry SDK initialization with smart defaults
  */
 
+import { Effect, Deferred } from 'effect'
 import { NodeSDK, NodeSDKConfiguration } from '@opentelemetry/sdk-node'
 import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
@@ -13,9 +14,10 @@ import type { RequestOptions, IncomingMessage } from 'node:http'
 import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
 import { SafeSpanExporter } from './safe-exporter.js'
-import { detectServiceInfoAsync } from './service-detector.js'
+import { detectServiceInfo } from './service-detector.js'
+import { InitializationError } from './errors.js'
 import {
-  loadConfig,
+  loadConfigEffect,
   type ConfigLoaderOptions,
   type InstrumentationConfig,
   type PatternConfig,
@@ -133,9 +135,10 @@ export interface SdkInitializationOptions extends ConfigLoaderOptions {
 let sdkInstance: NodeSDK | null = null
 
 /**
- * Ongoing initialization promise (prevents race conditions)
+ * Ongoing initialization deferred (prevents race conditions)
+ * Uses Effect's Deferred for proper Effect-based coordination
  */
-let initializationPromise: Promise<NodeSDK | null> | null = null
+let initializationDeferred: Deferred.Deferred<NodeSDK | null, InitializationError> | null = null
 
 /**
  * HTTP instrumentation config that matches @opentelemetry/instrumentation-http
@@ -389,8 +392,226 @@ function isTracingAlreadyInitialized(): boolean {
   }
 }
 
+// ============================================================================
+// Effect API (Primary)
+// ============================================================================
+
 /**
- * Initialize OpenTelemetry NodeSDK with pattern-based span filtering
+ * Initialize OpenTelemetry NodeSDK with pattern-based span filtering (Effect version)
+ *
+ * This function:
+ * 1. Detects if OpenTelemetry is already initialized (skips SDK setup if so)
+ * 2. Loads instrumentation configuration (patterns, etc.)
+ * 3. Creates OTLP exporter with smart defaults
+ * 4. Sets up BatchSpanProcessor → PatternSpanProcessor chain
+ * 5. Initializes NodeSDK with auto-instrumentations
+ * 6. Registers graceful shutdown handlers
+ *
+ * Uses Deferred to ensure one-time initialization and prevent race conditions.
+ *
+ * @returns Effect that yields the initialized NodeSDK instance, or null if skipped
+ */
+export const initializeSdkEffect = (
+  options: SdkInitializationOptions = {}
+): Effect.Effect<NodeSDK | null, InitializationError> =>
+  Effect.gen(function* () {
+    // Check if we already initialized via this library
+    if (sdkInstance) {
+      logger.warn('@atrim/instrumentation: SDK already initialized. Returning existing instance.')
+      return sdkInstance
+    }
+
+    // Check if initialization is already in progress (prevents race conditions)
+    if (initializationDeferred) {
+      logger.log(
+        '@atrim/instrumentation: SDK initialization in progress, waiting for completion...'
+      )
+      return yield* Deferred.await(initializationDeferred)
+    }
+
+    // Create new deferred for this initialization
+    const deferred = yield* Deferred.make<NodeSDK | null, InitializationError>()
+    initializationDeferred = deferred
+
+    // Perform initialization and handle success/failure
+    const result = yield* performInitializationEffect(options).pipe(
+      Effect.tap((sdk) => Deferred.succeed(deferred, sdk)),
+      Effect.tapError((error) => Deferred.fail(deferred, error)),
+      Effect.ensuring(
+        Effect.sync(() => {
+          // Clear the deferred once initialization is complete (success or failure)
+          initializationDeferred = null
+        })
+      )
+    )
+
+    return result
+  })
+
+/**
+ * Internal initialization implementation (Effect version)
+ */
+const performInitializationEffect = (
+  options: SdkInitializationOptions
+): Effect.Effect<NodeSDK | null, InitializationError> =>
+  Effect.gen(function* () {
+    // 1. Load configuration first (including logging level)
+    const config = yield* loadConfigEffect(options).pipe(
+      Effect.mapError(
+        (error) =>
+          new InitializationError({
+            reason: `Failed to load configuration: ${error.reason}`,
+            cause: error
+          })
+      )
+    )
+
+    // 2. Configure logger based on config
+    const loggingLevel = config.instrumentation.logging || 'on'
+    logger.setLevel(loggingLevel)
+
+    // Check if OpenTelemetry is already initialized elsewhere
+    const alreadyInitialized = isTracingAlreadyInitialized()
+
+    if (alreadyInitialized) {
+      logger.log('@atrim/instrumentation: Detected existing OpenTelemetry initialization.')
+      logger.log('  - Skipping NodeSDK setup')
+      logger.log('  - Setting up pattern-based filtering only')
+      logger.log('')
+
+      // Initialize pattern matcher for filtering
+      initializePatternMatcher(config)
+
+      logger.log('@atrim/instrumentation: Pattern filtering initialized')
+      logger.log('  ⚠️  Note: Pattern filtering will only work with manual spans')
+      logger.log('  ⚠️  Auto-instrumentation must be configured separately')
+      logger.log('')
+
+      return null
+    }
+
+    // 3. Detect service info
+    const serviceInfo = yield* detectServiceInfo.pipe(
+      Effect.catchAll(() =>
+        Effect.succeed({
+          name: 'unknown-service',
+          version: undefined
+        })
+      )
+    )
+    const serviceName = options.serviceName || serviceInfo.name
+    const serviceVersion = options.serviceVersion || serviceInfo.version
+
+    // 4. Create OTLP exporter wrapped in SafeSpanExporter
+    const rawExporter = yield* Effect.sync(() => createOtlpExporter(options.otlp))
+    const exporter = yield* Effect.sync(() => new SafeSpanExporter(rawExporter))
+
+    // 5. Create span processor chain
+    const useSimpleProcessor =
+      process.env.NODE_ENV === 'test' || process.env.OTEL_USE_SIMPLE_PROCESSOR === 'true'
+    const baseProcessor = yield* Effect.sync(() =>
+      useSimpleProcessor ? new SimpleSpanProcessor(exporter) : new BatchSpanProcessor(exporter)
+    )
+    const patternProcessor = yield* Effect.sync(
+      () => new PatternSpanProcessor(config, baseProcessor)
+    )
+
+    // 6. Prepare instrumentations
+    const instrumentations: Instrumentation[] = []
+
+    // Determine if auto-instrumentation should be enabled
+    const hasWebFramework = hasWebFrameworkInstalled()
+    const enableAutoInstrumentation = shouldEnableAutoInstrumentation(
+      options.autoInstrument,
+      hasWebFramework
+    )
+
+    // Add auto-instrumentations if enabled
+    if (enableAutoInstrumentation) {
+      const otlpEndpoint =
+        options.otlp?.endpoint ||
+        process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ||
+        process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
+        'http://localhost:4318/v1/traces'
+
+      const httpConfig = buildHttpInstrumentationConfig(options, config, otlpEndpoint)
+      const undiciConfig = buildUndiciInstrumentationConfig(options, config, otlpEndpoint)
+
+      instrumentations.push(
+        ...getNodeAutoInstrumentations({
+          '@opentelemetry/instrumentation-http': httpConfig,
+          '@opentelemetry/instrumentation-undici': undiciConfig,
+          '@opentelemetry/instrumentation-express': { enabled: true },
+          '@opentelemetry/instrumentation-fastify': { enabled: true },
+          '@opentelemetry/instrumentation-koa': { enabled: true },
+          '@opentelemetry/instrumentation-fs': { enabled: false },
+          '@opentelemetry/instrumentation-dns': { enabled: false }
+        })
+      )
+
+      logger.log(`Auto-instrumentation: ${instrumentations.length} instrumentations enabled`)
+    }
+
+    // Add custom instrumentations
+    if (options.instrumentations) {
+      instrumentations.push(...options.instrumentations)
+    }
+
+    // For pure Effect apps (no auto-instrumentation), skip NodeSDK entirely
+    if (!enableAutoInstrumentation && instrumentations.length === 0) {
+      const wasExplicit = options.autoInstrument === false
+      const detectionMessage = wasExplicit
+        ? '@atrim/instrumentation: Auto-instrumentation: disabled'
+        : '@atrim/instrumentation: Pure Effect-TS app detected (auto-detected)'
+
+      logger.log(detectionMessage)
+      logger.log('  - Skipping NodeSDK setup')
+      logger.log('  - Pattern matching configured from instrumentation.yaml')
+      if (!wasExplicit) {
+        logger.log('  - Use EffectInstrumentationLive for tracing')
+      }
+      logger.log('')
+
+      initializePatternMatcher(config)
+
+      return null
+    }
+
+    // 7. Create NodeSDK configuration
+    const sdkConfig = {
+      spanProcessor: patternProcessor,
+      serviceName,
+      ...(serviceVersion && { serviceVersion }),
+      instrumentations,
+      ...options.sdk
+    } as NodeSDKConfiguration
+
+    // 8. Initialize SDK
+    const sdk = yield* Effect.sync(() => {
+      const s = new NodeSDK(sdkConfig)
+      s.start()
+      return s
+    })
+
+    sdkInstance = sdk
+
+    // 9. Register shutdown handlers (unless disabled)
+    if (!options.disableAutoShutdown) {
+      yield* Effect.sync(() => registerShutdownHandlers(sdk))
+    }
+
+    // 10. Log initialization details
+    logInitialization(config, serviceName, serviceVersion, options, enableAutoInstrumentation)
+
+    return sdk
+  })
+
+// ============================================================================
+// Promise API (Backward Compatible)
+// ============================================================================
+
+/**
+ * Initialize OpenTelemetry NodeSDK with pattern-based span filtering (Promise version)
  *
  * This function:
  * 1. Detects if OpenTelemetry is already initialized (skips SDK setup if so)
@@ -403,189 +624,23 @@ function isTracingAlreadyInitialized(): boolean {
  * If tracing is already initialized, this function will only set up pattern
  * matching and skip NodeSDK initialization.
  *
+ * @deprecated Use `initializeSdkEffect` for better error handling
  * @returns The initialized NodeSDK instance, or null if skipped
  */
 export async function initializeSdk(
   options: SdkInitializationOptions = {}
 ): Promise<NodeSDK | null> {
-  // Check if we already initialized via this library
-  if (sdkInstance) {
-    logger.warn('@atrim/instrumentation: SDK already initialized. Returning existing instance.')
-    return sdkInstance
-  }
-
-  // Check if initialization is already in progress (prevents race conditions)
-  if (initializationPromise) {
-    logger.log(
-      '@atrim/instrumentation: SDK already initialized, waiting for initialization to complete...'
-    )
-    return initializationPromise
-  }
-
-  // Start initialization and track the promise
-  initializationPromise = performInitialization(options)
-
-  try {
-    const result = await initializationPromise
-    return result
-  } finally {
-    // Clear the promise once initialization is complete
-    initializationPromise = null
-  }
-}
-
-/**
- * Internal initialization implementation
- */
-async function performInitialization(options: SdkInitializationOptions): Promise<NodeSDK | null> {
-  // 1. Load configuration first (including logging level)
-  const config = await loadConfig(options)
-
-  // 2. Configure logger based on config
-  const loggingLevel = config.instrumentation.logging || 'on'
-  logger.setLevel(loggingLevel)
-
-  // Check if OpenTelemetry is already initialized elsewhere
-  const alreadyInitialized = isTracingAlreadyInitialized()
-
-  if (alreadyInitialized) {
-    logger.log('@atrim/instrumentation: Detected existing OpenTelemetry initialization.')
-    logger.log('  - Skipping NodeSDK setup')
-    logger.log('  - Setting up pattern-based filtering only')
-    logger.log('')
-
-    // Initialize pattern matcher for filtering
-    initializePatternMatcher(config)
-
-    logger.log('@atrim/instrumentation: Pattern filtering initialized')
-    logger.log('  ⚠️  Note: Pattern filtering will only work with manual spans')
-    logger.log('  ⚠️  Auto-instrumentation must be configured separately')
-    logger.log('')
-
-    return null
-  }
-
-  // 3. Detect service info
-  const serviceInfo = await detectServiceInfoAsync()
-  const serviceName = options.serviceName || serviceInfo.name
-  const serviceVersion = options.serviceVersion || serviceInfo.version
-
-  // 4. Create OTLP exporter wrapped in SafeSpanExporter
-  // The safe exporter catches and handles connection errors gracefully
-  // instead of letting them escape as uncaught exceptions
-  const rawExporter = createOtlpExporter(options.otlp)
-  const exporter = new SafeSpanExporter(rawExporter)
-
-  // 5. Create span processor chain
-  // Use SimpleSpanProcessor in test mode to avoid shutdown race conditions
-  // with BatchSpanProcessor's background export timer
-  const useSimpleProcessor =
-    process.env.NODE_ENV === 'test' || process.env.OTEL_USE_SIMPLE_PROCESSOR === 'true'
-  const baseProcessor = useSimpleProcessor
-    ? new SimpleSpanProcessor(exporter)
-    : new BatchSpanProcessor(exporter)
-  const patternProcessor = new PatternSpanProcessor(config, baseProcessor)
-
-  // 6. Prepare instrumentations
-  const instrumentations: Instrumentation[] = []
-
-  // Determine if auto-instrumentation should be enabled
-  const hasWebFramework = hasWebFrameworkInstalled()
-  const enableAutoInstrumentation = shouldEnableAutoInstrumentation(
-    options.autoInstrument,
-    hasWebFramework
-  )
-
-  // Add auto-instrumentations if enabled
-  if (enableAutoInstrumentation) {
-    // Get OTLP endpoint for HTTP filtering
-    const otlpEndpoint =
-      options.otlp?.endpoint ||
-      process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ||
-      process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
-      'http://localhost:4318/v1/traces'
-
-    // Build HTTP instrumentation config with filtering
-    const httpConfig = buildHttpInstrumentationConfig(options, config, otlpEndpoint)
-
-    // Build undici instrumentation config (for fetch/undici in Node.js 18+)
-    // The OTLP HTTP exporter uses fetch, which uses undici
-    const undiciConfig = buildUndiciInstrumentationConfig(options, config, otlpEndpoint)
-
-    instrumentations.push(
-      ...getNodeAutoInstrumentations({
-        // Enable HTTP instrumentation with filtering (for http/https modules)
-        '@opentelemetry/instrumentation-http': httpConfig,
-
-        // Enable undici instrumentation with filtering (for fetch API)
-        '@opentelemetry/instrumentation-undici': undiciConfig,
-
-        // Enable web framework instrumentations
-        '@opentelemetry/instrumentation-express': { enabled: true },
-        '@opentelemetry/instrumentation-fastify': { enabled: true },
-        '@opentelemetry/instrumentation-koa': { enabled: true },
-
-        // Disable noisy instrumentations by default
-        '@opentelemetry/instrumentation-fs': { enabled: false },
-        '@opentelemetry/instrumentation-dns': { enabled: false }
+  return Effect.runPromise(
+    initializeSdkEffect(options).pipe(
+      // Convert typed errors to regular Error for backward compatibility
+      Effect.mapError((error) => {
+        const message = error.reason
+        const newError = new Error(message)
+        newError.cause = error.cause
+        return newError
       })
     )
-
-    logger.log(`Auto-instrumentation: ${instrumentations.length} instrumentations enabled`)
-  }
-
-  // Add custom instrumentations
-  if (options.instrumentations) {
-    instrumentations.push(...options.instrumentations)
-  }
-
-  // For pure Effect apps (no auto-instrumentation), skip NodeSDK entirely
-  // This prevents any default instrumentations (like undici) from interfering with Effect layer
-  if (!enableAutoInstrumentation && instrumentations.length === 0) {
-    const wasExplicit = options.autoInstrument === false
-    const detectionMessage = wasExplicit
-      ? '@atrim/instrumentation: Auto-instrumentation: disabled'
-      : '@atrim/instrumentation: Pure Effect-TS app detected (auto-detected)'
-
-    logger.log(detectionMessage)
-    logger.log('  - Skipping NodeSDK setup')
-    logger.log('  - Pattern matching configured from instrumentation.yaml')
-    if (!wasExplicit) {
-      logger.log('  - Use EffectInstrumentationLive for tracing')
-    }
-    logger.log('')
-
-    // Initialize pattern matcher so filtering works with Effect spans
-    initializePatternMatcher(config)
-
-    return null
-  }
-
-  // 7. Create NodeSDK configuration
-  // Type cast to handle OpenTelemetry version mismatches
-  const sdkConfig = {
-    spanProcessor: patternProcessor,
-    serviceName,
-    ...(serviceVersion && { serviceVersion }),
-    instrumentations,
-    // Allow advanced overrides
-    ...options.sdk
-  } as NodeSDKConfiguration
-
-  // 8. Initialize SDK
-  const sdk = new NodeSDK(sdkConfig)
-  sdk.start()
-  sdkInstance = sdk
-
-  // 9. Register shutdown handlers (unless disabled)
-  if (!options.disableAutoShutdown) {
-    registerShutdownHandlers(sdk)
-  }
-
-  // 10. Log initialization details
-  logInitialization(config, serviceName, serviceVersion, options, enableAutoInstrumentation)
-
-  return sdk
+  )
 }
 
 /**
@@ -612,7 +667,7 @@ export async function shutdownSdk(): Promise<void> {
  */
 export function resetSdk(): void {
   sdkInstance = null
-  initializationPromise = null
+  initializationDeferred = null
 }
 
 /**

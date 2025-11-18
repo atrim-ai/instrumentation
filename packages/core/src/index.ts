@@ -9,7 +9,7 @@
  */
 
 // Configuration loading
-export { loadConfig, clearConfigCache } from './config-loader.js'
+export { loadConfig, loadConfigEffect, clearConfigCache } from './config-loader.js'
 export type { ConfigLoaderOptions } from './config-loader.js'
 
 // Pattern matching
