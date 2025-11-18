@@ -47,7 +47,7 @@ jobs:
       - name: TypeScript compilation
         run: pnpm typecheck
 
-      - name: Build
+      - name: Build all packages
         run: pnpm build
 
       - name: Lint
@@ -60,7 +60,7 @@ jobs:
         if: matrix.node-version == 20
         uses: codecov/codecov-action@v5
         with:
-          files: ./target/coverage/coverage-final.json
+          files: ./packages/*/target/coverage/coverage-final.json
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -94,7 +94,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
-      - name: Build
+      - name: Build all packages
         run: pnpm build
 
       - name: Install example dependencies
@@ -134,19 +134,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install ${{ github.actor != 'dependabot[bot]' && '--frozen-lockfile' || '--no-frozen-lockfile' }}
 
-      - name: Build package
+      - name: Build all packages
         run: pnpm build
 
-      - name: Pack package
-        run: pnpm pack
+      - name: Pack node package
+        run: cd packages/node && pnpm pack
 
       - name: Test package installation
         run: |
           mkdir -p /tmp/test-install
           cd /tmp/test-install
           npm init -y
-          npm install ${{ github.workspace }}/atrim-instrumentation-*.tgz
-          node -e "require('@atrim/instrumentation')"
+          npm install ${{ github.workspace }}/packages/node/atrim-instrument-node-*.tgz
+          node -e "require('@atrim/instrument-node')"
           echo "✅ Package installation successful"
 
   # Notify on build status

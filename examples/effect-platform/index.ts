@@ -27,7 +27,7 @@ import * as HttpServer from '@effect/platform/HttpServer'
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse'
 import * as NodeHttp from '@effect/platform-node/NodeHttpServer'
 import { createServer } from 'node:http'
-import { EffectInstrumentationLive } from '../../src/integrations/effect/index.js'
+import { EffectInstrumentationLive } from '@atrim/instrument-node/effect'
 
 // ============================================================================
 // Domain Types
@@ -109,13 +109,15 @@ const healthHandler = Effect.gen(function* () {
 const router = HttpRouter.empty.pipe(
   // Health check first (simplest route)
   HttpRouter.get('/health', healthHandler),
-  HttpRouter.get('/users',
+  HttpRouter.get(
+    '/users',
     Effect.gen(function* () {
       const userList = yield* getAllUsers
       return yield* HttpServerResponse.json(userList)
     }).pipe(Effect.withSpan('http.users.list'))
   ),
-  HttpRouter.get('/users/:id',
+  HttpRouter.get(
+    '/users/:id',
     Effect.gen(function* () {
       const params = yield* HttpRouter.schemaPathParams(
         Schema.Struct({
@@ -127,16 +129,14 @@ const router = HttpRouter.empty.pipe(
       return yield* getUserById(params.id).pipe(
         Effect.andThen((user) => HttpServerResponse.json(user)),
         Effect.catchAll((error) =>
-          HttpServerResponse.json(
-            { error: error.message },
-            { status: 404 }
-          )
+          HttpServerResponse.json({ error: error.message }, { status: 404 })
         ),
         Effect.withSpan('http.users.get')
       )
     })
   ),
-  HttpRouter.post('/users',
+  HttpRouter.post(
+    '/users',
     Effect.gen(function* () {
       const body = yield* HttpRouter.schemaJson(
         Schema.Struct({
@@ -179,7 +179,9 @@ const program = Effect.gen(function* () {
   yield* Console.log('📊 Try these requests:')
   yield* Console.log(`   curl http://localhost:${port}/users`)
   yield* Console.log(`   curl http://localhost:${port}/users/1`)
-  yield* Console.log(`   curl -X POST http://localhost:${port}/users -d '{"name":"Alice","email":"alice@example.com"}' -H "Content-Type: application/json"`)
+  yield* Console.log(
+    `   curl -X POST http://localhost:${port}/users -d '{"name":"Alice","email":"alice@example.com"}' -H "Content-Type: application/json"`
+  )
   yield* Console.log('')
   yield* Console.log('='.repeat(60))
   yield* Console.log('💡 All spans created via Effect.withSpan()')
@@ -189,10 +191,7 @@ const program = Effect.gen(function* () {
 
   // Keep the server running
   yield* Effect.never
-}).pipe(
-  Effect.provide(HttpLive),
-  Effect.provide(EffectInstrumentationLive)
-)
+}).pipe(Effect.provide(HttpLive), Effect.provide(EffectInstrumentationLive))
 
 // Run the Effect program directly
 Effect.runPromise(program).catch((error) => {

@@ -9,7 +9,7 @@
     "dev": "tsx watch index.ts"
   },
   "dependencies": {
-    "@atrim/instrumentation": "file:../..",
+    "@atrim/instrument-node": "workspace:*",
     "@effect/opentelemetry": "^0.59.0",
     "@effect/platform": "^0.93.0",
     "@effect/platform-node": "^0.100.0",
