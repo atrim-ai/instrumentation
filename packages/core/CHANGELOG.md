@@ -1,0 +1,7 @@
+# @atrim/instrument-core
+
+## 0.5.0
+
+### Minor Changes
+
+- 8cc6b6a: Set all to the same 0.5.0 version to align with node and web packages functional
