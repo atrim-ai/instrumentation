@@ -1,5 +1,12 @@
 # web-vanilla-example
 
+## 0.5.1
+
+### Patch Changes
+
+- Updated dependencies [c9cca11]
+  - @atrim/instrument-web@0.5.1
+
 ## 0.5.0
 
 ### Minor Changes
