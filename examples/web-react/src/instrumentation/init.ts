@@ -5,6 +5,7 @@
  * Import and call initializeInstrumentation() in your main.tsx BEFORE rendering React.
  */
 
+import { Effect } from 'effect'
 import { initializeInstrumentation } from '@atrim/instrument-web'
 
 /**
@@ -24,23 +25,25 @@ export async function initInstrumentation() {
   console.log(`   Endpoint: ${otlpEndpoint}`)
 
   try {
-    await initializeInstrumentation({
-      serviceName,
-      otlpEndpoint,
+    await Effect.runPromise(
+      initializeInstrumentation({
+        serviceName,
+        otlpEndpoint,
 
-      // Enable all auto-instrumentations
-      enableDocumentLoad: true,
-      enableUserInteraction: true,
-      enableFetch: true,
-      enableXhr: true,
+        // Enable all auto-instrumentations
+        enableDocumentLoad: true,
+        enableUserInteraction: true,
+        enableFetch: true,
+        enableXhr: true,
 
-      // Load pattern-based filtering configuration
-      // Served by Vite from public/instrumentation.yaml
-      configUrl: '/instrumentation.yaml'
+        // Load pattern-based filtering configuration
+        // Served by Vite from public/instrumentation.yaml
+        configUrl: '/instrumentation.yaml'
 
-      // For production, you can use a remote config server:
-      // configUrl: import.meta.env.VITE_CONFIG_URL || '/instrumentation.yaml'
-    })
+        // For production, you can use a remote config server:
+        // configUrl: import.meta.env.VITE_CONFIG_URL || '/instrumentation.yaml'
+      })
+    )
 
     console.log('✅ OpenTelemetry ready!')
   } catch (error) {

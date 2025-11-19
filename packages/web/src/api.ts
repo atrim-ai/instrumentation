@@ -4,8 +4,10 @@
  * Main initialization functions for browser instrumentation
  */
 
+import { Effect } from 'effect'
 import type { WebTracerProvider } from '@opentelemetry/sdk-trace-web'
-import { initializeSdk, type SdkInitializationOptions } from './core/sdk-initializer.js'
+import { initializeSdkEffect, type SdkInitializationOptions } from './core/sdk-initializer.js'
+import { InitializationError } from '@atrim/instrument-core'
 
 /**
  * Initialize OpenTelemetry instrumentation for browser
@@ -14,38 +16,46 @@ import { initializeSdk, type SdkInitializationOptions } from './core/sdk-initial
  * Call this function once at application startup, before any other code runs.
  *
  * @param options - Initialization options
- * @returns WebTracerProvider instance
- * @throws {Error} If initialization fails
+ * @returns Effect that yields WebTracerProvider instance
  *
  * @example
  * ```typescript
+ * import { Effect } from 'effect'
  * import { initializeInstrumentation } from '@atrim/instrument-web'
  *
- * await initializeInstrumentation({
+ * const program = initializeInstrumentation({
  *   serviceName: 'my-app',
  *   otlpEndpoint: 'http://localhost:4318/v1/traces'
  * })
+ *
+ * await Effect.runPromise(program)
  * ```
  *
  * @example With pattern-based filtering
  * ```typescript
- * await initializeInstrumentation({
+ * const program = initializeInstrumentation({
  *   serviceName: 'my-app',
  *   configUrl: 'https://config.company.com/instrumentation.yaml'
  * })
+ *
+ * await Effect.runPromise(program)
  * ```
  *
- * @example Disable specific instrumentations
+ * @example With error handling
  * ```typescript
- * await initializeInstrumentation({
+ * const program = initializeInstrumentation({
  *   serviceName: 'my-app',
- *   enableUserInteraction: false, // Disable click tracking
- *   enableXhr: false // Disable XMLHttpRequest tracking
- * })
+ *   enableUserInteraction: false
+ * }).pipe(
+ *   Effect.catchTag('InitializationError', (error) => {
+ *     console.error('Failed to initialize:', error.reason)
+ *     return Effect.die(error) // Re-throw or handle
+ *   })
+ * )
+ *
+ * await Effect.runPromise(program)
  * ```
  */
-export async function initializeInstrumentation(
+export const initializeInstrumentation = (
   options: SdkInitializationOptions
-): Promise<WebTracerProvider> {
-  return await initializeSdk(options)
-}
+): Effect.Effect<WebTracerProvider, InitializationError> => initializeSdkEffect(options)

@@ -11,6 +11,7 @@
  *    pnpm dev
  */
 
+import { Effect } from 'effect'
 import { initializeInstrumentation } from '@atrim/instrument-web'
 import { trace } from '@opentelemetry/api'
 
@@ -42,16 +43,18 @@ async function main() {
     updateStatus('Initializing OpenTelemetry...', 'default')
 
     // Initialize instrumentation
-    await initializeInstrumentation({
-      serviceName: 'web-vanilla-example',
-      serviceVersion: '1.0.0',
-      otlpEndpoint: 'http://localhost:4318/v1/traces',
-      // Optionally disable specific instrumentations
-      enableDocumentLoad: true,
-      enableUserInteraction: true,
-      enableFetch: true,
-      enableXhr: true
-    })
+    await Effect.runPromise(
+      initializeInstrumentation({
+        serviceName: 'web-vanilla-example',
+        serviceVersion: '1.0.0',
+        otlpEndpoint: 'http://localhost:4318/v1/traces',
+        // Optionally disable specific instrumentations
+        enableDocumentLoad: true,
+        enableUserInteraction: true,
+        enableFetch: true,
+        enableXhr: true
+      })
+    )
 
     log('✅ OpenTelemetry initialized successfully!')
     log('📊 Traces will be sent to: http://localhost:4318/v1/traces')
