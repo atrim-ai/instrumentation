@@ -82,10 +82,10 @@
     "@atrim/instrument-core": "workspace:*",
     "@opentelemetry/semantic-conventions": "^1.38.0",
     "@types/node": "^20.10.0",
-    "@vitest/coverage-v8": "^4.0.8",
+    "@vitest/coverage-v8": "^4.0.10",
     "jsdom": "^24.0.0",
-    "tsup": "^8.0.1",
+    "tsup": "^8.5.1",
     "typescript": "^5.7.2",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.10"
   }
 }
