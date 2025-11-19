@@ -1,5 +1,11 @@
 # @atrim/instrument-web
 
+## 0.5.1
+
+### Patch Changes
+
+- c9cca11: Add configurable trace context propagation with CORS guidance
+
 ## 0.5.0
 
 ### Minor Changes
