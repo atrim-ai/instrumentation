@@ -61,7 +61,24 @@ export const HttpFilteringConfigSchema = z.object({
   ignore_incoming_paths: z.array(z.string()).optional(),
 
   // Require parent span for outgoing requests (prevents root spans for HTTP calls)
-  require_parent_for_outgoing_spans: z.boolean().optional()
+  require_parent_for_outgoing_spans: z.boolean().optional(),
+
+  // Trace context propagation configuration
+  // Controls which cross-origin requests receive W3C Trace Context headers (traceparent, tracestate)
+  propagate_trace_context: z
+    .object({
+      // Strategy for trace propagation
+      // - "all": Propagate to all cross-origin requests (may cause CORS errors)
+      // - "none": Never propagate trace headers
+      // - "same-origin": Only propagate to same-origin requests (default, safe)
+      // - "patterns": Propagate based on include_urls patterns
+      strategy: z.enum(['all', 'none', 'same-origin', 'patterns']).default('same-origin'),
+
+      // URL patterns to include when strategy is "patterns"
+      // Supports regex patterns (e.g., "^https://api\\.myapp\\.com")
+      include_urls: z.array(z.string()).optional()
+    })
+    .optional()
 })
 
 export const InstrumentationConfigSchema = z.object({

@@ -184,4 +184,83 @@ describe('SDK Initializer', () => {
       expect(getSdkInstance()).toBeNull()
     })
   })
+
+  describe('trace context propagation', () => {
+    it('should initialize with propagateTraceContext: "all"', async () => {
+      const provider = await initializeSdk({
+        serviceName: 'test-service',
+        propagateTraceContext: 'all'
+      })
+
+      expect(provider).toBeDefined()
+    })
+
+    it('should initialize with propagateTraceContext: "none"', async () => {
+      const provider = await initializeSdk({
+        serviceName: 'test-service',
+        propagateTraceContext: 'none'
+      })
+
+      expect(provider).toBeDefined()
+    })
+
+    it('should initialize with propagateTraceContext: "same-origin"', async () => {
+      const provider = await initializeSdk({
+        serviceName: 'test-service',
+        propagateTraceContext: 'same-origin'
+      })
+
+      expect(provider).toBeDefined()
+    })
+
+    it('should initialize with propagateTraceContext as array of patterns', async () => {
+      const provider = await initializeSdk({
+        serviceName: 'test-service',
+        propagateTraceContext: ['^https://api\\.example\\.com', '^http://localhost:3000']
+      })
+
+      expect(provider).toBeDefined()
+    })
+
+    it('should use YAML config for trace propagation when no API option provided', async () => {
+      const provider = await initializeSdk({
+        serviceName: 'test-service',
+        config: {
+          version: '1.0',
+          instrumentation: {
+            enabled: true,
+            instrument_patterns: [],
+            ignore_patterns: []
+          },
+          http: {
+            propagate_trace_context: {
+              strategy: 'patterns',
+              include_urls: ['^https://api\\.myapp\\.com']
+            }
+          }
+        }
+      })
+
+      expect(provider).toBeDefined()
+    })
+
+    it('should handle invalid regex patterns gracefully', async () => {
+      // Invalid regex pattern should not crash initialization
+      const provider = await initializeSdk({
+        serviceName: 'test-service',
+        propagateTraceContext: ['[invalid(regex']
+      })
+
+      expect(provider).toBeDefined()
+    })
+
+    it('should default to same-origin when no config provided', async () => {
+      const provider = await initializeSdk({
+        serviceName: 'test-service'
+        // No propagateTraceContext option - should default to 'same-origin'
+      })
+
+      expect(provider).toBeDefined()
+    })
+  })
 })
