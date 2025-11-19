@@ -1,4 +1,4 @@
-# @atrim/instrumentation-example-vanilla
+# web-react-example
 
 ## 0.5.0
 
@@ -9,11 +9,4 @@
 ### Patch Changes
 
 - Updated dependencies [8cc6b6a]
-  - @atrim/instrument-node@0.5.0
-
-## 0.4.0
-
-### Patch Changes
-
-- Updated dependencies [2aa7afc]
-  - @atrim/instrument-node@0.4.0
+  - @atrim/instrument-web@0.5.0

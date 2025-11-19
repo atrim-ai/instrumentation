@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrumentation-example-ui-service",
-  "version": "1.0.0",
+  "version": "0.4.1",
   "description": "UI service for multi-service example",
   "type": "module",
   "private": true,
