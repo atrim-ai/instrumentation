@@ -1,6 +1,6 @@
 {
   "name": "fiberset-isolated",
-  "version": "0.1.0",
+  "version": "0.4.1",
   "type": "module",
   "private": true,
   "description": "Demonstrates FiberSet.runIsolated() with automatic span links",
