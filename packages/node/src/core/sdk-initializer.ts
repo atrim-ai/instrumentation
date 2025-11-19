@@ -450,99 +450,19 @@ export const initializeSdkEffect = (
 /**
  * Internal initialization implementation (Effect version)
  */
-async function performInitialization(options: SdkInitializationOptions): Promise<NodeSDK | null> {
-  // 1. Load configuration first (including logging level)
-  const config = await loadConfigWithOptions(options)
-
-  // 2. Configure logger based on config
-  const loggingLevel = config.instrumentation.logging || 'on'
-  logger.setLevel(loggingLevel)
-
-  // Check if OpenTelemetry is already initialized elsewhere
-  const alreadyInitialized = isTracingAlreadyInitialized()
-
-  if (alreadyInitialized) {
-    logger.log('@atrim/instrumentation: Detected existing OpenTelemetry initialization.')
-    logger.log('  - Skipping NodeSDK setup')
-    logger.log('  - Setting up pattern-based filtering only')
-    logger.log('')
-
-    // Initialize pattern matcher for filtering
-    initializePatternMatcher(config)
-
-    logger.log('@atrim/instrumentation: Pattern filtering initialized')
-    logger.log('  ⚠️  Note: Pattern filtering will only work with manual spans')
-    logger.log('  ⚠️  Auto-instrumentation must be configured separately')
-    logger.log('')
-
-    return null
-  }
-
-  // 3. Detect service info
-  const serviceInfo = await detectServiceInfoAsync()
-  const serviceName = options.serviceName || serviceInfo.name
-  const serviceVersion = options.serviceVersion || serviceInfo.version
-
-  // 4. Create OTLP exporter wrapped in SafeSpanExporter
-  // The safe exporter catches and handles connection errors gracefully
-  // instead of letting them escape as uncaught exceptions
-  const rawExporter = createOtlpExporter(options.otlp)
-  const exporter = new SafeSpanExporter(rawExporter)
-
-  // 5. Create span processor chain
-  // Use SimpleSpanProcessor in test mode to avoid shutdown race conditions
-  // with BatchSpanProcessor's background export timer
-  const useSimpleProcessor =
-    process.env.NODE_ENV === 'test' || process.env.OTEL_USE_SIMPLE_PROCESSOR === 'true'
-  const baseProcessor = useSimpleProcessor
-    ? new SimpleSpanProcessor(exporter)
-    : new BatchSpanProcessor(exporter)
-  const patternProcessor = new PatternSpanProcessor(config, baseProcessor)
-
-  // 6. Prepare instrumentations
-  const instrumentations: Instrumentation[] = []
-
-  // Determine if auto-instrumentation should be enabled
-  const hasWebFramework = hasWebFrameworkInstalled()
-  const enableAutoInstrumentation = shouldEnableAutoInstrumentation(
-    options.autoInstrument,
-    hasWebFramework
-  )
-
-  // Add auto-instrumentations if enabled
-  if (enableAutoInstrumentation) {
-    // Get OTLP endpoint for HTTP filtering
-    const otlpEndpoint =
-      options.otlp?.endpoint ||
-      process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ||
-      process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
-      'http://localhost:4318/v1/traces'
-
-    // Build HTTP instrumentation config with filtering
-    const httpConfig = buildHttpInstrumentationConfig(options, config, otlpEndpoint)
-
-    // Build undici instrumentation config (for fetch/undici in Node.js 18+)
-    // The OTLP HTTP exporter uses fetch, which uses undici
-    const undiciConfig = buildUndiciInstrumentationConfig(options, config, otlpEndpoint)
-
-    instrumentations.push(
-      ...getNodeAutoInstrumentations({
-        // Enable HTTP instrumentation with filtering (for http/https modules)
-        '@opentelemetry/instrumentation-http': httpConfig,
-
-        // Enable undici instrumentation with filtering (for fetch API)
-        '@opentelemetry/instrumentation-undici': undiciConfig,
-
-        // Enable web framework instrumentations
-        '@opentelemetry/instrumentation-express': { enabled: true },
-        '@opentelemetry/instrumentation-fastify': { enabled: true },
-        '@opentelemetry/instrumentation-koa': { enabled: true },
-
-        // Disable noisy instrumentations by default
-        '@opentelemetry/instrumentation-fs': { enabled: false },
-        '@opentelemetry/instrumentation-dns': { enabled: false }
-      })
-    )
+const performInitializationEffect = (
+  options: SdkInitializationOptions
+): Effect.Effect<NodeSDK | null, InitializationError> =>
+  Effect.gen(function* () {
+    // 1. Load configuration first (including logging level)
+    const config = yield* Effect.tryPromise({
+      try: () => loadConfigWithOptions(options),
+      catch: (error) =>
+        new InitializationError({
+          reason: 'Failed to load configuration',
+          cause: error
+        })
+    })
 
     // 2. Configure logger based on config
     const loggingLevel = config.instrumentation.logging || 'on'

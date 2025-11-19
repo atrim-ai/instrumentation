@@ -11,7 +11,7 @@
 
 import { Effect } from 'effect'
 import type { NodeSDK } from '@opentelemetry/sdk-node'
-import { initializeSdk, type SdkInitializationOptions } from './core/sdk-initializer.js'
+import { initializeSdkEffect, type SdkInitializationOptions } from './core/sdk-initializer.js'
 import { initializePatternMatcher, logger } from '@atrim/instrument-core'
 import { loadConfigWithOptions } from './core/config-loader.js'
 import { InitializationError, ConfigError } from './core/errors.js'
@@ -102,44 +102,6 @@ import { InitializationError, ConfigError } from './core/errors.js'
  * })
  * ```
  */
-export async function initializeInstrumentation(
-  options: SdkInitializationOptions = {}
-): Promise<NodeSDK | null> {
-  // Initialize the complete SDK with all features
-  // Returns null if OpenTelemetry is already initialized elsewhere
-  const sdk = await initializeSdk(options)
-
-  // If SDK was initialized, also set up pattern matcher for backwards compatibility
-  // (in case users are using shouldInstrumentSpan directly)
-  // Note: If SDK was skipped, initializeSdk already initialized the pattern matcher
-  if (sdk) {
-    const config = await loadConfigWithOptions(options)
-    initializePatternMatcher(config)
-  }
-
-  return sdk
-}
-
-/**
- * Legacy initialization function for pattern-only mode
- *
- * This function only initializes pattern matching without setting up the NodeSDK.
- * Use this if you want to manually configure OpenTelemetry while still using
- * pattern-based filtering.
- *
- * @deprecated Use initializeInstrumentation() instead for complete setup
- */
-export async function initializePatternMatchingOnly(
-  options: SdkInitializationOptions = {}
-): Promise<void> {
-  const config = await loadConfigWithOptions(options)
-  initializePatternMatcher(config)
-
-  logger.log('@atrim/instrumentation: Pattern matching initialized (legacy mode)')
-  logger.log(
-    '  Note: NodeSDK is not initialized. Use initializeInstrumentation() for complete setup.'
-  )
-}
 
 // ============================================================================
 // Effect-Based API (Primary)
@@ -207,7 +169,6 @@ export const initializeInstrumentation = (
           })
         )
       )
-      initializePatternMatcher(config)
     }
 
     return sdk
