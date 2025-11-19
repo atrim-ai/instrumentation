@@ -25,6 +25,256 @@ This is the `@atrim/instrumentation` library - a universal OpenTelemetry instrum
 
 **Key principle:** While the library is **universal** and works with any framework, the **internal implementation** is Effect-first. Examples remain Promise-based to prove compatibility, NOT because Promises are preferred.
 
+### Effect-TS Development Best Practices
+
+**CRITICAL:** When implementing core library functionality, ALWAYS use Effect-TS patterns and primitives.
+
+#### 1. Layer-Based Architecture
+
+**Always organize code using Effect Layers for dependency injection:**
+
+```typescript
+// ❌ BAD: Direct implementation without layers
+export const configLoader = {
+  load: async (path: string) => { /* ... */ }
+}
+
+// ✅ GOOD: Layer-based with proper service definition
+export class ConfigLoader extends Context.Tag("ConfigLoader")<
+  ConfigLoader,
+  {
+    readonly load: (path: string) => Effect.Effect<Config, ConfigError>
+  }
+>() {}
+
+export const ConfigLoaderLive = Layer.effect(
+  ConfigLoader,
+  Effect.gen(function* () {
+    return {
+      load: (path) => Effect.gen(function* () {
+        // Implementation using Effect primitives
+      })
+    }
+  })
+)
+```
+
+#### 2. Separate Abstraction Layers
+
+**Keep layers decoupled and composable:**
+
+```typescript
+// Layer 1: Low-level file system access
+export const FileSystemLive = Layer.succeed(FileSystem, {
+  read: (path) => Effect.tryPromise({
+    try: () => fs.readFile(path, 'utf-8'),
+    catch: (error) => new FileReadError({ path, cause: error })
+  })
+})
+
+// Layer 2: Configuration loading (depends on FileSystem)
+export const ConfigLoaderLive = Layer.effect(
+  ConfigLoader,
+  Effect.gen(function* () {
+    const fs = yield* FileSystem
+    return {
+      load: (path) => fs.read(path).pipe(
+        Effect.flatMap(content => parseYaml(content))
+      )
+    }
+  })
+)
+
+// Layer 3: SDK initialization (depends on ConfigLoader)
+export const SdkInitializerLive = Layer.effect(
+  SdkInitializer,
+  Effect.gen(function* () {
+    const configLoader = yield* ConfigLoader
+    return {
+      initialize: (options) => configLoader.load(options.configPath).pipe(
+        Effect.flatMap(config => setupTracing(config))
+      )
+    }
+  })
+)
+
+// Compose layers
+export const AppLive = Layer.mergeAll(
+  FileSystemLive,
+  ConfigLoaderLive,
+  SdkInitializerLive
+)
+```
+
+#### 3. Initialization vs. Implementation
+
+**Separate initialization logic from runtime logic:**
+
+```typescript
+// ❌ BAD: Mixed initialization and runtime logic
+export const loadConfig = async (path: string) => {
+  const content = await fs.readFile(path, 'utf-8')  // I/O during call
+  return parseConfig(content)
+}
+
+// ✅ GOOD: Initialization happens once, runtime is pure
+export const makeConfigLoader = (options: ConfigOptions) =>
+  Effect.gen(function* () {
+    // Initialization: Load and parse config once
+    const content = yield* FileSystem.read(options.path)
+    const config = yield* parseConfig(content)
+
+    // Return runtime service that uses pre-loaded config
+    return {
+      getConfig: () => Effect.succeed(config),
+      isEnabled: (pattern: string) =>
+        Effect.sync(() => config.patterns.includes(pattern))
+    }
+  })
+
+// Usage: Initialize once at app startup
+export const ConfigLoaderLive = Layer.effect(
+  ConfigLoader,
+  makeConfigLoader({ path: './instrumentation.yaml' })
+)
+```
+
+#### 4. Use Effect MCP Server for Validation
+
+**MANDATORY:** Before implementing any new Effect-based functionality, use the Effect MCP server to:
+
+1. **Search for Effect-native patterns:**
+```
+Use mcp__effect-docs__effect_docs_search to find relevant Effect patterns
+Example: Search "layer composition", "resource management", "error handling"
+```
+
+2. **Validate your approach:**
+```
+After finding relevant docs, use mcp__effect-docs__get_effect_doc to read full documentation
+Verify your planned approach matches Effect best practices
+```
+
+3. **Find Effect-native alternatives:**
+```
+Before using Promise.all(), Array.map(), etc., search Effect docs for:
+- Effect.all() for concurrent operations
+- Effect.forEach() for iteration
+- Effect.cached() for caching
+- Effect.retry() for retries
+- Ref.make() for mutable state
+```
+
+**Example workflow:**
+
+```typescript
+// Step 1: Search Effect docs before implementing
+// Use: mcp__effect-docs__effect_docs_search with query "concurrent requests"
+
+// Step 2: You find Effect.all() is the Effect-native way
+
+// ❌ BAD: Using Promise.all()
+const results = await Promise.all([
+  fetchConfig1(),
+  fetchConfig2()
+])
+
+// ✅ GOOD: Using Effect.all()
+const results = yield* Effect.all([
+  fetchConfig1(),
+  fetchConfig2()
+], { concurrency: "unbounded" })
+```
+
+#### 5. Common Effect Patterns to Use
+
+**File I/O:**
+```typescript
+// Use Effect.tryPromise for Node.js APIs
+const readFile = (path: string) =>
+  Effect.tryPromise({
+    try: () => fs.readFile(path, 'utf-8'),
+    catch: (error) => new FileReadError({ path, cause: error })
+  })
+```
+
+**HTTP requests:**
+```typescript
+// Use Effect.tryPromise for fetch
+const fetchConfig = (url: string) =>
+  Effect.tryPromise({
+    try: () => fetch(url).then(r => r.text()),
+    catch: (error) => new FetchError({ url, cause: error })
+  })
+```
+
+**Resource management:**
+```typescript
+// Use Effect.acquireRelease for cleanup
+const withFile = (path: string) =>
+  Effect.acquireRelease(
+    Effect.tryPromise(() => fs.open(path)),
+    (fd) => Effect.tryPromise(() => fd.close())
+  )
+```
+
+**Caching:**
+```typescript
+// Use Effect.cached for memoization
+const cachedConfig = yield* loadConfig().pipe(
+  Effect.cached,
+  Effect.flatMap(cached => cached)
+)
+```
+
+**Retries:**
+```typescript
+// Use Effect.retry with Schedule
+const robustFetch = fetchConfig(url).pipe(
+  Effect.retry(Schedule.exponential("100 millis").pipe(
+    Schedule.intersect(Schedule.recurs(3))
+  ))
+)
+```
+
+**Error handling:**
+```typescript
+// Use Data.TaggedError for typed errors
+export class ConfigError extends Data.TaggedError("ConfigError")<{
+  readonly path: string
+  readonly cause: unknown
+}> {}
+
+// Use Effect.catchTag for typed error handling
+const config = yield* loadConfig(path).pipe(
+  Effect.catchTag("ConfigError", (error) =>
+    Effect.logError(`Failed to load config from ${error.path}`).pipe(
+      Effect.as(defaultConfig)
+    )
+  )
+)
+```
+
+#### 6. When to Check Effect MCP Server
+
+**ALWAYS check Effect docs before:**
+- Implementing concurrent operations
+- Managing resources (files, connections, etc.)
+- Handling errors
+- Adding caching or memoization
+- Implementing retry logic
+- Working with async operations
+- Creating new layers or services
+
+**Example searches to use:**
+- "layer dependency injection"
+- "concurrent effects"
+- "error handling tagged errors"
+- "resource management"
+- "caching memoization"
+- "retry schedule"
+- "tracing opentelemetry"
+
 ### Universal Design
 - Works with **any Node.js runtime** (Node.js 18+, Bun 1.0+, Deno 1.40+)
 - Works with **any framework** (Express, Fastify, Koa, Hono, vanilla TypeScript)

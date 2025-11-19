@@ -2,16 +2,21 @@
  * Unit tests for config-loader
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { loadConfig, clearConfigCache, type InstrumentationConfig } from '@atrim/instrument-core'
+import {
+  loadConfigWithOptions,
+  clearConfigCache,
+  type InstrumentationConfig
+} from '@atrim/instrument-node'
 
 describe('config-loader', () => {
   beforeEach(() => {
+    // Reset config cache before each test
     clearConfigCache()
   })
 
   describe('loadConfig', () => {
     it('should return default config when no options provided', async () => {
-      const config = await loadConfig()
+      const config = await loadConfigWithOptions()
 
       expect(config).toBeDefined()
       expect(config.version).toBe('1.0')
@@ -31,7 +36,7 @@ describe('config-loader', () => {
         }
       }
 
-      const config = await loadConfig({ config: explicitConfig })
+      const config = await loadConfigWithOptions({ config: explicitConfig })
 
       expect(config).toEqual(explicitConfig)
     })
@@ -42,7 +47,7 @@ describe('config-loader', () => {
         // Missing instrumentation field
       }
 
-      await expect(loadConfig({ config: invalidConfig as any })).rejects.toThrow(
+      await expect(loadConfigWithOptions({ config: invalidConfig as any })).rejects.toThrow(
         'Invalid configuration'
       )
     })

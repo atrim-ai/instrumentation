@@ -23,12 +23,8 @@ import type { Tracer as EffectTracer } from 'effect'
 import * as Otlp from '@effect/opentelemetry/Otlp'
 import { FetchHttpClient } from '@effect/platform'
 import { context, trace, type SpanContext, TraceFlags } from '@opentelemetry/api'
-import {
-  loadConfig,
-  type ConfigLoaderOptions,
-  initializePatternMatcher,
-  logger
-} from '@atrim/instrument-core'
+import { initializePatternMatcher, logger } from '@atrim/instrument-core'
+import { loadConfigWithOptions, type ConfigLoaderOptions } from '../../core/config-loader.js'
 
 /**
  * Configuration options for Effect instrumentation
@@ -111,7 +107,7 @@ export function createEffectInstrumentation(options: EffectInstrumentationOption
     Effect.gen(function* () {
       // 1. Load configuration
       const config = yield* Effect.tryPromise({
-        try: () => loadConfig(options),
+        try: () => loadConfigWithOptions(options),
         catch: (error) => ({
           _tag: 'ConfigError' as const,
           message: error instanceof Error ? error.message : String(error)
