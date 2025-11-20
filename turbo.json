@@ -24,6 +24,7 @@
     },
     "test:integration": {
       "dependsOn": ["build"],
+      "cache": false,
       "outputs": []
     },
     "test:all": {

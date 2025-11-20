@@ -23,8 +23,17 @@ import type { Tracer as EffectTracer } from 'effect'
 import * as Otlp from '@effect/opentelemetry/Otlp'
 import { FetchHttpClient } from '@effect/platform'
 import { context, trace, type SpanContext, TraceFlags } from '@opentelemetry/api'
+import {
+  ATTR_TELEMETRY_SDK_LANGUAGE,
+  ATTR_TELEMETRY_SDK_NAME,
+  SEMRESATTRS_TELEMETRY_SDK_NAME,
+  TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS
+} from '@opentelemetry/semantic-conventions'
 import { initializePatternMatcher, logger } from '@atrim/instrument-core'
 import { loadConfigWithOptions, type ConfigLoaderOptions } from '../../core/config-loader.js'
+
+// SDK metadata for resource attributes
+const SDK_NAME = '@effect/opentelemetry-otlp'
 
 /**
  * Configuration options for Effect instrumentation
@@ -155,7 +164,9 @@ export function createEffectInstrumentation(options: EffectInstrumentationOption
           attributes: {
             'platform.component': 'effect',
             'effect.auto_metadata': autoExtractMetadata,
-            'effect.context_propagation': continueExistingTraces
+            'effect.context_propagation': continueExistingTraces,
+            [ATTR_TELEMETRY_SDK_LANGUAGE]: TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS,
+            [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME
           }
         },
         // Bridge Effect context to OpenTelemetry global context
@@ -237,7 +248,9 @@ export const EffectInstrumentationLive = Effect.sync(() => {
       serviceName,
       serviceVersion,
       attributes: {
-        'platform.component': 'effect'
+        'platform.component': 'effect',
+        [ATTR_TELEMETRY_SDK_LANGUAGE]: TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS,
+        [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME
       }
     },
     // CRITICAL: Bridge Effect context to OpenTelemetry global context
