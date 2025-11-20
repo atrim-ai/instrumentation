@@ -60,12 +60,16 @@ const program = Effect.scoped(
       yield* FiberSet.run(set, backgroundTask(2))
       yield* FiberSet.run(set, backgroundTask(3))
 
+      // Keep parent span active while background tasks are running
+      console.log('⏳ Waiting for background tasks to run (parent span still active)...')
+      yield* Effect.sleep('50 millis') // Parent span stays open while tasks execute
+
       console.log('👨 Parent operation completed')
     }).pipe(Effect.withSpan('parent-operation'))
 
-    // Wait for all background tasks to complete
-    console.log('⏳ Waiting for background tasks to complete...')
-    yield* Effect.sleep('200 millis') // Give fibers time to complete
+    // Wait for any remaining background tasks to complete
+    console.log('⏳ Waiting for any remaining tasks...')
+    yield* Effect.sleep('150 millis')
 
     // Give time for traces to be exported
     console.log('📤 Waiting for traces to be exported...')
