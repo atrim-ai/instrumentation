@@ -26,7 +26,6 @@ import { context, trace, type SpanContext, TraceFlags } from '@opentelemetry/api
 import {
   ATTR_TELEMETRY_SDK_LANGUAGE,
   ATTR_TELEMETRY_SDK_NAME,
-  SEMRESATTRS_TELEMETRY_SDK_NAME,
   TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS
 } from '@opentelemetry/semantic-conventions'
 import { initializePatternMatcher, logger } from '@atrim/instrument-core'
