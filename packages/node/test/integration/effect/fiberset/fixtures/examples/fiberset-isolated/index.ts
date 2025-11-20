@@ -14,6 +14,10 @@ import { Effect, FiberSet } from 'effect'
 import { NodeSdk } from '@effect/opentelemetry'
 import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base'
 import { runIsolated, annotateSpawnedTasks } from '../../../../src/integrations/effect/fiberset.js'
+import { suppressEconnrefused } from '../../test-helpers.js'
+
+// Suppress ECONNREFUSED errors during shutdown in test environment
+suppressEconnrefused()
 
 const TracingLive = NodeSdk.layer(() => ({
   resource: { serviceName: 'fiberset-isolated' },
@@ -86,41 +90,6 @@ const program = Effect.scoped(
 )
 
 const main = program.pipe(Effect.provide(TracingLive))
-
-// Suppress ECONNREFUSED errors during shutdown in test environment
-if (process.env.CI || process.env.NODE_ENV === 'test') {
-  process.on('uncaughtException', (error: any) => {
-    // Ignore connection refused errors during shutdown
-    if (
-      error?.code === 'ECONNREFUSED' ||
-      (error?.errors &&
-        Array.isArray(error.errors) &&
-        error.errors.every((e: any) => e?.code === 'ECONNREFUSED'))
-    ) {
-      console.log('📤 Export failed (collector stopped) - this is expected in tests')
-      return
-    }
-    // Re-throw other errors
-    console.error('Uncaught exception:', error)
-    process.exit(1)
-  })
-
-  process.on('unhandledRejection', (reason: any) => {
-    // Ignore connection refused errors during shutdown
-    if (
-      reason?.code === 'ECONNREFUSED' ||
-      (reason?.errors &&
-        Array.isArray(reason.errors) &&
-        reason.errors.every((e: any) => e?.code === 'ECONNREFUSED'))
-    ) {
-      console.log('📤 Export failed (collector stopped) - this is expected in tests')
-      return
-    }
-    // Re-throw other errors
-    console.error('Unhandled rejection:', reason)
-    process.exit(1)
-  })
-}
 
 Effect.runPromise(main)
   .then(() => {

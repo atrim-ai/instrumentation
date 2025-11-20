@@ -11,6 +11,52 @@ import { fileURLToPath } from 'url'
 
 const execAsync = promisify(exec)
 
+/**
+ * Check if error is a harmless connection refused during shutdown
+ */
+export function isHarmlessConnectionError(error: any): boolean {
+  // Check for direct ECONNREFUSED error
+  if (error && typeof error === 'object' && error.code === 'ECONNREFUSED') {
+    return true
+  }
+
+  // Check for AggregateError with all ECONNREFUSED errors
+  if (error && error.errors && Array.isArray(error.errors)) {
+    return error.errors.every((e: any) => e && e.code === 'ECONNREFUSED')
+  }
+
+  // Check for serialized error format from Vitest
+  if (typeof error === 'string' && error.includes('ECONNREFUSED')) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Install handlers to suppress ECONNREFUSED errors during test shutdown.
+ * Call this early in your test fixture to prevent spurious test failures.
+ */
+export function suppressEconnrefused(): void {
+  process.on('uncaughtException', (error: any) => {
+    if (isHarmlessConnectionError(error)) {
+      console.log('📤 Export failed (collector stopped) - this is expected in tests')
+      return
+    }
+    console.error('Uncaught exception:', error)
+    process.exit(1)
+  })
+
+  process.on('unhandledRejection', (reason: any) => {
+    if (isHarmlessConnectionError(reason)) {
+      console.log('📤 Export failed (collector stopped) - this is expected in tests')
+      return
+    }
+    console.error('Unhandled rejection:', reason)
+    process.exit(1)
+  })
+}
+
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
