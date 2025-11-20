@@ -8,6 +8,7 @@
       "Bash(gh:*)",
       "Bash(curl:*)",
       "Bash(cat:*)",
+      "Bash(docker:*)",
       "Bash(mkdir:*)",
       "Bash(sed:*)",
       "Bash(xargs:*)",
