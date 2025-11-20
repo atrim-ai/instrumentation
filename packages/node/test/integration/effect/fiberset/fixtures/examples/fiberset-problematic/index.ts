@@ -12,6 +12,10 @@ import { Effect, FiberSet } from 'effect'
 import { NodeSdk } from '@effect/opentelemetry'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { suppressEconnrefused } from '../../test-helpers.js'
+
+// Suppress ECONNREFUSED errors during shutdown in test environment
+suppressEconnrefused()
 
 // Get OTLP endpoint from environment
 const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
@@ -56,12 +60,16 @@ const program = Effect.scoped(
       yield* FiberSet.run(set, backgroundTask(2))
       yield* FiberSet.run(set, backgroundTask(3))
 
+      // Keep parent span active while background tasks are running
+      console.log('⏳ Waiting for background tasks to run (parent span still active)...')
+      yield* Effect.sleep('50 millis') // Parent span stays open while tasks execute
+
       console.log('👨 Parent operation completed')
     }).pipe(Effect.withSpan('parent-operation'))
 
-    // Wait for all background tasks to complete
-    console.log('⏳ Waiting for background tasks to complete...')
-    yield* Effect.sleep('200 millis') // Give fibers time to complete
+    // Wait for any remaining background tasks to complete
+    console.log('⏳ Waiting for any remaining tasks...')
+    yield* Effect.sleep('150 millis')
 
     // Give time for traces to be exported
     console.log('📤 Waiting for traces to be exported...')
@@ -75,41 +83,6 @@ const program = Effect.scoped(
 
 // Provide the tracing layer
 const main = program.pipe(Effect.provide(TracingLive))
-
-// Suppress ECONNREFUSED errors during shutdown in test environment
-if (process.env.CI || process.env.NODE_ENV === 'test') {
-  process.on('uncaughtException', (error: any) => {
-    // Ignore connection refused errors during shutdown
-    if (
-      error?.code === 'ECONNREFUSED' ||
-      (error?.errors &&
-        Array.isArray(error.errors) &&
-        error.errors.every((e: any) => e?.code === 'ECONNREFUSED'))
-    ) {
-      console.log('📤 Export failed (collector stopped) - this is expected in tests')
-      return
-    }
-    // Re-throw other errors
-    console.error('Uncaught exception:', error)
-    process.exit(1)
-  })
-
-  process.on('unhandledRejection', (reason: any) => {
-    // Ignore connection refused errors during shutdown
-    if (
-      reason?.code === 'ECONNREFUSED' ||
-      (reason?.errors &&
-        Array.isArray(reason.errors) &&
-        reason.errors.every((e: any) => e?.code === 'ECONNREFUSED'))
-    ) {
-      console.log('📤 Export failed (collector stopped) - this is expected in tests')
-      return
-    }
-    // Re-throw other errors
-    console.error('Unhandled rejection:', reason)
-    process.exit(1)
-  })
-}
 
 // Run the program
 Effect.runPromise(main)
