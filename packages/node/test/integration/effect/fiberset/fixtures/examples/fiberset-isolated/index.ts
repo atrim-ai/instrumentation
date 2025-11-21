@@ -13,7 +13,18 @@
 import { Effect, FiberSet } from 'effect'
 import { NodeSdk } from '@effect/opentelemetry'
 import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base'
-import { runIsolated, annotateSpawnedTasks } from '../../../../src/integrations/effect/fiberset.js'
+import {
+  runIsolated,
+  annotateSpawnedTasks
+} from '../../../../../../../src/integrations/effect/fiberset.js'
+import {
+  autoEnrichSpan,
+  annotatePriority
+} from '../../../../../../../src/integrations/effect/index.js'
+import { suppressEconnrefused } from '../../test-helpers.js'
+
+// Suppress ECONNREFUSED errors during shutdown in test environment
+suppressEconnrefused()
 
 const TracingLive = NodeSdk.layer(() => ({
   resource: { serviceName: 'fiberset-isolated' },
@@ -23,14 +34,21 @@ const TracingLive = NodeSdk.layer(() => ({
 }))
 
 // Background task - no need to manually add { root: true }!
-const backgroundTask = (id: number) =>
+const backgroundTask = (id: number, priority: 'high' | 'medium' | 'low') =>
   Effect.gen(function* () {
+    // Auto-enrich with Effect metadata
+    yield* autoEnrichSpan()
+
+    // Annotate with priority
+    yield* annotatePriority(priority, `Background task ${id}`)
+
     console.log(`  🔄 Background task ${id} starting...`)
     yield* Effect.sleep('10 millis')
     console.log(`  ✅ Background task ${id} completed`)
 
     // Nested operation - will be child of background-task
     yield* Effect.gen(function* () {
+      yield* autoEnrichSpan()
       yield* Effect.sleep('5 millis')
     }).pipe(Effect.withSpan(`nested-${id}`))
   })
@@ -44,6 +62,9 @@ const program = Effect.scoped(
 
     // Parent operation
     yield* Effect.gen(function* () {
+      // Auto-enrich parent with Effect metadata
+      yield* autoEnrichSpan()
+
       console.log('👨 Parent operation starting...\n')
 
       // Annotate parent with spawn metadata
@@ -56,15 +77,15 @@ const program = Effect.scoped(
       // Use runIsolated - automatically handles everything!
       console.log('🚀 Spawning tasks with runIsolated()...\n')
 
-      yield* runIsolated(set, backgroundTask(1), 'background-task-1', {
+      yield* runIsolated(set, backgroundTask(1, 'high'), 'background-task-1', {
         attributes: { 'task.priority': 'high' }
       })
 
-      yield* runIsolated(set, backgroundTask(2), 'background-task-2', {
+      yield* runIsolated(set, backgroundTask(2, 'medium'), 'background-task-2', {
         attributes: { 'task.priority': 'medium' }
       })
 
-      yield* runIsolated(set, backgroundTask(3), 'background-task-3', {
+      yield* runIsolated(set, backgroundTask(3, 'low'), 'background-task-3', {
         attributes: { 'task.priority': 'low' }
       })
 
@@ -86,41 +107,6 @@ const program = Effect.scoped(
 )
 
 const main = program.pipe(Effect.provide(TracingLive))
-
-// Suppress ECONNREFUSED errors during shutdown in test environment
-if (process.env.CI || process.env.NODE_ENV === 'test') {
-  process.on('uncaughtException', (error: any) => {
-    // Ignore connection refused errors during shutdown
-    if (
-      error?.code === 'ECONNREFUSED' ||
-      (error?.errors &&
-        Array.isArray(error.errors) &&
-        error.errors.every((e: any) => e?.code === 'ECONNREFUSED'))
-    ) {
-      console.log('📤 Export failed (collector stopped) - this is expected in tests')
-      return
-    }
-    // Re-throw other errors
-    console.error('Uncaught exception:', error)
-    process.exit(1)
-  })
-
-  process.on('unhandledRejection', (reason: any) => {
-    // Ignore connection refused errors during shutdown
-    if (
-      reason?.code === 'ECONNREFUSED' ||
-      (reason?.errors &&
-        Array.isArray(reason.errors) &&
-        reason.errors.every((e: any) => e?.code === 'ECONNREFUSED'))
-    ) {
-      console.log('📤 Export failed (collector stopped) - this is expected in tests')
-      return
-    }
-    // Re-throw other errors
-    console.error('Unhandled rejection:', reason)
-    process.exit(1)
-  })
-}
 
 Effect.runPromise(main)
   .then(() => {

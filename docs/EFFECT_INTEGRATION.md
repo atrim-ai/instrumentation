@@ -88,25 +88,168 @@ instrumentation:
     - pattern: "^health\\."             # ❌ Skip health checks
 ```
 
-## Custom Span Helpers
+## Span Annotation Helpers
 
-Use Effect-specific span annotation helpers:
+The library provides **9 production-tested annotation helpers** for enriching spans with semantic attributes. All helpers return `Effect.Effect<void>` and are fully composable.
+
+### Available Helpers
+
+#### User Context
+```typescript
+import { annotateUser } from '@atrim/instrumentation/effect'
+
+yield* annotateUser('user-123', 'alice@example.com', 'alice')
+// Adds: user.id, user.email, user.name
+```
+
+#### Data Size Metrics
+```typescript
+import { annotateDataSize } from '@atrim/instrumentation/effect'
+
+yield* annotateDataSize(1024 * 1000, 500, 0.75) // bytes, items, compression ratio
+// Adds: data.size.bytes, data.size.items, data.compression.ratio
+```
+
+#### Batch Operations
+```typescript
+import { annotateBatch } from '@atrim/instrumentation/effect'
+
+yield* annotateBatch(100, 10) // totalItems, batchSize
+yield* annotateBatch(100, 10, 95, 5) // add success/failure counts
+// Adds: batch.size, batch.total_items, batch.count, batch.success_count, batch.failure_count
+```
+
+#### LLM Operations
+```typescript
+import { annotateLLM } from '@atrim/instrumentation/effect'
+
+yield* annotateLLM('gpt-4', 'openai', {
+  prompt: 100,
+  completion: 200,
+  total: 300
+})
+// Adds: llm.model, llm.provider, llm.tokens.prompt, llm.tokens.completion, llm.tokens.total
+```
+
+#### Database Queries
+```typescript
+import { annotateQuery } from '@atrim/instrumentation/effect'
+
+yield* annotateQuery('SELECT * FROM users WHERE id = ?', 125, 1, 'main')
+// query, duration (ms), rowCount, database
+// Adds: db.statement, db.duration.ms, db.row_count, db.name
+```
+
+#### HTTP Requests
+```typescript
+import { annotateHttpRequest } from '@atrim/instrumentation/effect'
+
+yield* annotateHttpRequest('POST', '/api/users', 201, 1024)
+// method, url, statusCode, contentLength
+// Adds: http.method, http.url, http.status_code, http.response.content_length
+```
+
+#### Error Context
+```typescript
+import { annotateError } from '@atrim/instrumentation/effect'
+
+yield* annotateError(new Error('Connection failed'), true, 'DatabaseError')
+// error, recoverable, errorType
+// Adds: error.message, error.recoverable, error.type, error.stack
+```
+
+#### Operation Priority
+```typescript
+import { annotatePriority } from '@atrim/instrumentation/effect'
+
+yield* annotatePriority('high', 'User-facing operation')
+// Adds: operation.priority, operation.priority.reason
+```
+
+#### Cache Operations
+```typescript
+import { annotateCache } from '@atrim/instrumentation/effect'
+
+yield* annotateCache(true, 'user:123', 3600)
+// hit, key, ttl (seconds)
+// Adds: cache.hit, cache.key, cache.ttl.seconds
+```
+
+### Auto-Enrichment
+
+**Automatically extract Effect metadata** (fiber ID, status, parent span info) and add it to spans:
 
 ```typescript
+import { autoEnrichSpan, withAutoEnrichedSpan } from '@atrim/instrumentation/effect'
+
+// Option 1: Manual enrichment
+const program = Effect.gen(function* () {
+  yield* autoEnrichSpan() // Auto-add Effect metadata
+  yield* annotateUser('user-123')
+  yield* annotateBatch(100, 10)
+
+  const result = yield* processItems()
+  return result
+}).pipe(Effect.withSpan('batch.process'))
+
+// Option 2: Convenience wrapper
+const program = withAutoEnrichedSpan('batch.process')(
+  Effect.gen(function* () {
+    yield* annotateUser('user-123')
+    yield* annotateBatch(100, 10)
+    return yield* processItems()
+  })
+)
+```
+
+**Metadata added by `autoEnrichSpan()`:**
+- `effect.fiber.id` - Unique fiber identifier
+- `effect.fiber.status` - Fiber status (Running, Done, Suspended)
+- `effect.operation.root` - Whether this is a root operation
+- `effect.operation.nested` - Whether this is nested under another span
+- `effect.parent.span.id` - Parent span ID (if nested)
+- `effect.parent.span.name` - Parent span name (if nested)
+- `effect.parent.trace.id` - Parent trace ID (if nested)
+
+### Complete Example
+
+```typescript
+import { Effect } from 'effect'
 import {
+  autoEnrichSpan,
   annotateUser,
-  annotateDataSize,
-  annotateLLM,
-  annotateQuery
+  annotateBatch,
+  annotateQuery,
+  annotateError
 } from '@atrim/instrumentation/effect'
 
-const program = Effect.gen(function* () {
+const processBatch = Effect.gen(function* () {
+  // Auto-enrich with Effect metadata
+  yield* autoEnrichSpan()
+
+  // Add user context
   yield* annotateUser('user-123', 'alice@example.com')
-  yield* annotateDataSize(1024, 'KB')
-  
-  const result = yield* queryDatabase()
-  return result
-}).pipe(Effect.withSpan('app.database.query'))
+
+  // Add batch metadata
+  yield* annotateBatch(100, 10)
+
+  try {
+    // Execute database query
+    const startTime = Date.now()
+    const results = yield* queryDatabase('SELECT * FROM items')
+    const duration = Date.now() - startTime
+
+    yield* annotateQuery('SELECT * FROM items', duration, results.length, 'main')
+
+    // Update batch with results
+    yield* annotateBatch(100, 10, results.success, results.failures)
+
+    return results
+  } catch (error) {
+    yield* annotateError(error as Error, true, 'DatabaseError')
+    throw error
+  }
+}).pipe(Effect.withSpan('batch.process'))
 ```
 
 ## Sending to Atrim
