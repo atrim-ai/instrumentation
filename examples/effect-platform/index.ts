@@ -27,7 +27,14 @@ import * as HttpServer from '@effect/platform/HttpServer'
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse'
 import * as NodeHttp from '@effect/platform-node/NodeHttpServer'
 import { createServer } from 'node:http'
-import { EffectInstrumentationLive } from '@atrim/instrument-node/effect'
+import {
+  EffectInstrumentationLive,
+  autoEnrichSpan,
+  annotateUser,
+  annotateDataSize,
+  annotateQuery,
+  annotateHttpRequest
+} from '@atrim/instrument-node/effect'
 
 // ============================================================================
 // Domain Types
@@ -54,29 +61,70 @@ const users: User[] = [
 // ============================================================================
 
 const getAllUsers = Effect.gen(function* () {
+  // Auto-enrich with Effect metadata (fiber ID, status, parent span info)
+  yield* autoEnrichSpan()
+
   yield* Console.log('Fetching all users')
+
+  // Annotate with query metadata
+  const startTime = Date.now()
   yield* Effect.sleep('50 millis') // Simulate DB query
+  const duration = Date.now() - startTime
+
+  yield* annotateQuery('SELECT * FROM users', duration, users.length, 'postgres')
+
+  // Annotate with data size
+  const dataSize = JSON.stringify(users).length
+  yield* annotateDataSize(dataSize, users.length)
+
   return users
 }).pipe(Effect.withSpan('app.users.list'))
 
 const getUserById = (id: string) =>
   Effect.gen(function* () {
+    // Auto-enrich with Effect metadata
+    yield* autoEnrichSpan()
+
     yield* Console.log(`Fetching user ${id}`)
+
+    // Annotate with query metadata
+    const startTime = Date.now()
     yield* Effect.sleep('30 millis') // Simulate DB query
+    const duration = Date.now() - startTime
 
     const user = users.find((u) => u.id === id)
 
     if (!user) {
+      yield* annotateQuery(`SELECT * FROM users WHERE id = '${id}'`, duration, 0, 'postgres')
       return yield* Effect.fail(new Error(`User not found: ${id}`))
     }
+
+    yield* annotateQuery(`SELECT * FROM users WHERE id = '${id}'`, duration, 1, 'postgres')
+
+    // Annotate with user context
+    yield* annotateUser(user.id, user.email, user.name)
+
+    // Annotate with data size
+    const dataSize = JSON.stringify(user).length
+    yield* annotateDataSize(dataSize, 1)
 
     return user
   }).pipe(Effect.withSpan('app.users.get', { attributes: { 'user.id': id } }))
 
 const createUser = (name: string, email: string) =>
   Effect.gen(function* () {
+    // Auto-enrich with Effect metadata
+    yield* autoEnrichSpan()
+
     yield* Console.log(`Creating user: ${name}`)
-    yield* Effect.sleep('100 millis') // Simulate DB insert
+
+    // Annotate with user context
+    yield* annotateUser('new-user', email, name)
+
+    // Simulate DB insert with query annotation
+    const startTime = Date.now()
+    yield* Effect.sleep('100 millis')
+    const duration = Date.now() - startTime
 
     const newUser: User = {
       id: String(users.length + 1),
@@ -85,6 +133,17 @@ const createUser = (name: string, email: string) =>
     }
 
     users.push(newUser)
+
+    yield* annotateQuery(
+      `INSERT INTO users (name, email) VALUES ('${name}', '${email}')`,
+      duration,
+      1,
+      'postgres'
+    )
+
+    // Annotate with data size
+    const dataSize = JSON.stringify(newUser).length
+    yield* annotateDataSize(dataSize, 1)
 
     return newUser
   }).pipe(
@@ -112,13 +171,25 @@ const router = HttpRouter.empty.pipe(
   HttpRouter.get(
     '/users',
     Effect.gen(function* () {
+      // Auto-enrich HTTP span
+      yield* autoEnrichSpan()
+
       const userList = yield* getAllUsers
-      return yield* HttpServerResponse.json(userList)
+
+      // Annotate HTTP request
+      const response = yield* HttpServerResponse.json(userList)
+      const contentLength = JSON.stringify(userList).length
+      yield* annotateHttpRequest('GET', '/users', 200, contentLength)
+
+      return response
     }).pipe(Effect.withSpan('http.users.list'))
   ),
   HttpRouter.get(
     '/users/:id',
     Effect.gen(function* () {
+      // Auto-enrich HTTP span
+      yield* autoEnrichSpan()
+
       const params = yield* HttpRouter.schemaPathParams(
         Schema.Struct({
           id: Schema.String
@@ -127,9 +198,19 @@ const router = HttpRouter.empty.pipe(
 
       // Try to get the user - handle error with proper 404 response
       return yield* getUserById(params.id).pipe(
-        Effect.andThen((user) => HttpServerResponse.json(user)),
+        Effect.andThen((user) => {
+          const contentLength = JSON.stringify(user).length
+          return Effect.gen(function* () {
+            yield* annotateHttpRequest('GET', `/users/${params.id}`, 200, contentLength)
+            return yield* HttpServerResponse.json(user)
+          })
+        }),
         Effect.catchAll((error) =>
-          HttpServerResponse.json({ error: error.message }, { status: 404 })
+          Effect.gen(function* () {
+            yield* annotateHttpRequest('GET', `/users/${params.id}`, 404)
+            const errorMessage = error instanceof Error ? error.message : String(error)
+            return yield* HttpServerResponse.json({ error: errorMessage }, { status: 404 })
+          })
         ),
         Effect.withSpan('http.users.get')
       )
@@ -138,6 +219,9 @@ const router = HttpRouter.empty.pipe(
   HttpRouter.post(
     '/users',
     Effect.gen(function* () {
+      // Auto-enrich HTTP span
+      yield* autoEnrichSpan()
+
       const body = yield* HttpRouter.schemaJson(
         Schema.Struct({
           name: Schema.String,
@@ -146,6 +230,10 @@ const router = HttpRouter.empty.pipe(
       )
 
       const newUser = yield* createUser(body.name, body.email)
+
+      // Annotate HTTP request
+      const contentLength = JSON.stringify(newUser).length
+      yield* annotateHttpRequest('POST', '/users', 201, contentLength)
 
       return yield* HttpServerResponse.json(newUser, { status: 201 })
     }).pipe(Effect.withSpan('http.users.create'))
