@@ -26,8 +26,12 @@ export {
   annotateCache
 } from './effect-helpers.js'
 
-// Effect-specific types
+// Effect metadata extraction
+export { extractEffectMetadata } from './metadata-extractor.js'
 export type { EffectMetadata } from './metadata-extractor.js'
+
+// Auto-enrichment utilities
+export { autoEnrichSpan, withAutoEnrichedSpan } from './auto-enrichment.js'
 
 // FiberSet isolation helpers (automatic span isolation + virtual parent tracking)
 export {

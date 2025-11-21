@@ -3,9 +3,13 @@
  *
  * Automatically extracts metadata from Effect fibers and adds them as span attributes.
  * This provides valuable context about the Effect execution environment.
+ *
+ * Uses Effect's public APIs:
+ * - Fiber.getCurrentFiber() - Get current fiber information
+ * - Effect.currentSpan - Detect parent spans and nesting
  */
 
-import { logger } from '@atrim/instrument-core'
+import { Effect, Fiber, FiberId, Option } from 'effect'
 
 /**
  * Metadata extracted from Effect fibers
@@ -14,73 +18,72 @@ export interface EffectMetadata {
   'effect.fiber.id'?: string
   'effect.fiber.status'?: string
   'effect.operation.root'?: boolean
-  'effect.operation.interrupted'?: boolean
+  'effect.operation.nested'?: boolean
+  'effect.parent.span.id'?: string
+  'effect.parent.span.name'?: string
+  'effect.parent.trace.id'?: string
 }
 
 /**
- * Extract metadata from an Effect fiber
+ * Extract Effect-native metadata from current execution context
  *
- * Extracts useful information from Effect fibers that can be added to spans
- * for better observability and debugging.
+ * Uses Effect's native APIs:
+ * - Fiber.getCurrentFiber() - Get current fiber information
+ * - Effect.currentSpan - Detect parent spans and nesting
  *
- * Note: This is a simplified implementation. Full fiber introspection would require
- * access to Effect's internal APIs.
- *
- * @param fiber - Effect fiber to extract metadata from (optional peer dependency)
- * @returns Metadata object with span attributes
+ * @returns Effect that yields extracted metadata
  */
-export function extractEffectMetadata(fiber?: unknown): EffectMetadata {
-  if (!fiber) {
-    return {}
-  }
+export function extractEffectMetadata(): Effect.Effect<EffectMetadata> {
+  return Effect.gen(function* () {
+    const metadata: EffectMetadata = {}
 
-  const metadata: EffectMetadata = {}
+    // Extract fiber metadata using Fiber.getCurrentFiber()
+    const currentFiber = Fiber.getCurrentFiber()
 
-  try {
-    const fiberWithId = fiber as { id?: () => unknown }
-    // Extract fiber ID if available
-    if (fiberWithId.id && typeof fiberWithId.id === 'function') {
-      try {
-        const fiberId = fiberWithId.id()
-        if (fiberId !== undefined) {
-          metadata['effect.fiber.id'] = String(fiberId)
-        }
-      } catch {
-        // Silently ignore - best effort
+    if (Option.isSome(currentFiber)) {
+      const fiber = currentFiber.value
+      const fiberId = fiber.id()
+
+      // Add fiber ID
+      metadata['effect.fiber.id'] = FiberId.threadName(fiberId)
+
+      // Get fiber status (returns an Effect)
+      const status = yield* Fiber.status(fiber)
+      if (status._tag) {
+        metadata['effect.fiber.status'] = status._tag
       }
     }
 
-    // Extract fiber status (simplified)
-    metadata['effect.fiber.status'] = 'running'
+    // Detect parent span for nesting analysis
+    const parentSpanResult = yield* Effect.currentSpan.pipe(
+      Effect.option // Convert NoSuchElementException to Option
+    )
 
-    // Mark as root operation (simplified - would need Effect internals for accuracy)
-    metadata['effect.operation.root'] = false
+    if (Option.isSome(parentSpanResult)) {
+      const parentSpan = parentSpanResult.value
+      metadata['effect.operation.nested'] = true
+      metadata['effect.operation.root'] = false
 
-    // Check if interrupted (simplified)
-    metadata['effect.operation.interrupted'] = false
-  } catch (error) {
-    // Silently fail - metadata extraction is best-effort
-    logger.warn('Failed to extract Effect metadata:', error)
-  }
+      // Extract parent span information
+      if (parentSpan.spanId) {
+        metadata['effect.parent.span.id'] = parentSpan.spanId
+      }
 
-  return metadata
-}
+      if (parentSpan.name) {
+        metadata['effect.parent.span.name'] = parentSpan.name
+      }
 
-/**
- * Add Effect metadata to a span's attributes
- *
- * @param span - OpenTelemetry span (or any object with setAttribute method)
- * @param fiber - Effect fiber
- */
-export function addEffectMetadataToSpan(
-  span: { setAttribute: (key: string, value: string | boolean) => void },
-  fiber?: unknown
-): void {
-  const metadata = extractEffectMetadata(fiber)
-
-  for (const [key, value] of Object.entries(metadata)) {
-    if (value !== undefined) {
-      span.setAttribute(key, value)
+      // Detect forking: if parent span exists in different context
+      // This is a best-effort detection based on span context
+      if (parentSpan.traceId) {
+        metadata['effect.parent.trace.id'] = parentSpan.traceId
+      }
+    } else {
+      // No parent span - this is a root span
+      metadata['effect.operation.nested'] = false
+      metadata['effect.operation.root'] = true
     }
-  }
+
+    return metadata
+  })
 }
