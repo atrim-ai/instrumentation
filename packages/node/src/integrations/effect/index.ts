@@ -33,6 +33,15 @@ export type { EffectMetadata } from './metadata-extractor.js'
 // Auto-enrichment utilities
 export { autoEnrichSpan, withAutoEnrichedSpan } from './auto-enrichment.js'
 
+// Auto-span pipeable operators (Tier 2 auto-instrumentation)
+export {
+  withAutoSpan,
+  traced,
+  withAutoMetadata,
+  type AutoSpanOptions,
+  type AutoMetadataOptions
+} from './auto-span.js'
+
 // FiberSet isolation helpers (automatic span isolation + virtual parent tracking)
 export {
   runIsolated,
