@@ -13,6 +13,7 @@ import { NodeSdk } from '@effect/opentelemetry'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { suppressEconnrefused } from '../../test-helpers.js'
+import { autoEnrichSpan } from '../../../../../../../src/integrations/effect/index.js'
 
 // Suppress ECONNREFUSED errors during shutdown in test environment
 suppressEconnrefused()
@@ -36,6 +37,7 @@ const TracingLive = NodeSdk.layer(() => ({
 // but WILL incorrectly inherit due to the bug
 const backgroundTask = (id: number) =>
   Effect.gen(function* () {
+    yield* autoEnrichSpan()
     console.log(`  🔄 Background task ${id} starting...`)
     yield* Effect.sleep('10 millis')
     console.log(`  ✅ Background task ${id} completed`)
@@ -50,6 +52,7 @@ const program = Effect.scoped(
 
     // Parent operation
     yield* Effect.gen(function* () {
+      yield* autoEnrichSpan()
       console.log('👨 Parent operation starting...')
       yield* Effect.sleep('5 millis')
 

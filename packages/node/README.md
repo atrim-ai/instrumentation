@@ -161,6 +161,72 @@ const program = Effect.gen(function* () {
 await Effect.runPromise(program)
 ```
 
+### Effect-TS Span Annotation Helpers
+
+The library provides 9 production-tested annotation helpers for enriching spans with semantic attributes:
+
+```typescript
+import { Effect } from 'effect'
+import {
+  annotateUser,
+  annotateBatch,
+  annotateDataSize,
+  annotateLLM,
+  annotateQuery,
+  annotateHttpRequest,
+  annotateError,
+  annotatePriority,
+  annotateCache,
+  autoEnrichSpan,
+  withAutoEnrichedSpan
+} from '@atrim/instrument-node/effect'
+
+// Example: Batch processing with automatic enrichment
+const processBatch = Effect.gen(function* () {
+  // Auto-enrich with Effect metadata (fiber ID, status, parent span info)
+  yield* autoEnrichSpan()
+
+  // Add user context
+  yield* annotateUser('user-123', 'user@example.com')
+
+  // Add batch metadata
+  yield* annotateBatch(100, 10) // 100 items in batches of 10
+
+  // Process items
+  const results = yield* processItems(items)
+
+  // Update with results
+  yield* annotateBatch(100, 10, results.success, results.failures)
+
+  return results
+}).pipe(Effect.withSpan('batch.process'))
+
+// Or use the convenience wrapper
+const processWithAutoEnrich = withAutoEnrichedSpan('batch.process')(
+  Effect.gen(function* () {
+    yield* annotateBatch(100, 10)
+    return yield* processItems(items)
+  })
+)
+```
+
+**Available annotation helpers:**
+- `annotateUser(userId, email?, username?)` - User context
+- `annotateDataSize(bytes, items, compressionRatio?)` - Data size metrics
+- `annotateBatch(totalItems, batchSize, successCount?, failureCount?)` - Batch operations
+- `annotateLLM(model, provider, tokens?)` - LLM operations (GPT, Claude, etc.)
+- `annotateQuery(query, duration?, rowCount?, database?)` - Database queries
+- `annotateHttpRequest(method, url, statusCode?, contentLength?)` - HTTP requests
+- `annotateError(error, recoverable, errorType?)` - Error context
+- `annotatePriority(priority, reason?)` - Operation priority
+- `annotateCache(hit, key, ttl?)` - Cache operations
+
+**Auto-enrichment utilities:**
+- `autoEnrichSpan()` - Automatically add Effect metadata (fiber ID, status, parent span info)
+- `withAutoEnrichedSpan(name, options?)` - Wrapper combining `Effect.withSpan()` + auto-enrichment
+
+All helpers return `Effect.Effect<void>` and use `Effect.annotateCurrentSpan()` under the hood.
+
 ### Bun Runtime
 
 ```typescript

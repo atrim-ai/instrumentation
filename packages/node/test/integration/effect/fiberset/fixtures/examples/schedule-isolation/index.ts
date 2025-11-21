@@ -11,6 +11,7 @@ import { NodeSdk } from '@effect/opentelemetry'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { suppressEconnrefused } from '../../test-helpers.js'
+import { autoEnrichSpan } from '../../../../../../../src/integrations/effect/index.js'
 
 // Suppress ECONNREFUSED errors during shutdown in test environment
 suppressEconnrefused()
@@ -30,6 +31,7 @@ const TracingLive = NodeSdk.layer(() => ({
 // Scheduled task - each iteration should be independent
 const scheduledTask = (iterationRef: Ref.Ref<number>) =>
   Effect.gen(function* () {
+    yield* autoEnrichSpan()
     const iteration = yield* Ref.getAndUpdate(iterationRef, (n) => n + 1)
 
     console.log(`  ⏰ Iteration ${iteration} started`)
