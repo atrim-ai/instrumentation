@@ -42,5 +42,29 @@ export default defineConfig([
       '@opentelemetry/api',
       '@opentelemetry/sdk-trace-base'
     ]
+  },
+  // Auto-traced Effect integration (Tier 3)
+  {
+    entry: {
+      'integrations/effect/auto/index': 'src/integrations/effect/auto/index.ts'
+    },
+    format: ['esm', 'cjs'],
+    dts: true,
+    splitting: false,
+    sourcemap: true,
+    clean: false,
+    treeshake: true,
+    minify: false,
+    target: 'es2020',
+    outDir: 'target/dist',
+    tsconfig: 'tsconfig.build.json',
+    noExternal: ['@atrim/instrument-core'],
+    external: [
+      'effect',
+      '@effect/opentelemetry',
+      '@effect/platform',
+      '@opentelemetry/api',
+      '@opentelemetry/sdk-trace-base'
+    ]
   }
 ])
