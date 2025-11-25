@@ -121,19 +121,26 @@ describe('FiberSet.run Context Leakage', () => {
   // Helper to suppress harmless connection errors during test cleanup
   const suppressShutdownErrors = () => {
     const isHarmlessConnectionError = (error: any): boolean => {
-      // Check for direct ECONNREFUSED error (any port - collector uses dynamic ports)
-      if (error && typeof error === 'object' && error.code === 'ECONNREFUSED') {
+      // Check for direct error properties
+      if (
+        error &&
+        typeof error === 'object' &&
+        error.code === 'ECONNREFUSED' &&
+        (error.address === '127.0.0.1' || error.address === '::1') &&
+        error.port === 4318
+      ) {
         return true
       }
 
       // Check for AggregateError with nested connection errors
       if (error && error.errors && Array.isArray(error.errors)) {
-        return error.errors.every((e: any) => e && e.code === 'ECONNREFUSED')
-      }
-
-      // Check for serialized error format from Vitest
-      if (typeof error === 'string' && error.includes('ECONNREFUSED')) {
-        return true
+        return error.errors.every(
+          (e: any) =>
+            e &&
+            e.code === 'ECONNREFUSED' &&
+            (e.address === '127.0.0.1' || e.address === '::1') &&
+            e.port === 4318
+        )
       }
 
       return false
