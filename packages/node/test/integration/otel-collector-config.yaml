@@ -42,6 +42,18 @@ exporters:
       num_consumers: 10
       queue_size: 1000
 
+  # Forward traces to Honeycomb for validation
+  otlphttp/honeycomb:
+    endpoint: https://api.honeycomb.io
+    headers:
+      x-honeycomb-team: HONEYCOMB_API_KEY_REMOVED
+    timeout: 10s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 5s
+      max_elapsed_time: 30s
+
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
@@ -52,4 +64,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug, otlphttp/dev]
+      exporters: 
+        - debug
+        - otlphttp/dev
+        - otlphttp/honeycomb
