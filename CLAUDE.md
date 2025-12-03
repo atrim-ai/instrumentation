@@ -610,6 +610,26 @@ This library works seamlessly with the **Atrim Onboarding CLI**:
 
 ## Testing Strategy
 
+### Test Organization
+
+**IMPORTANT:** Tests are organized in two locations with different purposes:
+
+1. **`packages/*/test/`** - Core library tests
+   - `test/unit/` - Unit tests for library internals
+   - `test/integration/` - Integration tests using testcontainers (isolated OTel collector)
+   - Run via `pnpm test` and `pnpm test:integration` from package or root
+   - These tests validate library correctness
+
+2. **`examples/*/`** - Example applications with integration tests
+   - Each example can have its own `*.integration.test.ts` files
+   - These tests export spans to a **live OTLP endpoint** (Atrim, local collector, etc.)
+   - Run via `pnpm test` from within the example directory
+   - Used to demonstrate library features and validate spans appear in Atrim
+
+**When to use which:**
+- New library feature → Add tests in `packages/*/test/`
+- New example or demo → Add tests in `examples/*/` that export to live OTLP
+
 ### Unit Tests
 - Configuration loading (file, URL, defaults)
 - Pattern matching (80%+ coverage)
@@ -712,68 +732,25 @@ initializeInstrumentation({
 
 ## AI Assistant Workflow Guidelines
 
-### Review-Before-Implementation Process
+See `~/.claude/CLAUDE.md` for global development principles. This project has stricter requirements:
 
-**IMPORTANT:** Before making any major changes, creating PR descriptions, or making significant design/implementation decisions, you MUST:
+### Review-Before-Implementation (Stricter than global)
 
-1. **Create a proposal file** in `./tmp/[DATE]` directory with a descriptive name (e.g., `./tmp/2025-11-12/fiberset-tracing-fix-proposal.md`, `./tmp/2025-11-12/pr-body-draft.md`)
-2. **Document the proposal** including:
-   - Problem statement
-   - Proposed solution(s)
-   - Files to be changed
-   - Design decisions and trade-offs
-   - Examples of changes
-3. **Wait for user approval** before proceeding with implementation
-4. **Only after approval** should you implement changes or take next steps
+Before major changes, create proposal files in `./tmp/[DATE]/`:
 
-**Examples of what requires review:**
-- Adding new documentation sections (e.g., to TROUBLESHOOTING.md)
-- Creating PR descriptions or commit messages
-- Major refactoring or architectural changes
-- New features or significant bug fixes
-- Changes affecting public API
-- Documentation structure changes
-
-**Examples of what does NOT require review:**
-- Reading files for investigation
-- Running tests
-- Searching codebase
-- Small typo fixes
-- Formatting changes
-
-This workflow ensures alignment on design decisions before implementation and prevents wasted effort on unapproved approaches.
-
-### Git Commit Workflow
-
-**CRITICAL:** All git commits require explicit user approval. NEVER auto-commit changes.
-
-**Required workflow:**
-
-1. **Make code changes** when requested
-2. **Run tests** to verify changes work correctly
-3. **Show the user what changed** - Summarize the changes made
-4. **Ask for explicit approval** before committing
-5. **Only commit after user approves** the changes
-
-**Example workflow:**
-```
-Assistant: I've made the following changes:
-- Modified src/core/sdk-initializer.ts to add HTTP filtering
-- Updated README.md with usage examples
-- Added integration test in test/integration/http-filtering/
-
-All tests are passing. Would you like me to commit these changes?
-
-User: yes, please commit
+```bash
+mkdir -p tmp/$(date +%Y-%m-%d)
+# Create proposal: tmp/2025-11-12/feature-proposal.md
 ```
 
-**DO NOT commit without approval:**
-- Never use git commit automatically
-- Never create commits "just to save progress"
-- Never commit during implementation without asking first
-- Always wait for explicit user confirmation
+**Requires review:** Major changes, PR descriptions, new features, API changes, architecture changes
+**No review needed:** Reading files, running tests, small typo/formatting fixes
 
-**Analysis documents:** Files in `./tmp/[DATE]/` are for analysis only and should NEVER be committed to git. These are temporary working documents for discussion with the user.
+### Git Commits Require Explicit Approval
+
+**CRITICAL:** Never auto-commit. Always ask user for approval before committing.
+
+**Analysis documents:** Files in `./tmp/[DATE]/` are for analysis only - NEVER commit to git.
 
 ## Gotchas and Common Issues
 
