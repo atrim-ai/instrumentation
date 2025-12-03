@@ -1,16 +1,23 @@
 /**
- * Integration test for shared tracer interoperability
+ * Integration test for shared OTLP endpoint interoperability
  *
  * This test verifies that traditional OTel spans (TaskEither-style) and Effect spans
- * can share the same tracer and export to the same collector.
+ * can export to the SAME collector while maintaining context propagation.
+ *
+ * IMPORTANT: Traditional and Effect spans use SEPARATE export mechanisms:
+ * - Traditional: NodeTracerProvider → SpanProcessors → OTLP Exporter
+ * - Effect: Effect Tracer → Otlp.layer → OTLP HTTP Export
+ *
+ * Both export to the same collector endpoint for unified traces in Atrim/observability backend.
  *
  * Use case: Migrating from fp-ts/TaskEither tracing to Effect while maintaining
- * context propagation across both systems.
+ * context propagation and unified trace visibility.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Effect, Layer, ManagedRuntime, Tracer } from 'effect'
-import { Tracer as OtelEffectTracer } from '@effect/opentelemetry'
+import { Tracer as OtelEffectTracer, Otlp } from '@effect/opentelemetry'
+import { FetchHttpClient } from '@effect/platform'
 import { trace, context, SpanStatusCode } from '@opentelemetry/api'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { BatchSpanProcessor, InMemorySpanExporter } from '@opentelemetry/sdk-trace-base'
@@ -83,12 +90,18 @@ describe('Shared Tracer Interoperability', () => {
 
     otelTracer = trace.getTracer(SERVICE_NAME, '1.0.0')
 
-    // Effect layer setup - share the existing tracer
-    const OtelTracerLayer = Layer.succeed(OtelEffectTracer.OtelTracer, otelTracer)
-    const EffectTracerLayer = Layer.effect(Tracer.Tracer, OtelEffectTracer.make)
-    const SharedTracerLayer = EffectTracerLayer.pipe(Layer.provide(OtelTracerLayer))
+    // Effect layer setup - use Otlp.layer to export to the SAME collector
+    // Traditional spans export via NodeTracerProvider's span processors
+    // Effect spans export via Effect's Otlp.layer
+    // Both go to the same collector endpoint for unified traces
+    const EffectTracingLayer = Otlp.layer({
+      baseUrl: `http://localhost:${collector.httpPort}`,
+      resource: {
+        serviceName: SERVICE_NAME
+      }
+    }).pipe(Layer.provide(FetchHttpClient.layer))
 
-    runtime = ManagedRuntime.make(SharedTracerLayer)
+    runtime = ManagedRuntime.make(EffectTracingLayer)
 
     console.log(`✅ Shared tracer test setup complete (collector port: ${collector.httpPort})`)
   })
@@ -164,24 +177,36 @@ describe('Shared Tracer Interoperability', () => {
     )
 
     await provider.forceFlush()
+    // Wait for Effect's async export to complete
+    await new Promise((r) => setTimeout(r, 1500))
 
     const spans = memoryExporter.getFinishedSpans()
-    const traditionalSpan = spans.find((s) => s.name === 'traditional.wrapper-for-effect')
 
+    // Traditional span captured in memory exporter
+    const traditionalSpan = spans.find((s) => s.name === 'traditional.wrapper-for-effect')
     expect(traditionalSpan).toBeDefined()
 
-    // Verify span reached collector
+    // Effect span NOT in memory exporter (uses separate export path)
+    // But BOTH should appear in collector logs
+    console.log('\n📊 Traditional spans in memory:')
+    spans.forEach((s) => console.log(`  - ${s.name}`))
+
+    // Verify BOTH spans reached collector (this is the critical check)
     const receivedTraces = await waitFor(
       async () => {
         const logs = await getCollectorLogs(collector)
-        return logs.includes('traditional.wrapper-for-effect')
+        return (
+          logs.includes('traditional.wrapper-for-effect') && logs.includes('effect.child-operation')
+        )
       },
       10000,
       500
     )
 
     expect(receivedTraces).toBe(true)
-    console.log('✅ Traditional span wrapping Effect exported to collector')
+    console.log(
+      '✅ BOTH traditional and Effect spans exported to collector (separate export paths)'
+    )
   })
 
   it('should propagate context in nested traditional spans', async () => {
@@ -427,23 +452,36 @@ describe('Shared Tracer Interoperability', () => {
     })
 
     await provider.forceFlush()
+    // Wait for Effect's async export
+    await new Promise((r) => setTimeout(r, 1500))
 
     const spans = memoryExporter.getFinishedSpans()
 
-    expect(spans.find((s) => s.name === 'traditional.request-handler')).toBeDefined()
-    expect(spans.find((s) => s.name === 'traditional.db-query')).toBeDefined()
+    // Traditional spans in memory exporter
+    const requestHandler = spans.find((s) => s.name === 'traditional.request-handler')
+    const dbQuery = spans.find((s) => s.name === 'traditional.db-query')
 
-    // Verify all spans reached collector
+    expect(requestHandler).toBeDefined()
+    expect(dbQuery).toBeDefined()
+
+    console.log('\n📊 Traditional spans in memory:')
+    spans.forEach((s) => console.log(`  - ${s.name}`))
+
+    // Verify all 3 spans (including Effect span) reached collector
     const receivedTraces = await waitFor(
       async () => {
         const logs = await getCollectorLogs(collector)
-        return logs.includes('traditional.request-handler') && logs.includes('traditional.db-query')
+        return (
+          logs.includes('traditional.request-handler') &&
+          logs.includes('effect.business-logic') &&
+          logs.includes('traditional.db-query')
+        )
       },
       10000,
       500
     )
 
     expect(receivedTraces).toBe(true)
-    console.log('✅ Traditional → Effect → Traditional hierarchy exported')
+    console.log('✅ All 3 spans (Traditional → Effect → Traditional) exported to collector')
   })
 })

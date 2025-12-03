@@ -1,41 +1,39 @@
 /**
- * Shared Tracer Interoperability Example
+ * Shared OTLP Endpoint Interoperability Example
  *
- * This example demonstrates how to share an existing OpenTelemetry tracer
- * between traditional Promise/TaskEither-style code and Effect-TS code.
+ * This example demonstrates how to configure traditional Promise/TaskEither-style code
+ * and Effect-TS code to export to the SAME OTLP collector endpoint.
  *
- * Use case: Migrating from fp-ts/TaskEither tracing to Effect while
- * maintaining context propagation across both systems.
+ * Use case: Migrating from fp-ts/TaskEither tracing to Effect while maintaining
+ * unified trace visibility in your observability backend (Atrim, Honeycomb, etc.)
+ *
+ * IMPORTANT: Traditional and Effect spans use SEPARATE export mechanisms:
+ * - Traditional: NodeTracerProvider → SpanProcessors → OTLP Exporter
+ * - Effect: Otlp.layer → OTLP HTTP Export
+ *
+ * Both export to the SAME collector endpoint for unified traces.
  *
  * Key concepts demonstrated:
- * 1. Setting up a traditional OTel tracer (as used in TaskEither patterns)
- * 2. Providing that tracer to Effect via Layer.succeed(Tracer.OtelTracer, ...)
- * 3. OpenTelemetry CONTEXT PROPAGATION between traditional and Effect spans
- *
- * IMPORTANT NOTE ON SPAN EXPORT:
- * - Traditional spans: Exported via your configured SpanProcessor (ConsoleSpanExporter here)
- * - Effect spans: Use @effect/opentelemetry's internal export mechanism
- *
- * For production, you'd typically:
- * - Use OTLP export for both (they'll both send to your collector)
- * - OR use the same global TracerProvider so all spans go through the same exporter
- *
- * The KEY benefit of this approach is CONTEXT PROPAGATION:
- * - Effect spans become CHILDREN of traditional spans when called within their context
- * - Traditional spans become CHILDREN of Effect spans when called from Effect code
- * - All spans share the same traceId for distributed tracing correlation
+ * 1. Traditional OTel tracer setup with OTLP export
+ * 2. Effect Otlp.layer configured to same endpoint
+ * 3. Automatic context propagation via @opentelemetry/api (same traceId, parent-child relationships)
  *
  * To run:
  *   cd examples/shared-tracer-interop
  *   pnpm install
  *   pnpm start
+ *
+ * For comprehensive test scenarios, see:
+ *   packages/node/test/integration/effect/shared-tracer-interop/
  */
 
-import { Effect, Layer, ManagedRuntime, Tracer } from 'effect'
-import { Tracer as OtelEffectTracer } from '@effect/opentelemetry'
+import { Effect, Layer, ManagedRuntime } from 'effect'
+import { Otlp } from '@effect/opentelemetry'
+import { FetchHttpClient } from '@effect/platform'
 import { trace, context, SpanStatusCode } from '@opentelemetry/api'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
-import { SimpleSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base'
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions'
 
@@ -44,14 +42,20 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions'
 // ============================================================================
 
 const SERVICE_NAME = 'shared-tracer-demo'
+const OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
 
-// Create a TracerProvider with console exporter (you'd use OTLP in production)
-// Note: SDK v2 uses resourceFromAttributes() instead of new Resource()
+// Create a TracerProvider with OTLP export (for traditional/TaskEither spans)
 const provider = new NodeTracerProvider({
   resource: resourceFromAttributes({
     [ATTR_SERVICE_NAME]: SERVICE_NAME
   }),
-  spanProcessors: [new SimpleSpanProcessor(new ConsoleSpanExporter())]
+  spanProcessors: [
+    new BatchSpanProcessor(
+      new OTLPTraceExporter({
+        url: `${OTLP_ENDPOINT}/v1/traces`
+      })
+    )
+  ]
 })
 
 provider.register()
@@ -59,7 +63,7 @@ provider.register()
 // Get the tracer - this is what you'd use in TaskEither code
 const otelTracer = trace.getTracer(SERVICE_NAME, '1.0.0')
 
-console.log('✅ OpenTelemetry tracer initialized\n')
+console.log(`✅ Traditional OTel tracer initialized (exporting to ${OTLP_ENDPOINT})\n`)
 
 // ============================================================================
 // 2. Traditional Tracing Function (TaskEither-style pattern)
@@ -104,46 +108,28 @@ async function withTraditionalSpan<T>(
 }
 
 // ============================================================================
-// 3. Effect Layer that uses the EXISTING tracer
+// 3. Effect Layer - Configure to export to SAME OTLP endpoint
 // ============================================================================
 
 /**
- * OPTION A: Provide your existing OtelTracer directly to Effect
+ * Configure Effect to export to the SAME collector endpoint
  *
- * This is the key insight - you can provide any OTel Tracer to Effect!
+ * Effect spans will export via Otlp.layer (separate from traditional spans)
+ * but both go to the same collector for unified traces.
  *
- * Steps:
- * 1. Wrap your existing tracer in a Layer using Layer.succeed
- * 2. Use Tracer.make from @effect/opentelemetry to create Effect's Tracer
- * 3. Compose them using Layer.provide
+ * Context propagation works automatically via @opentelemetry/api's global context.
  */
+const EffectTracingLayer = Otlp.layer({
+  baseUrl: OTLP_ENDPOINT,
+  resource: {
+    serviceName: SERVICE_NAME
+  }
+}).pipe(Layer.provide(FetchHttpClient.layer))
 
-// Step 1: Wrap our existing OTel tracer in a Layer
-const OtelTracerLayer = Layer.succeed(OtelEffectTracer.OtelTracer, otelTracer)
-
-// Step 2: Create a Layer that builds Effect's Tracer from the OtelTracer
-const EffectTracerLayer = Layer.effect(Tracer.Tracer, OtelEffectTracer.make)
-
-// Step 3: Compose - provide OtelTracerLayer to satisfy EffectTracerLayer's requirement
-const EffectTracingFromExistingTracer = EffectTracerLayer.pipe(Layer.provide(OtelTracerLayer))
-
-/**
- * OPTION B: Use the global tracer provider (alternative approach)
- *
- * If you've already registered your tracer provider globally (as we did above),
- * you can use layerGlobal which picks it up automatically.
- *
- * Example:
- *   import { Resource } from '@effect/opentelemetry'
- *
- *   const EffectTracingFromGlobal = Resource.layer({ serviceName: SERVICE_NAME }).pipe(
- *     Layer.provideMerge(OtelEffectTracer.layerGlobal),
- *     Layer.provideMerge(OtelEffectTracer.layerWithoutOtelTracer)
- *   )
- */
+console.log(`✅ Effect OTLP layer configured (exporting to ${OTLP_ENDPOINT})\n`)
 
 // ============================================================================
-// 4. Effect Operations
+// 5. Effect Operations
 // ============================================================================
 
 const effectOperation = Effect.gen(function* () {
@@ -158,24 +144,24 @@ const effectOperation = Effect.gen(function* () {
 }).pipe(Effect.withSpan('effect.business-logic'))
 
 // ============================================================================
-// 5. ManagedRuntime for sharing across requests (like in Express/Fastify)
+// 6. ManagedRuntime for Effect operations
 // ============================================================================
 
-// Create a ManagedRuntime with the shared tracer layer
-// This is what you'd use in your ManagedRuntime setup
-const runtime = ManagedRuntime.make(EffectTracingFromExistingTracer)
+// Create a ManagedRuntime with the Effect OTLP layer
+// This is what you'd use in your Effect-based ManagedRuntime setup
+const runtime = ManagedRuntime.make(EffectTracingLayer)
 
 // ============================================================================
-// 6. Simple Demo: Traditional + Effect Tracing
+// 7. Simple Demo: Traditional + Effect Tracing
 // ============================================================================
 
 async function demonstrateInterop() {
   console.log('='.repeat(60))
-  console.log('🎯 Shared Tracer Interoperability Demo')
+  console.log('🎯 Shared OTLP Endpoint Demo')
   console.log('='.repeat(60))
   console.log('')
-  console.log('This example shows the basic pattern for sharing a tracer')
-  console.log('between traditional OTel code and Effect-TS.')
+  console.log('Traditional and Effect spans export to the SAME collector')
+  console.log('via separate mechanisms, enabling unified trace visibility.')
   console.log('')
 
   // Basic example: Traditional span wrapping Effect operations
@@ -210,7 +196,7 @@ async function demonstrateInterop() {
 }
 
 // ============================================================================
-// 7. Cleanup and Run
+// 8. Cleanup and Run
 // ============================================================================
 
 async function main() {
