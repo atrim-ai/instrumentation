@@ -612,23 +612,27 @@ This library works seamlessly with the **Atrim Onboarding CLI**:
 
 ### Test Organization
 
-**IMPORTANT:** Tests are organized in two locations with different purposes:
+**IMPORTANT:** All tests live in `packages/*/test/`:
 
-1. **`packages/*/test/`** - Core library tests
-   - `test/unit/` - Unit tests for library internals
-   - `test/integration/` - Integration tests using testcontainers (isolated OTel collector)
-   - Run via `pnpm test` and `pnpm test:integration` from package or root
-   - These tests validate library correctness
+1. **`packages/*/test/unit/`** - Unit tests
+   - Fast, isolated tests for library internals
+   - No external dependencies (mocked)
+   - Run via `pnpm test`
 
-2. **`examples/*/`** - Example applications with integration tests
-   - Each example can have its own `*.integration.test.ts` files
-   - These tests export spans to a **live OTLP endpoint** (Atrim, local collector, etc.)
-   - Run via `pnpm test` from within the example directory
-   - Used to demonstrate library features and validate spans appear in Atrim
+2. **`packages/*/test/integration/`** - Integration tests
+   - Use testcontainers for isolated OTel collector
+   - Test real span export and context propagation
+   - Run via `pnpm test:integration`
+   - Spans are forwarded to dev collector at localhost:4318 when available (for Atrim visibility)
 
-**When to use which:**
-- New library feature → Add tests in `packages/*/test/`
-- New example or demo → Add tests in `examples/*/` that export to live OTLP
+**Examples (`examples/*/`)** are standalone demo applications:
+- NOT for tests - just runnable demos
+- Run via `pnpm start` from the example directory
+- Used to demonstrate library features to users
+
+**When adding new functionality:**
+- Library feature → Add tests in `packages/*/test/`
+- New example/demo → Create in `examples/*/` (no tests, just demo code)
 
 ### Unit Tests
 - Configuration loading (file, URL, defaults)
