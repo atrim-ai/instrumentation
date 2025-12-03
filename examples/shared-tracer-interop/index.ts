@@ -157,29 +157,6 @@ const effectOperation = Effect.gen(function* () {
   return { success: true, source: 'effect' }
 }).pipe(Effect.withSpan('effect.business-logic'))
 
-const nestedEffectOperation = Effect.gen(function* () {
-  yield* Effect.log('Starting nested operations')
-
-  // Parallel operations with individual spans
-  const results = yield* Effect.all(
-    [
-      Effect.succeed('task-1').pipe(
-        Effect.delay('20 millis'),
-        Effect.withSpan('effect.parallel.task-1')
-      ),
-      Effect.succeed('task-2').pipe(
-        Effect.delay('30 millis'),
-        Effect.withSpan('effect.parallel.task-2')
-      )
-    ],
-    { concurrency: 'unbounded' }
-  )
-
-  yield* Effect.annotateCurrentSpan('parallel.task_count', results.length)
-
-  return results
-}).pipe(Effect.withSpan('effect.parallel-workflow'))
-
 // ============================================================================
 // 5. ManagedRuntime for sharing across requests (like in Express/Fastify)
 // ============================================================================
@@ -189,7 +166,7 @@ const nestedEffectOperation = Effect.gen(function* () {
 const runtime = ManagedRuntime.make(EffectTracingFromExistingTracer)
 
 // ============================================================================
-// 6. Demo: Mixed Traditional + Effect Tracing
+// 6. Simple Demo: Traditional + Effect Tracing
 // ============================================================================
 
 async function demonstrateInterop() {
@@ -197,9 +174,12 @@ async function demonstrateInterop() {
   console.log('🎯 Shared Tracer Interoperability Demo')
   console.log('='.repeat(60))
   console.log('')
+  console.log('This example shows the basic pattern for sharing a tracer')
+  console.log('between traditional OTel code and Effect-TS.')
+  console.log('')
 
-  // Scenario 1: Traditional span wrapping Effect operations
-  console.log('📍 Scenario 1: Traditional parent → Effect child\n')
+  // Basic example: Traditional span wrapping Effect operations
+  console.log('📍 Traditional span → Effect span\n')
 
   await withTraditionalSpan(
     'traditional.http-request',
@@ -208,94 +188,24 @@ async function demonstrateInterop() {
       console.log('  Inside traditional span, calling Effect...')
 
       // Effect operation runs inside the traditional span's context
-      // The Effect span should become a CHILD of the traditional span
       const result = await runtime.runPromise(effectOperation)
 
       console.log('  Effect result:', result)
+      console.log('')
       return result
     }
   )
 
-  console.log('')
-
-  // Scenario 2: Nested traditional + Effect spans
-  console.log('📍 Scenario 2: Deeply nested hierarchy\n')
-
-  await withTraditionalSpan('traditional.api-handler', { 'handler.name': 'getUsers' }, async () => {
-    console.log('  Level 1: Traditional API handler')
-
-    await withTraditionalSpan(
-      'traditional.validate-request',
-      { 'validation.type': 'schema' },
-      async () => {
-        console.log('  Level 2: Traditional validation')
-
-        // Effect takes over here
-        const results = await runtime.runPromise(nestedEffectOperation)
-
-        console.log('  Effect parallel results:', results)
-        return results
-      }
-    )
-
-    return { validated: true }
-  })
-
-  console.log('')
-
-  // Scenario 3: Effect calling back into traditional code
-  console.log('📍 Scenario 3: Effect → Traditional → Effect\n')
-
-  const mixedWorkflow = Effect.gen(function* () {
-    yield* Effect.log('Effect: Starting mixed workflow')
-
-    // Call traditional code from Effect
-    // The traditional span will be a CHILD of the Effect span
-    const traditionalResult = yield* Effect.promise(() =>
-      withTraditionalSpan(
-        'traditional.database-query',
-        { 'db.system': 'postgresql', 'db.statement': 'SELECT * FROM users' },
-        async () => {
-          console.log('  Traditional: Database query')
-          await new Promise((r) => setTimeout(r, 30))
-
-          // Nested Effect from within traditional
-          const nestedEffect = await runtime.runPromise(
-            Effect.gen(function* () {
-              yield* Effect.log('Effect: Cache update')
-              return { cached: true }
-            }).pipe(Effect.withSpan('effect.cache-update'))
-          )
-
-          return { rows: 10, cached: nestedEffect.cached }
-        }
-      )
-    )
-
-    yield* Effect.annotateCurrentSpan('db.row_count', traditionalResult.rows)
-
-    return traditionalResult
-  }).pipe(Effect.withSpan('effect.mixed-workflow'))
-
-  const mixedResult = await runtime.runPromise(mixedWorkflow)
-  console.log('  Mixed workflow result:', mixedResult)
-
-  console.log('')
   console.log('='.repeat(60))
   console.log('✅ Demo complete!')
   console.log('')
-  console.log('💡 Check the console output above for span hierarchy.')
-  console.log('   In production with an OTLP collector, you would see:')
+  console.log('💡 In production with an OTLP collector, you would see:')
   console.log('')
   console.log('   traditional.http-request')
   console.log('   └── effect.business-logic')
   console.log('')
-  console.log('   traditional.api-handler')
-  console.log('   └── traditional.validate-request')
-  console.log('       └── effect.parallel-workflow')
-  console.log('           ├── effect.parallel.task-1')
-  console.log('           └── effect.parallel.task-2')
-  console.log('')
+  console.log('For comprehensive examples including nested hierarchies,')
+  console.log('see: packages/node/test/integration/effect/shared-tracer-interop/')
   console.log('='.repeat(60))
 }
 

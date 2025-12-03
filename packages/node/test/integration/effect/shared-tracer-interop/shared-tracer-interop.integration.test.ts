@@ -306,4 +306,144 @@ describe('Shared Tracer Interoperability', () => {
     expect(receivedTraces).toBe(true)
     console.log('✅ Concurrent Effect operations inside traditional span exported')
   })
+
+  it('should handle Traditional → Traditional → Effect hierarchy', async () => {
+    memoryExporter.reset()
+
+    await withTraditionalSpan('traditional.api-handler', { handler: 'getUsers' }, async () => {
+      await withTraditionalSpan(
+        'traditional.validate-request',
+        { validation: 'schema' },
+        async () => {
+          // Effect operations inside nested traditional spans
+          const effectWork = Effect.all(
+            [
+              Effect.succeed('task-1').pipe(
+                Effect.delay('10 millis'),
+                Effect.withSpan('effect.parallel.task-1')
+              ),
+              Effect.succeed('task-2').pipe(
+                Effect.delay('10 millis'),
+                Effect.withSpan('effect.parallel.task-2')
+              )
+            ],
+            { concurrency: 'unbounded' }
+          ).pipe(Effect.withSpan('effect.parallel-workflow'))
+
+          return await runtime.runPromise(effectWork)
+        }
+      )
+    })
+
+    await provider.forceFlush()
+
+    const spans = memoryExporter.getFinishedSpans()
+
+    expect(spans.find((s) => s.name === 'traditional.api-handler')).toBeDefined()
+    expect(spans.find((s) => s.name === 'traditional.validate-request')).toBeDefined()
+
+    // Verify span reached collector
+    const receivedTraces = await waitFor(
+      async () => {
+        const logs = await getCollectorLogs(collector)
+        return (
+          logs.includes('traditional.api-handler') && logs.includes('traditional.validate-request')
+        )
+      },
+      10000,
+      500
+    )
+
+    expect(receivedTraces).toBe(true)
+    console.log('✅ Traditional → Traditional → Effect hierarchy exported')
+  })
+
+  it('should handle Effect → Traditional → Effect hierarchy', async () => {
+    memoryExporter.reset()
+
+    const mixedWorkflow = Effect.gen(function* () {
+      yield* Effect.annotateCurrentSpan('workflow.type', 'mixed')
+
+      // Call traditional code from Effect
+      const dbResult = yield* Effect.promise(() =>
+        withTraditionalSpan('traditional.database-query', { db: 'postgresql' }, async () => {
+          // Call Effect again from within traditional
+          const cacheResult = await runtime.runPromise(
+            Effect.gen(function* () {
+              yield* Effect.sleep('10 millis')
+              return { cached: true }
+            }).pipe(Effect.withSpan('effect.cache-update'))
+          )
+
+          return { rows: 10, cached: cacheResult.cached }
+        })
+      )
+
+      yield* Effect.annotateCurrentSpan('db.row_count', dbResult.rows)
+      return dbResult
+    }).pipe(Effect.withSpan('effect.mixed-workflow'))
+
+    await runtime.runPromise(mixedWorkflow)
+
+    await provider.forceFlush()
+
+    const spans = memoryExporter.getFinishedSpans()
+    expect(spans.find((s) => s.name === 'traditional.database-query')).toBeDefined()
+
+    // Verify span reached collector
+    const receivedTraces = await waitFor(
+      async () => {
+        const logs = await getCollectorLogs(collector)
+        return logs.includes('traditional.database-query')
+      },
+      10000,
+      500
+    )
+
+    expect(receivedTraces).toBe(true)
+    console.log('✅ Effect → Traditional → Effect hierarchy exported')
+  })
+
+  it('should handle Traditional → Effect → Traditional hierarchy', async () => {
+    memoryExporter.reset()
+
+    await withTraditionalSpan('traditional.request-handler', { request: 'http' }, async () => {
+      // Effect layer
+      await runtime.runPromise(
+        Effect.gen(function* () {
+          yield* Effect.log('In Effect business logic')
+
+          // Call traditional from within Effect
+          const dbResult = yield* Effect.promise(() =>
+            withTraditionalSpan('traditional.db-query', { query: 'SELECT' }, async () => {
+              await new Promise((r) => setTimeout(r, 10))
+              return { rows: 5 }
+            })
+          )
+
+          return dbResult
+        }).pipe(Effect.withSpan('effect.business-logic'))
+      )
+    })
+
+    await provider.forceFlush()
+
+    const spans = memoryExporter.getFinishedSpans()
+
+    expect(spans.find((s) => s.name === 'traditional.request-handler')).toBeDefined()
+    expect(spans.find((s) => s.name === 'traditional.db-query')).toBeDefined()
+
+    // Verify all spans reached collector
+    const receivedTraces = await waitFor(
+      async () => {
+        const logs = await getCollectorLogs(collector)
+        return logs.includes('traditional.request-handler') && logs.includes('traditional.db-query')
+      },
+      10000,
+      500
+    )
+
+    expect(receivedTraces).toBe(true)
+    console.log('✅ Traditional → Effect → Traditional hierarchy exported')
+  })
 })
