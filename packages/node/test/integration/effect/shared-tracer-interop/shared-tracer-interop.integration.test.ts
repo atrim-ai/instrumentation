@@ -15,10 +15,10 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { Effect, Layer, ManagedRuntime, Tracer } from 'effect'
+import { Effect, Layer, ManagedRuntime } from 'effect'
 import { Tracer as OtelEffectTracer, Otlp } from '@effect/opentelemetry'
 import { FetchHttpClient } from '@effect/platform'
-import { trace, context, SpanStatusCode } from '@opentelemetry/api'
+import { trace, context, SpanStatusCode, SpanContext, TraceFlags } from '@opentelemetry/api'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { BatchSpanProcessor, InMemorySpanExporter } from '@opentelemetry/sdk-trace-base'
 import { resourceFromAttributes } from '@opentelemetry/resources'
@@ -67,6 +67,27 @@ async function withTraditionalSpan<T>(
   }
 }
 
+// Helper to run Effect with active OTel span as parent
+function runEffectWithOtelParent<A, E>(effect: Effect.Effect<A, E>) {
+  const activeSpan = trace.getActiveSpan()
+
+  if (!activeSpan) {
+    // No active span - run normally
+    return runtime.runPromise(effect)
+  }
+
+  // Create ExternalSpan from active OTel span
+  const spanContext = activeSpan.spanContext()
+  const externalSpan = OtelEffectTracer.makeExternalSpan({
+    traceId: spanContext.traceId,
+    spanId: spanContext.spanId,
+    traceFlags: spanContext.traceFlags
+  })
+
+  // Provide as parent to Effect
+  return runtime.runPromise(effect.pipe(Effect.provide(Layer.parentSpan(externalSpan))))
+}
+
 describe('Shared Tracer Interoperability', () => {
   beforeAll(async () => {
     // Start isolated collector container
@@ -90,14 +111,35 @@ describe('Shared Tracer Interoperability', () => {
 
     otelTracer = trace.getTracer(SERVICE_NAME, '1.0.0')
 
-    // Effect layer setup - use Otlp.layer to export to the SAME collector
-    // Traditional spans export via NodeTracerProvider's span processors
-    // Effect spans export via Effect's Otlp.layer
-    // Both go to the same collector endpoint for unified traces
+    // Effect layer setup - use Otlp.layer with tracerContext callback
+    // The tracerContext callback is CRITICAL for bidirectional context propagation:
+    // - Traditional → Effect: Effect spans pick up active OTel context as parent
+    // - Effect → Traditional: Effect spans set themselves in OTel context
     const EffectTracingLayer = Otlp.layer({
       baseUrl: `http://localhost:${collector.httpPort}`,
       resource: {
         serviceName: SERVICE_NAME
+      },
+      // Bridge Effect spans to OpenTelemetry global context
+      tracerContext: <X>(f: () => X, span: Tracer.AnySpan): X => {
+        // Only bridge actual Effect spans (not ExternalSpan)
+        if (span._tag !== 'Span') {
+          return f()
+        }
+
+        // Create OpenTelemetry SpanContext from Effect span
+        const spanContext: SpanContext = {
+          traceId: span.traceId,
+          spanId: span.spanId,
+          traceFlags: span.sampled ? TraceFlags.SAMPLED : TraceFlags.NONE
+        }
+
+        // Create a non-recording span to represent Effect span in OTel context
+        const otelSpan = trace.wrapSpanContext(spanContext)
+
+        // Set as active span in OpenTelemetry global context
+        // This allows traditional spans created inside Effect to be children
+        return context.with(trace.setSpan(context.active(), otelSpan), f)
       }
     }).pipe(Layer.provide(FetchHttpClient.layer))
 
@@ -172,7 +214,8 @@ describe('Shared Tracer Interoperability', () => {
       'traditional.wrapper-for-effect',
       { 'test.scenario': 'effect-inside-traditional' },
       async () => {
-        return await runtime.runPromise(effectOperation)
+        // Use helper that provides active OTel span as parent to Effect
+        return await runEffectWithOtelParent(effectOperation)
       }
     )
 
@@ -355,7 +398,7 @@ describe('Shared Tracer Interoperability', () => {
             { concurrency: 'unbounded' }
           ).pipe(Effect.withSpan('effect.parallel-workflow'))
 
-          return await runtime.runPromise(effectWork)
+          return await runEffectWithOtelParent(effectWork)
         }
       )
     })
@@ -433,8 +476,8 @@ describe('Shared Tracer Interoperability', () => {
     memoryExporter.reset()
 
     await withTraditionalSpan('traditional.request-handler', { request: 'http' }, async () => {
-      // Effect layer
-      await runtime.runPromise(
+      // Use helper to provide active OTel span as parent to Effect
+      await runEffectWithOtelParent(
         Effect.gen(function* () {
           yield* Effect.log('In Effect business logic')
 

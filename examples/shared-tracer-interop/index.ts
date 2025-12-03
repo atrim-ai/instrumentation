@@ -28,7 +28,7 @@
  */
 
 import { Effect, Layer, ManagedRuntime } from 'effect'
-import { Otlp } from '@effect/opentelemetry'
+import { Tracer as OtelEffectTracer, Otlp } from '@effect/opentelemetry'
 import { FetchHttpClient } from '@effect/platform'
 import { trace, context, SpanStatusCode } from '@opentelemetry/api'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
@@ -129,7 +129,42 @@ const EffectTracingLayer = Otlp.layer({
 console.log(`✅ Effect OTLP layer configured (exporting to ${OTLP_ENDPOINT})\n`)
 
 // ============================================================================
-// 5. Effect Operations
+// 5. Helper to run Effect with active OTel span as parent
+// ============================================================================
+
+/**
+ * CRITICAL: This helper bridges the active OpenTelemetry span context to Effect
+ *
+ * When calling Effect from within traditional code, Effect doesn't automatically
+ * know about the active OTel span. This helper:
+ * 1. Gets the active OTel span
+ * 2. Creates an ExternalSpan from it
+ * 3. Provides it to Effect via Layer.parentSpan
+ *
+ * This ensures proper parent-child relationships in traces.
+ */
+function runEffectWithOtelParent<A, E>(effect: Effect.Effect<A, E>) {
+  const activeSpan = trace.getActiveSpan()
+
+  if (!activeSpan) {
+    // No active span - run normally
+    return runtime.runPromise(effect)
+  }
+
+  // Create ExternalSpan from active OTel span
+  const spanContext = activeSpan.spanContext()
+  const externalSpan = OtelEffectTracer.makeExternalSpan({
+    traceId: spanContext.traceId,
+    spanId: spanContext.spanId,
+    traceFlags: spanContext.traceFlags
+  })
+
+  // Provide as parent to Effect
+  return runtime.runPromise(effect.pipe(Effect.provide(Layer.parentSpan(externalSpan))))
+}
+
+// ============================================================================
+// 6. Effect Operations
 // ============================================================================
 
 const effectOperation = Effect.gen(function* () {
@@ -144,7 +179,7 @@ const effectOperation = Effect.gen(function* () {
 }).pipe(Effect.withSpan('effect.business-logic'))
 
 // ============================================================================
-// 6. ManagedRuntime for Effect operations
+// 7. ManagedRuntime for Effect operations
 // ============================================================================
 
 // Create a ManagedRuntime with the Effect OTLP layer
@@ -152,7 +187,7 @@ const effectOperation = Effect.gen(function* () {
 const runtime = ManagedRuntime.make(EffectTracingLayer)
 
 // ============================================================================
-// 7. Simple Demo: Traditional + Effect Tracing
+// 8. Simple Demo: Traditional + Effect Tracing
 // ============================================================================
 
 async function demonstrateInterop() {
@@ -173,8 +208,8 @@ async function demonstrateInterop() {
     async () => {
       console.log('  Inside traditional span, calling Effect...')
 
-      // Effect operation runs inside the traditional span's context
-      const result = await runtime.runPromise(effectOperation)
+      // CRITICAL: Use helper to provide active OTel span as parent to Effect
+      const result = await runEffectWithOtelParent(effectOperation)
 
       console.log('  Effect result:', result)
       console.log('')
@@ -196,7 +231,7 @@ async function demonstrateInterop() {
 }
 
 // ============================================================================
-// 8. Cleanup and Run
+// 9. Cleanup and Run
 // ============================================================================
 
 async function main() {
