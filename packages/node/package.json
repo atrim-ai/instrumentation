@@ -84,7 +84,7 @@
     "@opentelemetry/sdk-trace-base": "^2.2.0",
     "effect": "^3.19.8",
     "yaml": "^2.3.0",
-    "zod": "^3.22.0"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@atrim/instrument-core": "workspace:*",
