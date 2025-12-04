@@ -1,5 +1,11 @@
 # @atrim/instrument-node
 
+## 0.5.1
+
+### Patch Changes
+
+- c0d5e19: Align effect dependencies
+
 ## 0.5.0
 
 ### Minor Changes
