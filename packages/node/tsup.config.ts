@@ -1,7 +1,30 @@
 import { defineConfig } from 'tsup'
 
+// Packages that MUST be external (singleton or user-provided)
+const externalPackages = [
+  // OpenTelemetry API - global singleton, MUST be shared with user's app
+  '@opentelemetry/api',
+
+  // OpenTelemetry SDK packages - keep as regular dependencies, not bundled
+  // They have internal requires to @opentelemetry/api that break if bundled
+  '@opentelemetry/sdk-node',
+  '@opentelemetry/sdk-trace-base',
+  '@opentelemetry/sdk-trace-node',
+  '@opentelemetry/exporter-trace-otlp-http',
+  '@opentelemetry/auto-instrumentations-node',
+  '@opentelemetry/instrumentation',
+  '@opentelemetry/resources',
+  '@opentelemetry/semantic-conventions',
+
+  // Effect ecosystem - user provides their own versions
+  'effect',
+  '@effect/opentelemetry',
+  '@effect/platform',
+  '@effect/platform-node'
+]
+
 export default defineConfig([
-  // Main entry (always builds with DTS)
+  // Main entry
   {
     entry: {
       index: 'src/index.ts'
@@ -16,16 +39,16 @@ export default defineConfig([
     target: 'es2020',
     outDir: 'target/dist',
     tsconfig: 'tsconfig.build.json',
-    noExternal: ['@atrim/instrument-core'],
-    external: ['@opentelemetry/api', '@opentelemetry/sdk-trace-base']
+    external: externalPackages,
+    noExternal: ['@atrim/instrument-core']
   },
-  // Effect integration (builds JS and DTS for proper type inference)
+  // Effect integration
   {
     entry: {
       'integrations/effect/index': 'src/integrations/effect/index.ts'
     },
     format: ['esm', 'cjs'],
-    dts: true, // Generate DTS for proper type inference
+    dts: true,
     splitting: false,
     sourcemap: true,
     clean: false, // Don't clean - main entry already did
@@ -34,13 +57,7 @@ export default defineConfig([
     target: 'es2020',
     outDir: 'target/dist',
     tsconfig: 'tsconfig.build.json',
-    noExternal: ['@atrim/instrument-core'],
-    external: [
-      'effect',
-      '@effect/opentelemetry',
-      '@effect/platform',
-      '@opentelemetry/api',
-      '@opentelemetry/sdk-trace-base'
-    ]
+    external: externalPackages,
+    noExternal: ['@atrim/instrument-core']
   }
 ])
