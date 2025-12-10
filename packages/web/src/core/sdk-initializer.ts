@@ -7,11 +7,11 @@
  * - OTLP HTTP export
  */
 
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web'
+import { WebTracerProvider, StackContextManager } from '@opentelemetry/sdk-trace-web'
 import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { registerInstrumentations } from '@opentelemetry/instrumentation'
 import { getWebAutoInstrumentations } from '@opentelemetry/auto-instrumentations-web'
-import { ZoneContextManager } from '@opentelemetry/context-zone'
+import type { ContextManager } from '@opentelemetry/api'
 import type { InstrumentationConfig } from '@atrim/instrument-core'
 import { initializePatternMatcher } from '@atrim/instrument-core'
 import { loadConfig, loadConfigFromInline } from '../services/config-loader.js'
@@ -109,6 +109,30 @@ export interface SdkInitializationOptions {
    * ```
    */
   propagateTraceContext?: 'all' | 'none' | 'same-origin' | string[]
+
+  /**
+   * Use Zone.js-based context manager for async context propagation
+   *
+   * By default, we use StackContextManager which is lightweight and doesn't
+   * interfere with application behavior. However, it has limited async context
+   * propagation.
+   *
+   * Enable this option if you need context to propagate across async boundaries
+   * (e.g., setTimeout, Promise chains). Note that Zone.js monkey-patches many
+   * browser APIs which can cause issues with some libraries:
+   *
+   * - Libraries that call preventDefault() on wheel/touch events may fail
+   * - Some React patterns may lose context
+   * - Bundle size increases due to Zone.js dependency
+   *
+   * @default false
+   *
+   * @example Enable Zone.js context (use with caution)
+   * ```typescript
+   * useZoneContext: true
+   * ```
+   */
+  useZoneContext?: boolean
 }
 
 // Singleton instance
@@ -196,6 +220,56 @@ function buildPropagateTraceUrls(
           'Defaulting to same-origin only.'
       )
       return []
+  }
+}
+
+/**
+ * Create the appropriate context manager based on options
+ *
+ * By default, uses StackContextManager which is lightweight and doesn't
+ * interfere with application behavior (e.g., passive event listeners).
+ *
+ * If useZoneContext is true, dynamically imports and configures ZoneContextManager
+ * for async context propagation, with passive events disabled to prevent
+ * breaking libraries that call preventDefault() on wheel/touch events.
+ *
+ * @param useZoneContext - Whether to use Zone.js-based context manager
+ * @returns ContextManager instance
+ */
+async function createContextManager(useZoneContext: boolean): Promise<ContextManager> {
+  if (!useZoneContext) {
+    // Default: StackContextManager (no side effects)
+    return new StackContextManager()
+  }
+
+  // Configure Zone.js passive events BEFORE importing zone.js
+  // This prevents Zone.js from registering wheel/touch events as passive,
+  // which would break libraries that call preventDefault() on these events
+  // (e.g., Monaco Editor, CodeMirror, Leaflet)
+  if (typeof window !== 'undefined') {
+    // Disable passive events for wheel and touch events
+    // See: https://github.com/angular/zone.js/issues/1097
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__zone_symbol__PASSIVE_EVENTS = []
+
+    console.info(
+      '[@atrim/instrument-web] Zone.js context enabled. ' +
+        'Passive events disabled for wheel/touch events to prevent breaking preventDefault().'
+    )
+  }
+
+  // Dynamically import ZoneContextManager to avoid bundling zone.js by default
+  try {
+    const { ZoneContextManager } = await import('@opentelemetry/context-zone')
+    return new ZoneContextManager()
+  } catch (error) {
+    console.warn(
+      '[@atrim/instrument-web] Failed to load ZoneContextManager. ' +
+        'Falling back to StackContextManager. ' +
+        'Make sure @opentelemetry/context-zone is installed if you need async context propagation.',
+      error
+    )
+    return new StackContextManager()
   }
 }
 
@@ -304,9 +378,16 @@ export async function initializeSdk(options: SdkInitializationOptions): Promise<
     // 3. Collector configuration
     // For now, serviceName is used primarily for logging/debugging
 
+    // Create context manager based on options
+    // Default: StackContextManager (lightweight, no side effects)
+    // Optional: ZoneContextManager (async context, but has side effects)
+    const contextManager: ContextManager = await createContextManager(
+      options.useZoneContext ?? false
+    )
+
     // Register the provider
     provider.register({
-      contextManager: new ZoneContextManager()
+      contextManager
     })
 
     // Register auto-instrumentations

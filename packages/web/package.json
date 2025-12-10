@@ -70,7 +70,6 @@
     "effect": "^3.19.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-web": "^0.54.0",
-    "@opentelemetry/context-zone": "^2.2.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
     "@opentelemetry/instrumentation": "^0.208.0",
     "@opentelemetry/resources": "^2.2.0",
@@ -78,7 +77,16 @@
     "@opentelemetry/sdk-trace-web": "^2.2.0",
     "yaml": "^2.8.1"
   },
+  "peerDependencies": {
+    "@opentelemetry/context-zone": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/context-zone": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@opentelemetry/context-zone": "^2.2.0",
     "@atrim/instrument-core": "workspace:*",
     "@opentelemetry/semantic-conventions": "^1.38.0",
     "@types/node": "^20.10.0",
