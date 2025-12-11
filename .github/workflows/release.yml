@@ -7,23 +7,25 @@ on:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write # Required for npm provenance
-
 env:
   PNPM_VERSION: '10.12.1'
 
 jobs:
-  release:
-    name: Release
+  # Job 1: Create version PR or determine if we should publish
+  version:
+    name: Version
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      should_publish: ${{ steps.changesets.outputs.hasChangesets == 'false' }}
+      published_packages: ${{ steps.changesets.outputs.publishedPackages }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -31,7 +33,49 @@ jobs:
           version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js 20
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Create Release Pull Request
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm version-packages
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.CHANGESET_TOKEN }}
+
+  # Job 2: Publish to npm using OIDC trusted publishing
+  publish:
+    name: Publish
+    needs: version
+    if: needs.version.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write  # Required for npm OIDC trusted publishing
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
@@ -43,21 +87,13 @@ jobs:
       - name: Build all packages
         run: pnpm build
 
-      - name: Create Release Pull Request or Publish to npm
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: pnpm release
-          version: pnpm version-packages
-          commit: "chore: version packages"
-          title: "chore: version packages"
+      - name: Publish to npm with provenance
+        run: pnpm release
         env:
-          GITHUB_TOKEN: ${{ secrets.CHANGESET_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
 
       - name: Send publish notification
-        if: steps.changesets.outputs.published == 'true'
+        if: success()
         uses: ./.github/actions/discord-notify
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -66,12 +102,34 @@ jobs:
           workflow-name: 'Release'
           branch: ${{ github.ref_name }}
           error-details: |
-            🎉 **New packages published to npm!**
-
-            ${{ steps.changesets.outputs.publishedPackages }}
+            🎉 **Packages published to npm with provenance!**
 
       - name: Send failure notification
         if: failure()
+        uses: ./.github/actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          status: 'failure'
+          job-name: 'Publish failed'
+          workflow-name: 'Release'
+          branch: ${{ github.ref_name }}
+          error-details: |
+            ❌ Failed to publish packages to npm
+
+            **View Logs:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          mention-on-failure: '<@clayroach>'
+
+  # Job 3: Notify on version job failure
+  notify-failure:
+    name: Notify Failure
+    needs: version
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Send failure notification
         uses: ./.github/actions/discord-notify
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -80,7 +138,7 @@ jobs:
           workflow-name: 'Release'
           branch: ${{ github.ref_name }}
           error-details: |
-            ❌ Failed to create release or publish packages
+            ❌ Failed to create release PR
 
             **View Logs:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           mention-on-failure: '<@clayroach>'
