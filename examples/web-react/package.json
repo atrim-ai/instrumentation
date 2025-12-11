@@ -13,12 +13,12 @@
   "dependencies": {
     "@atrim/instrument-web": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "react": "^18.3.1",
+    "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
-    "@types/react": "^18.3.11",
+    "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.3",
     "typescript": "^5.7.2",
