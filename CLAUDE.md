@@ -808,6 +808,31 @@ initializeInstrumentation({
 - **v0.1.0-beta.1** - Beta release (feature complete)
 - **v1.0.0** - Stable release (production ready)
 
+## Release & Publishing Policy
+
+**CRITICAL:** Only publish `dev` tagged releases using local builds. All official releases are handled by CI.
+
+### Dev Releases (Local)
+Use local builds ONLY for `dev` tagged releases for testing:
+```bash
+# Publish dev version for testing (local build)
+pnpm --filter @atrim/instrument-web publish:dev
+```
+
+### Official Releases (CI Only)
+**NEVER publish official releases locally.** CI handles all production releases:
+1. Create changeset: `pnpm changeset`
+2. Commit and push the changeset
+3. CI will create a "Version Packages" PR
+4. Merge the PR to trigger the release workflow
+5. CI builds and publishes to npm
+
+**Why CI-only for releases:**
+- Ensures reproducible builds
+- Maintains audit trail
+- Prevents accidental releases
+- Consistent versioning across packages
+
 ## Success Metrics
 
 ### Technical

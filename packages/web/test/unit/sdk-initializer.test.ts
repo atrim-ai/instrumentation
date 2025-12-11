@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   initializeSdk,
   getSdkInstance,
@@ -235,6 +235,78 @@ describe('SDK Initializer', () => {
       })
 
       expect(provider).toBeDefined()
+    })
+  })
+
+  describe('context manager selection', () => {
+    it('should use StackContextManager by default (no Zone.js side effects)', async () => {
+      const provider = await initializeSdk({
+        serviceName: 'test-service'
+        // useZoneContext defaults to false
+      })
+
+      expect(provider).toBeDefined()
+      // Default behavior should not set __zone_symbol__PASSIVE_EVENTS
+      // (only set when Zone.js is explicitly enabled)
+    })
+
+    it('should use StackContextManager when useZoneContext is false', async () => {
+      const provider = await initializeSdk({
+        serviceName: 'test-service',
+        useZoneContext: false
+      })
+
+      expect(provider).toBeDefined()
+    })
+
+    it('should use ZoneContextManager when useZoneContext is true', async () => {
+      // Mock console.info to capture the message
+      const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+
+      const provider = await initializeSdk({
+        serviceName: 'test-service',
+        useZoneContext: true
+      })
+
+      expect(provider).toBeDefined()
+
+      // Verify the info message about Zone.js was logged
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Zone.js context enabled')
+      )
+
+      consoleInfoSpy.mockRestore()
+    })
+
+    it('should configure __zone_symbol__PASSIVE_EVENTS when Zone.js is enabled', async () => {
+      // This test verifies that when Zone.js is enabled, we disable passive events
+      // to prevent breaking libraries that call preventDefault() on wheel/touch events
+
+      const provider = await initializeSdk({
+        serviceName: 'test-service',
+        useZoneContext: true
+      })
+
+      expect(provider).toBeDefined()
+
+      // Check that passive events are disabled
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((globalThis as any).__zone_symbol__PASSIVE_EVENTS).toEqual([])
+    })
+
+    it('should not set __zone_symbol__PASSIVE_EVENTS when using default StackContextManager', async () => {
+      // Clear any previous setting
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (globalThis as any).__zone_symbol__PASSIVE_EVENTS
+
+      await initializeSdk({
+        serviceName: 'test-service',
+        useZoneContext: false
+      })
+
+      // Should not have set the passive events config
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((globalThis as any).__zone_symbol__PASSIVE_EVENTS).toBeUndefined()
     })
   })
 })

@@ -450,9 +450,6 @@ importers:
       '@opentelemetry/auto-instrumentations-web':
         specifier: ^0.54.0
         version: 0.54.0(@opentelemetry/api@1.9.0)(zone.js@0.15.1)
-      '@opentelemetry/context-zone':
-        specifier: ^2.2.0
-        version: 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: ^0.208.0
         version: 0.208.0(@opentelemetry/api@1.9.0)
@@ -478,6 +475,9 @@ importers:
       '@atrim/instrument-core':
         specifier: workspace:*
         version: link:../core
+      '@opentelemetry/context-zone':
+        specifier: ^2.2.0
+        version: 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions':
         specifier: ^1.38.0
         version: 1.38.0
