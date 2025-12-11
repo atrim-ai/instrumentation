@@ -1,5 +1,11 @@
 # @atrim/instrument-web
 
+## 0.5.3
+
+### Patch Changes
+
+- 1c426c1: Use StackContextManager by default to avoid passive event listener issues with zone.js (e.g., in Angular apps). ZoneContextManager can still be explicitly enabled via `useZoneContextManager: true` option.
+
 ## 0.5.2
 
 ### Patch Changes
