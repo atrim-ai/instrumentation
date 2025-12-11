@@ -74,7 +74,7 @@
     "publish:dev": "pnpm publish:dev:version && pnpm publish:dev:save && pnpm publish:dev:publish && pnpm publish:dev:reset"
   },
   "dependencies": {
-    "@effect/opentelemetry": "^0.59.1",
+    "@effect/opentelemetry": "^0.59.2",
     "@effect/platform": "^0.93.6",
     "@effect/platform-node": "^0.103.0",
     "@opentelemetry/auto-instrumentations-node": "^0.67.0",
@@ -82,7 +82,7 @@
     "@opentelemetry/instrumentation": "^0.208.0",
     "@opentelemetry/sdk-node": "^0.208.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
-    "effect": "^3.19.8",
+    "effect": "^3.19.11",
     "yaml": "^2.3.0",
     "zod": "^3.22.0"
   },
@@ -97,7 +97,7 @@
     "@opentelemetry/semantic-conventions": "^1.38.0",
     "@types/node": "^20.10.0",
     "@vitest/coverage-v8": "^4.0.8",
-    "effect": "^3.19.8",
+    "effect": "^3.19.11",
     "testcontainers": "^11.8.1",
     "tsup": "^8.0.1",
     "tsx": "^4.7.0",
