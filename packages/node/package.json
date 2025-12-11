@@ -95,7 +95,7 @@
     "@opentelemetry/sdk-trace-node": "^2.2.0",
     "@opentelemetry/sdk-trace-web": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.38.0",
-    "@types/node": "^20.10.0",
+    "@types/node": "^25.0.0",
     "@vitest/coverage-v8": "^4.0.8",
     "effect": "^3.19.8",
     "testcontainers": "^11.8.1",
