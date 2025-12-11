@@ -38,9 +38,9 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish",
-    "publish:node": "pnpm --filter @atrim/instrument-node publish:dev",
-    "publish:web": "pnpm --filter @atrim/instrument-web publish:dev",
-    "publish:all": "pnpm publish:node && pnpm publish:web"
+    "publish:dev": "pnpm build && bash scripts/publish-snapshot.sh",
+    "publish:dev:node": "pnpm --filter @atrim/instrument-node publish:dev",
+    "publish:dev:web": "pnpm --filter @atrim/instrument-web publish:dev"
   },
   "pnpm": {
     "overrides": {
