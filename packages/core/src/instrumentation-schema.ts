@@ -103,3 +103,52 @@ export type InstrumentationConfig = z.infer<typeof InstrumentationConfigSchema>
 export type PatternConfig = z.infer<typeof PatternConfigSchema>
 export type AutoIsolationConfig = z.infer<typeof AutoIsolationConfigSchema>
 export type HttpFilteringConfig = z.infer<typeof HttpFilteringConfigSchema>
+
+/**
+ * Default configuration when no config file is found
+ */
+export const defaultConfig: InstrumentationConfig = {
+  version: '1.0',
+  instrumentation: {
+    enabled: true,
+    logging: 'on',
+    description: 'Default instrumentation configuration',
+    instrument_patterns: [
+      { pattern: '^app\\.', enabled: true, description: 'Application operations' },
+      { pattern: '^http\\.server\\.', enabled: true, description: 'HTTP server operations' },
+      { pattern: '^http\\.client\\.', enabled: true, description: 'HTTP client operations' }
+    ],
+    ignore_patterns: [
+      { pattern: '^test\\.', description: 'Test utilities' },
+      { pattern: '^internal\\.', description: 'Internal operations' },
+      { pattern: '^health\\.', description: 'Health checks' }
+    ]
+  },
+  effect: {
+    auto_extract_metadata: true
+  }
+}
+
+/**
+ * Parse and validate configuration content (YAML string, JSON string, or object)
+ *
+ * @param content - YAML string, JSON string, or plain object
+ * @returns Validated InstrumentationConfig
+ * @throws Error if parsing or validation fails
+ */
+export function parseAndValidateConfig(content: string | unknown): InstrumentationConfig {
+  let parsed: unknown
+
+  // If string, parse as YAML (YAML is a superset of JSON)
+  if (typeof content === 'string') {
+    // Dynamic import of yaml to avoid bundling it if not needed
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { parse } = require('yaml')
+    parsed = parse(content)
+  } else {
+    parsed = content
+  }
+
+  // Validate with schema
+  return InstrumentationConfigSchema.parse(parsed)
+}

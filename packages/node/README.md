@@ -106,6 +106,18 @@ instrumentation:
 | Hono | Manual spans |
 | Effect-TS | First-class |
 
+## Version Compatibility
+
+| @atrim/instrument-node | @opentelemetry/api | effect |
+|------------------------|--------------------| -------|
+| 0.6.x                  | ^1.0.0 (1.0 - 1.9+) | ^3.0.0 (optional) |
+
+**Notes:**
+
+- `@opentelemetry/api` is the only required peer dependency
+- Effect packages are optional - core features work without them
+- The library is tested with @opentelemetry/api 1.9.x in CI
+
 ## Troubleshooting
 
 **No traces?** Check collector: `docker run -p 4318:4318 otel/opentelemetry-collector`
