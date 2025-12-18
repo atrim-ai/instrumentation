@@ -1,11 +1,22 @@
 # @atrim/instrument-node
 
-One-line OpenTelemetry for Node.js
+**Configuration layer for OpenTelemetry Node.js**
 
 [![npm version](https://badge.fury.io/js/%40atrim%2Finstrument-node.svg)](https://www.npmjs.com/package/@atrim/instrument-node)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Zero-config OpenTelemetry instrumentation for Node.js, Bun, and Deno. Works with Express, Fastify, Koa, Hono, and Effect-TS.
+Built on [@opentelemetry/auto-instrumentations-node](https://www.npmjs.com/package/@opentelemetry/auto-instrumentations-node), this package adds centralized YAML configuration, pattern-based span filtering, and first-class Effect-TS integration.
+
+## What This Package Adds
+
+| Feature | Description |
+|---------|-------------|
+| **Pattern-based span filtering** | Control which spans are created via YAML config (unique to this package) |
+| **Centralized configuration** | Load instrumentation config from file, URL, or environment variable |
+| **Effect-TS integration** | Typed layers, annotation helpers for Effect users |
+| **Smart defaults** | Auto-detects service name, configures graceful shutdown |
+
+**Note:** Auto-instrumentation for Express, HTTP, Fastify, etc. comes from the underlying OpenTelemetry packages. This library configures and extends that functionality.
 
 ## Installation
 
@@ -14,7 +25,7 @@ Zero-config OpenTelemetry instrumentation for Node.js, Bun, and Deno. Works with
 npm install @atrim/instrument-node @opentelemetry/api
 
 # Optional: Effect-TS integration
-npm install effect @effect/opentelemetry @effect/platform
+npm install effect @effect/opentelemetry @effect/platform @effect/platform-node
 ```
 
 ## Quick Start
@@ -100,11 +111,11 @@ instrumentation:
 
 | Framework | Support |
 |-----------|---------|
-| Express | Auto-instrumented |
-| Fastify | Auto-instrumented |
-| Koa | Auto-instrumented |
+| Express | Auto-instrumented (via OTel) |
+| Fastify | Auto-instrumented (via OTel) |
+| Koa | Auto-instrumented (via OTel) |
 | Hono | Manual spans |
-| Effect-TS | First-class |
+| Effect-TS | First-class integration (unique) |
 
 ## Version Compatibility
 
