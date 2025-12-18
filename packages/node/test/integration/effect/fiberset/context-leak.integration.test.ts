@@ -20,6 +20,10 @@ import {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Get path to tsx binary from packages/node
+const packageRoot = path.resolve(__dirname, '../../../../')
+const tsxBin = path.resolve(packageRoot, 'node_modules/.bin/tsx')
+
 interface Span {
   name: string
   spanId: string
@@ -59,7 +63,8 @@ async function runExample(
     let stdout = ''
     let stderr = ''
 
-    const child = spawn('pnpm', ['exec', 'tsx', 'index.ts'], {
+    // Use tsx binary directly from packages/node to avoid pnpm resolution issues
+    const child = spawn(tsxBin, ['index.ts'], {
       cwd: exampleDir,
       env: {
         ...process.env,
