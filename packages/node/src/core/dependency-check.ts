@@ -5,8 +5,13 @@
  * helpful error messages if they're missing.
  */
 
+import { createRequire } from 'module'
 import { Effect } from 'effect'
 import { InitializationError } from './errors.js'
+
+// Create a require function that works in ESM context
+// This is needed because tsup's require polyfill doesn't support require.resolve
+const require = createRequire(import.meta.url)
 
 /**
  * Validates that @opentelemetry/api is installed (required peer dependency)

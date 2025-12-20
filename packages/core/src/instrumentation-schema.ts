@@ -2,6 +2,7 @@
  * Configuration schema using Zod
  */
 import { z } from 'zod'
+import { parse as parseYaml } from 'yaml'
 
 export const PatternConfigSchema = z.object({
   pattern: z.string(),
@@ -141,10 +142,7 @@ export function parseAndValidateConfig(content: string | unknown): Instrumentati
 
   // If string, parse as YAML (YAML is a superset of JSON)
   if (typeof content === 'string') {
-    // Dynamic import of yaml to avoid bundling it if not needed
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { parse } = require('yaml')
-    parsed = parse(content)
+    parsed = parseYaml(content)
   } else {
     parsed = content
   }
