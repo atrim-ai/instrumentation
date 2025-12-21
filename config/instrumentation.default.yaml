@@ -62,4 +62,10 @@ http:
 # Optional Effect-TS specific features
 # Only used if you import from '@atrim/instrumentation/effect'
 effect:
-  auto_extract_metadata: true  # Automatically extract fiber metadata
+  # Enable/disable Effect tracing entirely
+  # When false, EffectInstrumentationLive returns Layer.empty (no tracing)
+  # Can also be disabled via OTEL_EFFECT_ENABLED=false environment variable
+  enabled: true
+
+  # Automatically extract Effect fiber metadata as span attributes
+  auto_extract_metadata: true

@@ -92,6 +92,9 @@ export const InstrumentationConfigSchema = z.object({
   }),
   effect: z
     .object({
+      // Enable/disable Effect tracing entirely
+      // When false, EffectInstrumentationLive returns Layer.empty
+      enabled: z.boolean().default(true),
       auto_extract_metadata: z.boolean(),
       auto_isolation: AutoIsolationConfigSchema.optional()
     })

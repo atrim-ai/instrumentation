@@ -18,11 +18,9 @@
  * 4. This happens automatically via OpenTelemetry Context propagation
  */
 
-import { Effect, Layer, Tracer } from 'effect'
-import type { Tracer as EffectTracer } from 'effect'
-import * as Otlp from '@effect/opentelemetry/Otlp'
-import { FetchHttpClient } from '@effect/platform'
-import { context, trace, type SpanContext, TraceFlags } from '@opentelemetry/api'
+import { Effect, Layer } from 'effect'
+import * as Tracer from '@effect/opentelemetry/Tracer'
+import * as Resource from '@effect/opentelemetry/Resource'
 import {
   ATTR_TELEMETRY_SDK_LANGUAGE,
   ATTR_TELEMETRY_SDK_NAME,
@@ -39,19 +37,13 @@ const SDK_NAME = '@effect/opentelemetry-otlp'
  */
 export interface EffectInstrumentationOptions extends ConfigLoaderOptions {
   /**
-   * OTLP endpoint URL
-   * @default process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
-   */
-  otlpEndpoint?: string
-
-  /**
-   * Service name
+   * Service name for Effect spans
    * @default process.env.OTEL_SERVICE_NAME || 'effect-service'
    */
   serviceName?: string
 
   /**
-   * Service version
+   * Service version for Effect spans
    * @default process.env.npm_package_version || '1.0.0'
    */
   serviceVersion?: string
@@ -61,22 +53,6 @@ export interface EffectInstrumentationOptions extends ConfigLoaderOptions {
    * @default true
    */
   autoExtractMetadata?: boolean
-
-  /**
-   * Whether to continue existing traces from NodeSDK auto-instrumentation
-   *
-   * When true (default):
-   * - Effect spans become children of existing NodeSDK spans
-   * - Example: HTTP request span → Effect business logic span
-   * - Uses OpenTelemetry Context API for propagation
-   *
-   * When false:
-   * - Effect operations always create new root spans
-   * - Not recommended unless you have specific requirements
-   *
-   * @default true
-   */
-  continueExistingTraces?: boolean
 }
 
 /**
@@ -122,84 +98,49 @@ export function createEffectInstrumentation(options: EffectInstrumentationOption
         })
       })
 
-      // 2. Configure logger based on config
+      // 2. Check effect.enabled flag (supports env var override)
+      const effectEnabled =
+        process.env.OTEL_EFFECT_ENABLED !== 'false' && (config.effect?.enabled ?? true)
+
+      if (!effectEnabled) {
+        logger.log('@atrim/instrumentation/effect: Effect tracing disabled via config')
+        return Layer.empty
+      }
+
+      // 3. Configure logger based on config
       yield* Effect.sync(() => {
         const loggingLevel = config.instrumentation.logging || 'on'
         logger.setLevel(loggingLevel)
       })
 
-      // 3. Initialize pattern matcher
+      // 4. Initialize pattern matcher (for global shouldInstrumentSpan function)
       yield* Effect.sync(() => initializePatternMatcher(config))
 
-      // 4. Extract options with defaults
-      const otlpEndpoint =
-        options.otlpEndpoint || process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
-
+      // 5. Extract service info
       const serviceName = options.serviceName || process.env.OTEL_SERVICE_NAME || 'effect-service'
-
       const serviceVersion = options.serviceVersion || process.env.npm_package_version || '1.0.0'
 
-      const autoExtractMetadata =
-        options.autoExtractMetadata ?? config.effect?.auto_extract_metadata ?? true
+      logger.log('Effect OpenTelemetry instrumentation (unified)')
+      logger.log(`  Service: ${serviceName}`)
+      logger.log('  Using global TracerProvider for span export')
 
-      const continueExistingTraces = options.continueExistingTraces ?? true
-
-      logger.log('🔍 Effect OpenTelemetry instrumentation')
-      logger.log(`   📡 Endpoint: ${otlpEndpoint}`)
-      logger.log(`   🏷️  Service: ${serviceName}`)
-      logger.log(`   ✅ Auto metadata extraction: ${autoExtractMetadata}`)
-      logger.log(`   ✅ Continue existing traces: ${continueExistingTraces}`)
-
-      // 5. Create Otlp layer for Effect operations
-      // CRITICAL: Uses tracerContext callback to bridge Effect spans to OpenTelemetry context
-      // This allows bidirectional context propagation:
-      // - NodeSDK spans → Effect spans (child relationship)
-      // - Effect spans → NodeSDK spans (subsequent auto-instrumented calls)
-      const otlpLayer = Otlp.layer({
-        baseUrl: otlpEndpoint,
-        resource: {
-          serviceName,
-          serviceVersion,
-          attributes: {
-            'platform.component': 'effect',
-            'effect.auto_metadata': autoExtractMetadata,
-            'effect.context_propagation': continueExistingTraces,
-            [ATTR_TELEMETRY_SDK_LANGUAGE]: TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS,
-            [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME
-          }
-        },
-        // Bridge Effect context to OpenTelemetry global context
-        // This is essential for context propagation to work properly
-        tracerContext: <X>(f: () => X, span: Tracer.AnySpan): X => {
-          // Only bridge actual Effect spans (not ExternalSpan)
-          if (span._tag !== 'Span') {
-            return f()
-          }
-
-          // Create OpenTelemetry SpanContext from Effect span metadata
-          const spanContext: SpanContext = {
-            traceId: span.traceId,
-            spanId: span.spanId,
-            traceFlags: span.sampled ? TraceFlags.SAMPLED : TraceFlags.NONE
-          }
-
-          // Create a non-recording span to represent the Effect span in OTel context
-          const otelSpan = trace.wrapSpanContext(spanContext)
-
-          // Set as active span in OpenTelemetry global context
-          return context.with(trace.setSpan(context.active(), otelSpan), f)
-        }
-      }).pipe(Layer.provide(FetchHttpClient.layer))
-
-      // 6. If auto-metadata extraction is enabled, add a layer that extracts
-      // Effect fiber metadata for each span
-      if (autoExtractMetadata) {
-        // TODO: Implement metadata extraction layer
-        // For now, just return the base Otlp layer
-        return otlpLayer
-      }
-
-      return otlpLayer
+      // 6. Use Tracer.layerGlobal which uses the global OpenTelemetry TracerProvider
+      // This ensures Effect spans go through NodeSDK's PatternSpanProcessor
+      // for unified filtering based on instrumentation.yaml
+      return Tracer.layerGlobal.pipe(
+        Layer.provide(
+          Resource.layer({
+            serviceName,
+            serviceVersion,
+            attributes: {
+              'platform.component': 'effect',
+              'effect.unified_tracing': true,
+              [ATTR_TELEMETRY_SDK_LANGUAGE]: TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS,
+              [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME
+            }
+          })
+        )
+      )
     })
   ).pipe(Layer.orDie)
 }
@@ -209,11 +150,12 @@ export function createEffectInstrumentation(options: EffectInstrumentationOption
  *
  * Uses the global OpenTelemetry tracer provider that was set up by
  * initializeInstrumentation(). This ensures all traces (Express, Effect, etc.)
- * go to the same OTLP endpoint.
+ * go through the same TracerProvider and PatternSpanProcessor.
  *
  * Context Propagation:
  * - Automatically continues traces from NodeSDK auto-instrumentation
  * - Effect spans become children of HTTP request spans
+ * - Respects http.ignore_incoming_paths and other filtering patterns
  * - No configuration needed
  *
  * @example
@@ -230,48 +172,27 @@ export function createEffectInstrumentation(options: EffectInstrumentationOption
  * ```
  */
 export const EffectInstrumentationLive = Effect.sync(() => {
-  const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
   const serviceName = process.env.OTEL_SERVICE_NAME || 'effect-service'
   const serviceVersion = process.env.npm_package_version || '1.0.0'
 
   logger.minimal(`@atrim/instrumentation/effect: Effect tracing enabled (${serviceName})`)
-  logger.log('🔍 Effect OpenTelemetry tracer')
-  logger.log(`   📡 Endpoint: ${endpoint}`)
-  logger.log(`   🏷️  Service: ${serviceName}`)
+  logger.log('Effect OpenTelemetry tracer (unified)')
+  logger.log(`  Service: ${serviceName}`)
 
-  // Use Otlp.layer() like atrim platform
-  // This creates Effect-specific spans that get exported via OTLP
-  return Otlp.layer({
-    baseUrl: endpoint,
-    resource: {
-      serviceName,
-      serviceVersion,
-      attributes: {
-        'platform.component': 'effect',
-        [ATTR_TELEMETRY_SDK_LANGUAGE]: TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS,
-        [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME
-      }
-    },
-    // CRITICAL: Bridge Effect context to OpenTelemetry global context
-    // This allows NodeSDK auto-instrumentation to see Effect spans as parent spans
-    tracerContext: <X>(f: () => X, span: EffectTracer.AnySpan): X => {
-      // Only bridge actual Effect spans (not ExternalSpan)
-      if (span._tag !== 'Span') {
-        return f()
-      }
-
-      // Create OpenTelemetry SpanContext from Effect span metadata
-      const spanContext: SpanContext = {
-        traceId: span.traceId,
-        spanId: span.spanId,
-        traceFlags: span.sampled ? TraceFlags.SAMPLED : TraceFlags.NONE
-      }
-
-      // Create a non-recording span to represent the Effect span in OTel context
-      const otelSpan = trace.wrapSpanContext(spanContext)
-
-      // Set as active span in OpenTelemetry global context
-      return context.with(trace.setSpan(context.active(), otelSpan), f)
-    }
-  }).pipe(Layer.provide(FetchHttpClient.layer))
+  // Use Tracer.layerGlobal which uses trace.getTracerProvider()
+  // This connects to NodeSDK's TracerProvider with PatternSpanProcessor
+  // for unified filtering based on instrumentation.yaml
+  return Tracer.layerGlobal.pipe(
+    Layer.provide(
+      Resource.layer({
+        serviceName,
+        serviceVersion,
+        attributes: {
+          'platform.component': 'effect',
+          [ATTR_TELEMETRY_SDK_LANGUAGE]: TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS,
+          [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME
+        }
+      })
+    )
+  )
 }).pipe(Layer.unwrapEffect)

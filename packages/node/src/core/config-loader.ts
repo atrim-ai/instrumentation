@@ -121,6 +121,7 @@ function getDefaultConfig(): InstrumentationConfig {
       ]
     },
     effect: {
+      enabled: true,
       auto_extract_metadata: true
     }
   }
