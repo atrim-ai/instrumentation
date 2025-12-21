@@ -25,6 +25,7 @@ test-results.json
 .env
 .env.local
 .env.*.local
+.envrc
 
 # Editor
 .vscode/
