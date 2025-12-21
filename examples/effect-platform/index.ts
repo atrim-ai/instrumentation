@@ -28,7 +28,7 @@ import * as HttpServerResponse from '@effect/platform/HttpServerResponse'
 import * as NodeHttp from '@effect/platform-node/NodeHttpServer'
 import { createServer } from 'node:http'
 import {
-  EffectInstrumentationLive,
+  createEffectInstrumentation,
   autoEnrichSpan,
   annotateUser,
   annotateDataSize,
@@ -253,8 +253,20 @@ const HttpLive = HttpServer.serve(router).pipe(
 // Main Application
 // ============================================================================
 
-// Set service name in environment (used by EffectInstrumentationLive)
-process.env.OTEL_SERVICE_NAME = 'effect-platform-example'
+// ============================================================================
+// Effect Instrumentation Layer (Standalone Mode)
+// ============================================================================
+
+// For pure Effect apps without NodeSDK, use 'standalone' mode which exports
+// traces directly via @effect/opentelemetry's OTLP exporter
+const EffectInstrumentationLayer = createEffectInstrumentation({
+  serviceName: 'effect-platform-example',
+  exporterMode: 'standalone'
+})
+
+// ============================================================================
+// Main Program
+// ============================================================================
 
 const program = Effect.gen(function* () {
   const port = Number(process.env.PORT) || 3003
@@ -273,13 +285,13 @@ const program = Effect.gen(function* () {
   yield* Console.log('')
   yield* Console.log('='.repeat(60))
   yield* Console.log('💡 All spans created via Effect.withSpan()')
-  yield* Console.log('   - Pure Effect-TS tracing via EffectInstrumentationLive')
-  yield* Console.log('   - Direct OTLP export from Effect layer')
+  yield* Console.log('   - Pure Effect-TS tracing via standalone OTLP exporter')
+  yield* Console.log('   - Direct OTLP export from @effect/opentelemetry')
   yield* Console.log('')
 
   // Keep the server running
   yield* Effect.never
-}).pipe(Effect.provide(HttpLive), Effect.provide(EffectInstrumentationLive))
+}).pipe(Effect.provide(HttpLive), Effect.provide(EffectInstrumentationLayer))
 
 // Run the Effect program directly
 Effect.runPromise(program).catch((error) => {

@@ -20,6 +20,10 @@ import {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Resolve tsx from the package's node_modules (not fixture-local)
+const packageRoot = path.resolve(__dirname, '../../../..')
+const tsxPath = path.join(packageRoot, 'node_modules', '.bin', 'tsx')
+
 interface Span {
   name: string
   spanId: string
@@ -59,7 +63,7 @@ async function runExample(
     let stdout = ''
     let stderr = ''
 
-    const child = spawn('pnpm', ['exec', 'tsx', 'index.ts'], {
+    const child = spawn(tsxPath, ['index.ts'], {
       cwd: exampleDir,
       env: {
         ...process.env,
