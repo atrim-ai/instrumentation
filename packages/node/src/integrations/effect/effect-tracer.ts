@@ -19,8 +19,12 @@
  */
 
 import { Effect, Layer } from 'effect'
+import type { Tracer as EffectTracer } from 'effect'
 import * as Tracer from '@effect/opentelemetry/Tracer'
 import * as Resource from '@effect/opentelemetry/Resource'
+import * as Otlp from '@effect/opentelemetry/Otlp'
+import { FetchHttpClient } from '@effect/platform'
+import { context, trace, type SpanContext, TraceFlags } from '@opentelemetry/api'
 import {
   ATTR_TELEMETRY_SDK_LANGUAGE,
   ATTR_TELEMETRY_SDK_NAME,
@@ -30,7 +34,11 @@ import { initializePatternMatcher, logger } from '@atrim/instrument-core'
 import { loadConfigWithOptions, type ConfigLoaderOptions } from '../../core/config-loader.js'
 
 // SDK metadata for resource attributes
-const SDK_NAME = '@effect/opentelemetry-otlp'
+// telemetry.sdk.name identifies the INSTRUMENTATION library, not the exporter
+const SDK_NAME = '@effect/opentelemetry'
+
+// Custom attribute for exporter mode
+const ATTR_TELEMETRY_EXPORTER_MODE = 'telemetry.exporter.mode'
 
 /**
  * Configuration options for Effect instrumentation
@@ -53,6 +61,20 @@ export interface EffectInstrumentationOptions extends ConfigLoaderOptions {
    * @default true
    */
   autoExtractMetadata?: boolean
+
+  /**
+   * OTLP endpoint URL (only used when exporter mode is 'standalone')
+   * @default process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
+   */
+  otlpEndpoint?: string
+
+  /**
+   * Exporter mode:
+   * - 'unified': Use global TracerProvider from Node SDK (recommended, enables filtering)
+   * - 'standalone': Use Effect's own OTLP exporter (bypasses Node SDK filtering)
+   * @default 'unified'
+   */
+  exporterMode?: 'unified' | 'standalone'
 }
 
 /**
@@ -116,31 +138,68 @@ export function createEffectInstrumentation(options: EffectInstrumentationOption
       // 4. Initialize pattern matcher (for global shouldInstrumentSpan function)
       yield* Effect.sync(() => initializePatternMatcher(config))
 
-      // 5. Extract service info
+      // 5. Extract service info and exporter mode
       const serviceName = options.serviceName || process.env.OTEL_SERVICE_NAME || 'effect-service'
       const serviceVersion = options.serviceVersion || process.env.npm_package_version || '1.0.0'
+      const exporterMode = options.exporterMode ?? config.effect?.exporter ?? 'unified'
 
-      logger.log('Effect OpenTelemetry instrumentation (unified)')
-      logger.log(`  Service: ${serviceName}`)
-      logger.log('  Using global TracerProvider for span export')
+      // Common resource attributes
+      const resourceAttributes = {
+        'platform.component': 'effect',
+        [ATTR_TELEMETRY_SDK_LANGUAGE]: TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS,
+        [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME,
+        [ATTR_TELEMETRY_EXPORTER_MODE]: exporterMode
+      }
 
-      // 6. Use Tracer.layerGlobal which uses the global OpenTelemetry TracerProvider
-      // This ensures Effect spans go through NodeSDK's PatternSpanProcessor
-      // for unified filtering based on instrumentation.yaml
-      return Tracer.layerGlobal.pipe(
-        Layer.provide(
-          Resource.layer({
+      if (exporterMode === 'standalone') {
+        // Standalone mode: Use Effect's own OTLP exporter
+        // NOTE: This bypasses Node SDK filtering (PatternSpanProcessor)
+        const otlpEndpoint =
+          options.otlpEndpoint || process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
+
+        logger.log('Effect OpenTelemetry instrumentation (standalone)')
+        logger.log(`  Service: ${serviceName}`)
+        logger.log(`  Endpoint: ${otlpEndpoint}`)
+        logger.log('  WARNING: Standalone mode bypasses Node SDK filtering')
+
+        return Otlp.layer({
+          baseUrl: otlpEndpoint,
+          resource: {
             serviceName,
             serviceVersion,
-            attributes: {
-              'platform.component': 'effect',
-              'effect.unified_tracing': true,
-              [ATTR_TELEMETRY_SDK_LANGUAGE]: TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS,
-              [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME
+            attributes: resourceAttributes
+          },
+          // Bridge Effect context to OpenTelemetry global context
+          tracerContext: <X>(f: () => X, span: EffectTracer.AnySpan): X => {
+            if (span._tag !== 'Span') {
+              return f()
             }
-          })
+            const spanContext: SpanContext = {
+              traceId: span.traceId,
+              spanId: span.spanId,
+              traceFlags: span.sampled ? TraceFlags.SAMPLED : TraceFlags.NONE
+            }
+            const otelSpan = trace.wrapSpanContext(spanContext)
+            return context.with(trace.setSpan(context.active(), otelSpan), f)
+          }
+        }).pipe(Layer.provide(FetchHttpClient.layer))
+      } else {
+        // Unified mode (default): Use global TracerProvider from Node SDK
+        // This ensures Effect spans go through PatternSpanProcessor for filtering
+        logger.log('Effect OpenTelemetry instrumentation (unified)')
+        logger.log(`  Service: ${serviceName}`)
+        logger.log('  Using global TracerProvider for span export')
+
+        return Tracer.layerGlobal.pipe(
+          Layer.provide(
+            Resource.layer({
+              serviceName,
+              serviceVersion,
+              attributes: resourceAttributes
+            })
+          )
         )
-      )
+      }
     })
   ).pipe(Layer.orDie)
 }
@@ -190,7 +249,8 @@ export const EffectInstrumentationLive = Effect.sync(() => {
         attributes: {
           'platform.component': 'effect',
           [ATTR_TELEMETRY_SDK_LANGUAGE]: TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS,
-          [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME
+          [ATTR_TELEMETRY_SDK_NAME]: SDK_NAME,
+          [ATTR_TELEMETRY_EXPORTER_MODE]: 'unified'
         }
       })
     )

@@ -67,5 +67,12 @@ effect:
   # Can also be disabled via OTEL_EFFECT_ENABLED=false environment variable
   enabled: true
 
+  # Exporter mode:
+  # - "unified": Use global TracerProvider from Node SDK (recommended)
+  #              Enables filtering via PatternSpanProcessor and http.ignore_incoming_paths
+  # - "standalone": Use Effect's own OTLP exporter
+  #                 Bypasses Node SDK filtering (not recommended)
+  exporter: unified
+
   # Automatically extract Effect fiber metadata as span attributes
   auto_extract_metadata: true

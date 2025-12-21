@@ -122,6 +122,7 @@ function getDefaultConfig(): InstrumentationConfig {
     },
     effect: {
       enabled: true,
+      exporter: 'unified' as const,
       auto_extract_metadata: true
     }
   }
