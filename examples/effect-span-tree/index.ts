@@ -25,8 +25,9 @@
  */
 
 import express from 'express'
-import { Effect, Duration, Layer, Ref } from 'effect'
-import { EffectInstrumentationLive } from '@atrim/instrument-node/effect'
+import { Effect, Duration, Layer, Ref, Tracer } from 'effect'
+import * as OtelTracer from '@effect/opentelemetry/Tracer'
+import * as OtelResource from '@effect/opentelemetry/Resource'
 import { initializeInstrumentation, SpanTree } from '@atrim/instrument-node'
 
 // ============================================================================
@@ -53,6 +54,21 @@ const mockUsers: Record<string, User> = {
   '1': { id: '1', name: 'Alice', email: 'alice@example.com' },
   '2': { id: '2', name: 'Bob', email: 'bob@example.com' }
 }
+
+// ============================================================================
+// Effect Tracer Layer - Uses NodeSDK's Global TracerProvider
+// ============================================================================
+// This layer uses the global TracerProvider set up by initializeInstrumentation().
+// This ensures Effect spans go through PatternSpanProcessor which records to SpanTree.
+const EffectTracerLive = Layer.effect(Tracer.Tracer, OtelTracer.make).pipe(
+  Layer.provide(OtelTracer.layerGlobal),
+  Layer.provide(
+    OtelResource.layer({
+      serviceName: process.env.OTEL_SERVICE_NAME || 'effect-span-tree-example',
+      serviceVersion: '1.0.0'
+    })
+  )
+)
 
 // ============================================================================
 // Effect Operations with Nested Spans
@@ -205,7 +221,7 @@ const withSpanLogging = <A, E, R>(effect: Effect.Effect<A, E, R>, operationName:
  * Main user fetch endpoint - demonstrates SpanTree in action
  */
 const handleGetUser = (userId: string) =>
-  withSpanLogging(fetchUser(userId), 'api.getUser').pipe(Effect.provide(EffectInstrumentationLive))
+  withSpanLogging(fetchUser(userId), 'api.getUser').pipe(Effect.provide(EffectTracerLive))
 
 // ============================================================================
 // Express Server
@@ -259,7 +275,7 @@ function createApp() {
     })
 
     const program = withSpanLogging(complexOperation, 'api.complexOperation').pipe(
-      Effect.provide(EffectInstrumentationLive)
+      Effect.provide(EffectTracerLive)
     )
 
     const result = await Effect.runPromise(program.pipe(Effect.either))
