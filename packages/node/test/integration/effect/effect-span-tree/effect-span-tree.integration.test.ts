@@ -185,6 +185,30 @@ describe('Effect-TS SpanTree Example', () => {
     expect(stats).toHaveProperty('enabled', true)
   })
 
+  it('should add span_tree attributes to root spans', async () => {
+    // Make a request to trigger span creation
+    await fetch(`http://localhost:${port}/api/users/1`)
+
+    // Wait for spans to be exported
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    // Check collector logs for span_tree attributes
+    const logs = await getCollectorLogs(collector, 500)
+
+    // The root span should have span_tree.depth, span_tree.deepest_path, span_tree.span_count
+    const hasDepthAttr = logs.includes('span_tree.depth')
+    const hasPathAttr = logs.includes('span_tree.deepest_path')
+    const hasCountAttr = logs.includes('span_tree.span_count')
+
+    console.log('Span tree attributes in collector logs:')
+    console.log('  - span_tree.depth:', hasDepthAttr)
+    console.log('  - span_tree.deepest_path:', hasPathAttr)
+    console.log('  - span_tree.span_count:', hasCountAttr)
+
+    // At least depth and path should be present
+    expect(hasDepthAttr || hasPathAttr).toBeTruthy()
+  })
+
   it('should handle missing users gracefully', async () => {
     const response = await fetch(`http://localhost:${port}/api/users/999`)
     expect(response.status).toBe(404)

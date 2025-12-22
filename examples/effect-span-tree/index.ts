@@ -179,12 +179,20 @@ const withSpanLogging = <A, E, R>(effect: Effect.Effect<A, E, R>, operationName:
     const result = yield* effect.pipe(
       // Use ensuring to log after ALL inner spans complete
       Effect.ensuring(
-        Effect.sync(() => {
+        Effect.gen(function* () {
           // THIS IS THE KEY: Even though inner spans have ended,
           // SpanTree still has their data and we can query it!
           const summary = SpanTree.getTraceSummary(traceId, {
             traceUrlBase: process.env.TRACE_URL_BASE || 'https://ui.honeycomb.io'
           })
+
+          // Add span attributes so depth/path are visible in trace UI (Atrim, Honeycomb, etc.)
+          yield* Effect.annotateCurrentSpan('span_tree.depth', summary.depth)
+          yield* Effect.annotateCurrentSpan('span_tree.deepest_path', summary.formattedPath)
+          yield* Effect.annotateCurrentSpan('span_tree.span_count', summary.spanCount)
+          if (summary.traceUrl) {
+            yield* Effect.annotateCurrentSpan('span_tree.trace_url', summary.traceUrl)
+          }
 
           // Log the deepest path achieved
           console.log(`\n${'='.repeat(60)}`)
