@@ -1,0 +1,41 @@
+# SpanTree Example Instrumentation Config
+#
+# This example demonstrates querying span hierarchy from Effect.ensuring()
+
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "SpanTree example - demonstrating Effect #5926 solution"
+
+  instrument_patterns:
+    - pattern: "^api\\."
+      enabled: true
+      description: "API operations"
+    - pattern: "^fetchUser"
+      enabled: true
+      description: "User fetch operations"
+    - pattern: "^validate"
+      enabled: true
+      description: "Validation operations"
+    - pattern: "^checkPermissions"
+      enabled: true
+      description: "Permission checks"
+    - pattern: "^db\\."
+      enabled: true
+      description: "Database operations"
+    - pattern: "^transform"
+      enabled: true
+      description: "Data transformation"
+    - pattern: "^enrichUser"
+      enabled: true
+      description: "User enrichment"
+    - pattern: "^fetchPreferences"
+      enabled: true
+      description: "Preference fetching"
+
+  ignore_patterns:
+    - pattern: "^health"
+      description: "Health checks"
+    - pattern: "^GET /health"
+      description: "HTTP health check"

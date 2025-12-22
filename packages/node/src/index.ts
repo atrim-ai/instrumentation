@@ -57,7 +57,7 @@ export { PatternSpanProcessor } from './core/span-processor.js'
 export type { PatternSpanProcessorOptions } from './core/span-processor.js'
 
 // SpanTree - runtime span hierarchy querying
-export { SpanTree, SpanTreeImpl, resetGlobalSpanTree } from './core/span-tree.js'
+export { SpanTree, SpanTreeImpl, resetGlobalSpanTree, setGlobalSpanTree } from './core/span-tree.js'
 export type { SpanInfo, TraceSummary, SpanTreeConfig } from './core/span-tree.js'
 
 // Span helpers (standard OpenTelemetry)

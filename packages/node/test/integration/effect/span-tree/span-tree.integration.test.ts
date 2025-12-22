@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
-import { trace, context, ROOT_CONTEXT } from '@opentelemetry/api'
+import { trace, ROOT_CONTEXT } from '@opentelemetry/api'
 import {
   SpanTreeImpl,
   setGlobalSpanTree,
@@ -242,4 +242,14 @@ describe('SpanTree Effect Integration', () => {
       span.end()
     })
   })
+
+  /**
+   * Note: A full Effect integration test with real Effect spans requires
+   * custom integration with Effect's NodeSdk layer. For a complete demonstration,
+   * see the example at examples/effect-span-tree which shows how SpanTree
+   * can be used with Effect.ensuring() in a real application.
+   *
+   * The mock-based tests above verify the core SpanTree functionality,
+   * which works correctly when integrated with PatternSpanProcessor.
+   */
 })
