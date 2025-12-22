@@ -95,7 +95,9 @@ export async function startCollectorContainer(): Promise<CollectorContainer> {
     try {
       await TestContainers.exposeHostPorts(4319)
       devForwardingEnabled = true
-      console.log('📤 Traces will be forwarded to host.testcontainers.internal:4319 (atrim2 backend)')
+      console.log(
+        '📤 Traces will be forwarded to host.testcontainers.internal:4319 (atrim2 backend)'
+      )
     } catch (error) {
       console.log(
         '⚠️  Dev collector forwarding disabled (port 4319 unavailable or already exposed)'
