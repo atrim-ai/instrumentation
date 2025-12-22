@@ -4,11 +4,14 @@
  * This processor filters spans based on configured patterns before they are exported.
  * It wraps another processor (typically BatchSpanProcessor) and only forwards spans
  * that match the instrumentation patterns.
+ *
+ * Also maintains an in-memory SpanTree for runtime querying of span hierarchy.
  */
 
 import type { Span, SpanProcessor, ReadableSpan } from '@opentelemetry/sdk-trace-base'
 import type { Context } from '@opentelemetry/api'
 import { PatternMatcher, type InstrumentationConfig } from '@atrim/instrument-core'
+import { SpanTreeImpl, setGlobalSpanTree, type SpanTreeConfig, type SpanTree } from './span-tree.js'
 
 /**
  * SpanProcessor that filters spans based on pattern configuration
@@ -27,13 +30,40 @@ import { PatternMatcher, type InstrumentationConfig } from '@atrim/instrument-co
  * })
  * ```
  */
+export interface PatternSpanProcessorOptions {
+  /** Pattern matching configuration */
+  config: InstrumentationConfig
+  /** The processor to forward matching spans to */
+  wrappedProcessor: SpanProcessor
+  /** SpanTree configuration (optional) */
+  spanTreeConfig?: SpanTreeConfig
+}
+
 export class PatternSpanProcessor implements SpanProcessor {
   private matcher: PatternMatcher
   private wrappedProcessor: SpanProcessor
+  private spanTree: SpanTreeImpl
 
-  constructor(config: InstrumentationConfig, wrappedProcessor: SpanProcessor) {
-    this.matcher = new PatternMatcher(config)
-    this.wrappedProcessor = wrappedProcessor
+  constructor(config: InstrumentationConfig, wrappedProcessor: SpanProcessor)
+  constructor(options: PatternSpanProcessorOptions)
+  constructor(
+    configOrOptions: InstrumentationConfig | PatternSpanProcessorOptions,
+    wrappedProcessor?: SpanProcessor
+  ) {
+    if ('config' in configOrOptions) {
+      // New options-based constructor
+      this.matcher = new PatternMatcher(configOrOptions.config)
+      this.wrappedProcessor = configOrOptions.wrappedProcessor
+      this.spanTree = new SpanTreeImpl(configOrOptions.spanTreeConfig)
+    } else {
+      // Legacy constructor for backward compatibility
+      this.matcher = new PatternMatcher(configOrOptions)
+      this.wrappedProcessor = wrappedProcessor!
+      this.spanTree = new SpanTreeImpl()
+    }
+
+    // Register as global SpanTree
+    setGlobalSpanTree(this.spanTree)
   }
 
   /**
@@ -41,8 +71,14 @@ export class PatternSpanProcessor implements SpanProcessor {
    *
    * We check if the span should be instrumented here. If not, we can mark it
    * to be dropped later in onEnd().
+   *
+   * All spans are recorded in the SpanTree regardless of filtering,
+   * to maintain accurate hierarchy for runtime querying.
    */
   onStart(span: Span, parentContext: Context): void {
+    // Always record to SpanTree (for runtime querying)
+    this.spanTree.recordStart(span, parentContext)
+
     const spanName = span.name
 
     if (this.matcher.shouldInstrument(spanName)) {
@@ -58,8 +94,14 @@ export class PatternSpanProcessor implements SpanProcessor {
    * Called when a span is ended
    *
    * This is where we make the final decision on whether to export the span.
+   * All spans are recorded in the SpanTree regardless of filtering.
    */
   onEnd(span: ReadableSpan): void {
+    const ctx = span.spanContext()
+
+    // Always record to SpanTree (for runtime querying)
+    this.spanTree.recordEnd(ctx.spanId, ctx.traceId)
+
     const spanName = span.name
 
     if (this.matcher.shouldInstrument(spanName)) {
@@ -88,5 +130,19 @@ export class PatternSpanProcessor implements SpanProcessor {
    */
   getPatternMatcher(): PatternMatcher {
     return this.matcher
+  }
+
+  /**
+   * Get the SpanTree instance for querying span hierarchy
+   */
+  getSpanTree(): SpanTree {
+    return this.spanTree
+  }
+
+  /**
+   * Get SpanTree stats for monitoring
+   */
+  getSpanTreeStats(): ReturnType<SpanTreeImpl['getStats']> {
+    return this.spanTree.getStats()
   }
 }
