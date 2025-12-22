@@ -25,10 +25,13 @@ exporters:
       num_consumers: 5
       queue_size: 100
 
-  # Forward traces to dev instance on host machine via HTTP
+  # Forward traces to atrim2 dev instance on host machine via HTTP
   # Uses host.testcontainers.internal (exposed via TestContainers.exposeHostPorts)
+  # Sends to tenant_000000000002 (atrim-instrumentation testing tenant)
   otlphttp/dev:
-    endpoint: http://host.testcontainers.internal:4318
+    endpoint: http://host.testcontainers.internal:4319
+    headers:
+      x-api-key: atrim_internal_tenant_000000000002
     tls:
       insecure: true
     timeout: 10s
