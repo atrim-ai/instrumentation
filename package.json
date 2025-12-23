@@ -26,6 +26,7 @@
     "test:watch": "turbo run test:watch",
     "test:coverage": "turbo run test:coverage",
     "test:integration": "turbo run test:integration",
+    "test:integration:node": "pnpm --filter @atrim/instrument-node test:integration:match",
     "test:all": "turbo run test:all",
     "cleanup:containers": "docker ps -a --filter 'ancestor=otel/opentelemetry-collector:latest' -q | xargs -r docker rm -f",
     "typecheck": "turbo run typecheck",

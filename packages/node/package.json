@@ -60,6 +60,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:integration": "OTEL_BSP_SCHEDULE_DELAY=500 vitest run --config vitest.integration.config.ts",
+    "test:integration:match": "OTEL_BSP_SCHEDULE_DELAY=500 vitest run --config vitest.integration.config.ts",
     "test:all": "pnpm test && pnpm test:integration",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
