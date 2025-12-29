@@ -10,13 +10,13 @@
   },
   "dependencies": {
     "@atrim/instrument-node": "workspace:*",
-    "@effect/opentelemetry": "^0.59.0",
-    "@effect/platform": "^0.93.0",
+    "@effect/opentelemetry": "^0.60.0",
+    "@effect/platform": "^0.94.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
     "@opentelemetry/sdk-node": "^0.208.0",
     "@opentelemetry/sdk-trace-node": "^2.2.0",
-    "effect": "^3.19.0",
+    "effect": "^3.19.13",
     "express": "^4.21.0",
     "yaml": "^2.3.0",
     "zod": "^3.22.0"
