@@ -22,8 +22,16 @@ export {
 } from './pattern-matcher.js'
 
 // Schema and types
-export { InstrumentationConfigSchema, PatternConfigSchema } from './instrumentation-schema.js'
-export type { InstrumentationConfig, PatternConfig } from './instrumentation-schema.js'
+export {
+  InstrumentationConfigSchema,
+  PatternConfigSchema,
+  SpanTreeConfigSchema
+} from './instrumentation-schema.js'
+export type {
+  InstrumentationConfig,
+  PatternConfig,
+  SpanTreeConfig as SpanTreeYamlConfig
+} from './instrumentation-schema.js'
 
 // Logging
 export { logger } from './logger.js'

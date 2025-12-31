@@ -10,10 +10,17 @@ import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentation
 import type { Instrumentation } from '@opentelemetry/instrumentation'
 import { trace } from '@opentelemetry/api'
 import type { RequestOptions, IncomingMessage } from 'node:http'
+import { Effect, Exit, Scope } from 'effect'
 import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
 import { SafeSpanExporter } from './safe-exporter.js'
 import { detectServiceInfoAsync } from './service-detector.js'
+import {
+  makeSpanTreeService,
+  SpanTreeImpl,
+  setGlobalSpanTree,
+  type SpanTreeConfig
+} from './span-tree.js'
 import {
   type InstrumentationConfig,
   type PatternConfig,
@@ -132,9 +139,30 @@ export interface SdkInitializationOptions extends ConfigLoaderOptions {
 let sdkInstance: NodeSDK | null = null
 
 /**
+ * Global SpanTree scope (for cleanup on shutdown)
+ */
+let spanTreeScope: Scope.CloseableScope | null = null
+
+/**
  * Ongoing initialization promise (prevents race conditions)
  */
 let initializationPromise: Promise<NodeSDK | null> | null = null
+
+/**
+ * Convert YAML span_tree config (snake_case) to SpanTreeConfig (camelCase)
+ */
+function buildSpanTreeConfig(config: InstrumentationConfig): SpanTreeConfig {
+  const yamlConfig = config.span_tree
+  return {
+    enabled: yamlConfig?.enabled ?? true,
+    ttlMs: yamlConfig?.ttl_ms ?? 30000,
+    maxSpans: yamlConfig?.max_spans ?? 10000,
+    maxTraces: yamlConfig?.max_traces ?? 1000,
+    queueCapacity: yamlConfig?.queue_capacity ?? 1024,
+    batchSize: yamlConfig?.batch_size ?? 100,
+    shutdownTimeoutMs: yamlConfig?.shutdown_timeout_ms ?? 3000
+  }
+}
 
 /**
  * HTTP instrumentation config that matches @opentelemetry/instrumentation-http
@@ -475,7 +503,24 @@ async function performInitialization(options: SdkInitializationOptions): Promise
   const rawExporter = createOtlpExporter(options.otlp)
   const exporter = new SafeSpanExporter(rawExporter)
 
-  // 5. Create span processor chain
+  // 5. Create SpanTreeService with Effect-based event processing
+  const spanTreeConfig = buildSpanTreeConfig(config)
+  spanTreeScope = Effect.runSync(Scope.make())
+
+  const spanTreeService = await Effect.runPromise(
+    makeSpanTreeService(spanTreeConfig).pipe(Effect.provideService(Scope.Scope, spanTreeScope))
+  )
+
+  // Also create legacy SpanTreeImpl for backward compatibility with global SpanTree API
+  // This allows SpanTree.isEnabled(), SpanTree.getTraceSummary(), etc. to work
+  const legacySpanTree = new SpanTreeImpl(spanTreeConfig)
+  setGlobalSpanTree(legacySpanTree)
+
+  logger.log(
+    `SpanTree: enabled=${spanTreeConfig.enabled}, queue=${spanTreeConfig.queueCapacity}, maxSpans=${spanTreeConfig.maxSpans}`
+  )
+
+  // 6. Create span processor chain
   // Use SimpleSpanProcessor in test mode to avoid shutdown race conditions
   // with BatchSpanProcessor's background export timer
   const useSimpleProcessor =
@@ -483,9 +528,15 @@ async function performInitialization(options: SdkInitializationOptions): Promise
   const baseProcessor = useSimpleProcessor
     ? new SimpleSpanProcessor(exporter)
     : new BatchSpanProcessor(exporter)
-  const patternProcessor = new PatternSpanProcessor(config, baseProcessor)
 
-  // 6. Prepare instrumentations
+  const patternProcessor = new PatternSpanProcessor({
+    config,
+    wrappedProcessor: baseProcessor,
+    spanTreeService,
+    legacySpanTree
+  })
+
+  // 7. Prepare instrumentations
   const instrumentations: Instrumentation[] = []
 
   // Determine if auto-instrumentation should be enabled
@@ -598,6 +649,12 @@ export function getSdkInstance(): NodeSDK | null {
  * Shutdown the SDK
  */
 export async function shutdownSdk(): Promise<void> {
+  // Close SpanTree scope first (drains event queue)
+  if (spanTreeScope) {
+    await Effect.runPromise(Scope.close(spanTreeScope, Exit.void))
+    spanTreeScope = null
+  }
+
   if (!sdkInstance) {
     return
   }
@@ -612,6 +669,11 @@ export async function shutdownSdk(): Promise<void> {
 export function resetSdk(): void {
   sdkInstance = null
   initializationPromise = null
+  // Close SpanTree scope synchronously for tests
+  if (spanTreeScope) {
+    Effect.runSync(Scope.close(spanTreeScope, Exit.void))
+    spanTreeScope = null
+  }
 }
 
 /**

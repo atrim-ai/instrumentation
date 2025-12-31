@@ -183,7 +183,7 @@ const withSpanLogging = <A, E, R>(effect: Effect.Effect<A, E, R>, operationName:
           // THIS IS THE KEY: Even though inner spans have ended,
           // SpanTree still has their data and we can query it!
           const summary = SpanTree.getTraceSummary(traceId, {
-            traceUrlBase: process.env.TRACE_URL_BASE || 'https://ui.honeycomb.io'
+            traceUrlBase: process.env.TRACE_URL_BASE || 'https://ui.atrim.ai'
           })
 
           // Add span attributes so depth/path are visible in trace UI (Atrim, Honeycomb, etc.)
@@ -262,22 +262,73 @@ function createApp() {
     res.json(auditLogs)
   })
 
-  // Demo endpoint that creates even deeper hierarchy
+  // Demo endpoint that creates deep hierarchy with multiple branches
+  // This creates a visually interesting tree for the Atrim UI with varying depths
   app.get('/api/complex/:id', async (req, res) => {
     const complexOperation = Effect.gen(function* () {
-      // Create a deep nested hierarchy
+      // Branch 1: User fetch (depth ~6: api.complex -> fetchUser -> validate -> checkPerms -> db.query -> transform)
       const user = yield* fetchUser(req.params.id)
 
-      // Additional nested operations
+      // Branch 2: Enrichment pipeline (depth 4)
       yield* Effect.gen(function* () {
         yield* Effect.log('Enriching user data')
-        yield* Effect.sleep(Duration.millis(10))
+        yield* Effect.sleep(Duration.millis(5))
 
         yield* Effect.gen(function* () {
           yield* Effect.log('Fetching preferences')
-          yield* Effect.sleep(Duration.millis(10))
+          yield* Effect.sleep(Duration.millis(5))
         }).pipe(Effect.withSpan('fetchPreferences'))
       }).pipe(Effect.withSpan('enrichUser'))
+
+      // Branch 3: Deep analytics pipeline (depth 8)
+      yield* Effect.gen(function* () {
+        yield* Effect.log('Starting analytics')
+
+        yield* Effect.gen(function* () {
+          yield* Effect.log('Calculating metrics')
+
+          yield* Effect.gen(function* () {
+            yield* Effect.log('Aggregating data')
+
+            yield* Effect.gen(function* () {
+              yield* Effect.log('Computing statistics')
+
+              yield* Effect.gen(function* () {
+                yield* Effect.log('Finalizing metrics')
+                yield* Effect.sleep(Duration.millis(5))
+              }).pipe(Effect.withSpan('finalizeMetrics'))
+            }).pipe(Effect.withSpan('computeStats'))
+          }).pipe(Effect.withSpan('aggregateData'))
+        }).pipe(Effect.withSpan('calculateMetrics'))
+      }).pipe(Effect.withSpan('analytics'))
+
+      // Branch 4: Shallow cache check (depth 3)
+      yield* Effect.gen(function* () {
+        yield* Effect.log('Checking cache')
+        yield* Effect.sleep(Duration.millis(2))
+      }).pipe(Effect.withSpan('cacheCheck'))
+
+      // Branch 5: Very deep notification pipeline (depth 10)
+      yield* Effect.gen(function* () {
+        yield* Effect.gen(function* () {
+          yield* Effect.gen(function* () {
+            yield* Effect.gen(function* () {
+              yield* Effect.gen(function* () {
+                yield* Effect.gen(function* () {
+                  yield* Effect.gen(function* () {
+                    yield* Effect.gen(function* () {
+                      yield* Effect.gen(function* () {
+                        yield* Effect.log('Sending notification')
+                        yield* Effect.sleep(Duration.millis(3))
+                      }).pipe(Effect.withSpan('sendEmail'))
+                    }).pipe(Effect.withSpan('formatEmail'))
+                  }).pipe(Effect.withSpan('loadTemplate'))
+                }).pipe(Effect.withSpan('fetchRecipients'))
+              }).pipe(Effect.withSpan('validateRecipients'))
+            }).pipe(Effect.withSpan('prepareNotification'))
+          }).pipe(Effect.withSpan('queueNotification'))
+        }).pipe(Effect.withSpan('notificationPipeline'))
+      }).pipe(Effect.withSpan('notifications'))
 
       return user
     })

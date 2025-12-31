@@ -57,8 +57,27 @@ export { PatternSpanProcessor } from './core/span-processor.js'
 export type { PatternSpanProcessorOptions } from './core/span-processor.js'
 
 // SpanTree - runtime span hierarchy querying
+// Legacy sync API
 export { SpanTree, SpanTreeImpl, resetGlobalSpanTree, setGlobalSpanTree } from './core/span-tree.js'
-export type { SpanInfo, TraceSummary, SpanTreeConfig } from './core/span-tree.js'
+// Effect-based API
+export {
+  SpanTreeService,
+  SpanTreeServiceLive,
+  makeSpanTreeService,
+  SpanStarted,
+  SpanEnded
+} from './core/span-tree.js'
+export type {
+  SpanInfo,
+  TraceSummary,
+  SpanTreeConfig,
+  SpanTreeState,
+  SpanTreeStats,
+  SpanTreeMemoryStats,
+  SpanRecord,
+  SpanEvent,
+  TraceSummaryOptions
+} from './core/span-tree.js'
 
 // Span helpers (standard OpenTelemetry)
 export {

@@ -144,35 +144,76 @@ describe('Effect-TS SpanTree Example', () => {
     expect(latestLog.depth).toBeGreaterThanOrEqual(2)
   })
 
-  it('should trace complex operations with deeper hierarchy', async () => {
-    // Make request to complex endpoint which has deeper nesting
+  it('should trace complex operations with deeply varied hierarchy', async () => {
+    // Make request to complex endpoint which has multiple branches at different depths
     const response = await fetch(`http://localhost:${port}/api/complex/1`)
     expect(response.status).toBe(200)
 
     // Wait for spans to be exported
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    const logs = await getCollectorLogs(collector, 300)
+    const logs = await getCollectorLogs(collector, 500)
 
-    // Should have additional enrichment spans
-    const hasEnrichSpan = logs.includes('enrichUser')
-    const hasPreferencesSpan = logs.includes('fetchPreferences')
+    // Should have spans from all branches
+    const branches = {
+      enrichUser: logs.includes('enrichUser'),
+      fetchPreferences: logs.includes('fetchPreferences'),
+      analytics: logs.includes('analytics'),
+      calculateMetrics: logs.includes('calculateMetrics'),
+      aggregateData: logs.includes('aggregateData'),
+      computeStats: logs.includes('computeStats'),
+      finalizeMetrics: logs.includes('finalizeMetrics'),
+      cacheCheck: logs.includes('cacheCheck'),
+      notifications: logs.includes('notifications'),
+      notificationPipeline: logs.includes('notificationPipeline'),
+      queueNotification: logs.includes('queueNotification'),
+      prepareNotification: logs.includes('prepareNotification'),
+      sendEmail: logs.includes('sendEmail')
+    }
 
-    console.log('Complex operation spans:')
-    console.log('  - enrichUser:', hasEnrichSpan)
-    console.log('  - fetchPreferences:', hasPreferencesSpan)
+    console.log('\nComplex operation span visibility:')
+    console.log('  Branch 1 (User fetch - depth ~6):')
+    console.log('    - fetchUser: (should be present)')
+    console.log('  Branch 2 (Enrichment - depth 4):')
+    console.log('    - enrichUser:', branches.enrichUser)
+    console.log('    - fetchPreferences:', branches.fetchPreferences)
+    console.log('  Branch 3 (Analytics - depth 8):')
+    console.log('    - analytics:', branches.analytics)
+    console.log('    - calculateMetrics:', branches.calculateMetrics)
+    console.log('    - aggregateData:', branches.aggregateData)
+    console.log('    - computeStats:', branches.computeStats)
+    console.log('    - finalizeMetrics:', branches.finalizeMetrics)
+    console.log('  Branch 4 (Cache - depth 3):')
+    console.log('    - cacheCheck:', branches.cacheCheck)
+    console.log('  Branch 5 (Notifications - depth 10):')
+    console.log('    - notifications:', branches.notifications)
+    console.log('    - notificationPipeline:', branches.notificationPipeline)
+    console.log('    - queueNotification:', branches.queueNotification)
+    console.log('    - prepareNotification:', branches.prepareNotification)
+    console.log('    - sendEmail:', branches.sendEmail)
 
-    // Check audit logs for deeper path
+    // Check audit logs for deepest path
     const auditResponse = await fetch(`http://localhost:${port}/api/audit-logs`)
     const auditLogs = await auditResponse.json()
 
     // Find the complex operation audit log (should be the latest)
     const complexLog = auditLogs[auditLogs.length - 1]
-    console.log('Complex operation deepest path:', complexLog.deepestPath)
-    console.log('Complex operation depth:', complexLog.depth)
+    console.log('\n📊 Complex operation trace summary:')
+    console.log('  Deepest path:', complexLog.deepestPath)
+    console.log('  Depth:', complexLog.depth, 'spans')
+    console.log('  Total spans:', complexLog.spanCount)
+    if (complexLog.traceUrl) {
+      console.log('  Trace URL:', complexLog.traceUrl)
+    }
 
-    // Complex operation should have deeper hierarchy
-    expect(complexLog.depth).toBeGreaterThanOrEqual(3)
+    // The deepest branch should be the notification pipeline (depth 10)
+    // api.complexOperation -> notifications -> notificationPipeline -> queueNotification ->
+    // prepareNotification -> validateRecipients -> fetchRecipients -> loadTemplate ->
+    // formatEmail -> sendEmail
+    expect(complexLog.depth).toBeGreaterThanOrEqual(10)
+    expect(complexLog.deepestPath).toContain('notifications')
+    expect(complexLog.deepestPath).toContain('sendEmail')
+    expect(complexLog.spanCount).toBeGreaterThan(15) // Multiple branches with many spans
   })
 
   it('should report SpanTree status', async () => {

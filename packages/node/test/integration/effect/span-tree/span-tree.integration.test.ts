@@ -123,7 +123,7 @@ describe('SpanTree Effect Integration', () => {
 
       const traceId = span.spanContext().traceId
       traceSummary = spanTree.getTraceSummary(traceId, {
-        traceUrlBase: 'https://ui.honeycomb.io'
+        traceUrlBase: 'https://ui.atrim.ai'
       })
 
       spanTree.recordEnd(span.spanContext().spanId, traceId)
@@ -131,7 +131,7 @@ describe('SpanTree Effect Integration', () => {
     })
 
     expect(traceSummary).not.toBeNull()
-    expect(traceSummary!.traceUrl).toMatch(/^https:\/\/ui\.honeycomb\.io\/trace\//)
+    expect(traceSummary!.traceUrl).toMatch(/^https:\/\/ui\.atrim\.ai\/trace\//)
     expect(traceSummary!.formattedPath).toBe('operation')
   })
 

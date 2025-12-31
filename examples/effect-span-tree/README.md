@@ -84,7 +84,7 @@ When you make a request, watch the console output. You'll see something like:
   Deepest path: api.getUser → fetchUser → validate → checkPermissions → db.query → transform
   Depth: 6 spans
   Total spans: 6
-  Trace URL: https://ui.honeycomb.io/trace/abc123...
+  Trace URL: https://ui.atrim.ai/trace/abc123...
 ============================================================
 ```
 
@@ -105,7 +105,7 @@ const currentPath = SpanTree.getCurrentPath()
 
 // Get full trace summary
 const summary = SpanTree.getTraceSummary(traceId, {
-  traceUrlBase: "https://ui.honeycomb.io"
+  traceUrlBase: "https://ui.atrim.ai"
 })
 // Returns: { traceId, path, formattedPath, depth, spanCount, traceUrl }
 

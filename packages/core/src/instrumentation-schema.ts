@@ -81,6 +81,38 @@ export const HttpFilteringConfigSchema = z.object({
     .optional()
 })
 
+/**
+ * SpanTree configuration for in-memory span hierarchy tracking
+ *
+ * Controls memory usage and event processing for the SpanTree feature
+ * that enables runtime querying of span hierarchy.
+ */
+export const SpanTreeConfigSchema = z.object({
+  // Whether SpanTree is enabled (default: true)
+  enabled: z.boolean().default(true),
+
+  // Keep span data for this long after trace ends in milliseconds (default: 30000)
+  ttl_ms: z.number().int().positive().default(30000),
+
+  // Maximum spans to track across all traces (default: 10000)
+  max_spans: z.number().int().positive().default(10000),
+
+  // Maximum traces to track (default: 1000)
+  max_traces: z.number().int().positive().default(1000),
+
+  // Event queue capacity for async processing (default: 1024)
+  // Uses sliding strategy - oldest events are dropped when full
+  queue_capacity: z.number().int().positive().default(1024),
+
+  // Batch size for event processing (default: 100)
+  // Higher values = better throughput, lower values = lower latency
+  batch_size: z.number().int().positive().default(100),
+
+  // Shutdown timeout in milliseconds (default: 3000)
+  // How long to wait for queue to drain during shutdown
+  shutdown_timeout_ms: z.number().int().positive().default(3000)
+})
+
 export const InstrumentationConfigSchema = z.object({
   version: z.string(),
   instrumentation: z.object({
@@ -96,10 +128,12 @@ export const InstrumentationConfigSchema = z.object({
       auto_isolation: AutoIsolationConfigSchema.optional()
     })
     .optional(),
-  http: HttpFilteringConfigSchema.optional()
+  http: HttpFilteringConfigSchema.optional(),
+  span_tree: SpanTreeConfigSchema.optional()
 })
 
 export type InstrumentationConfig = z.infer<typeof InstrumentationConfigSchema>
 export type PatternConfig = z.infer<typeof PatternConfigSchema>
 export type AutoIsolationConfig = z.infer<typeof AutoIsolationConfigSchema>
 export type HttpFilteringConfig = z.infer<typeof HttpFilteringConfigSchema>
+export type SpanTreeConfig = z.infer<typeof SpanTreeConfigSchema>

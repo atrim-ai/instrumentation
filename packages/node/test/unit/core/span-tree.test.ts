@@ -3,7 +3,14 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { SpanTreeImpl, resetGlobalSpanTree } from '../../../src/core/span-tree.js'
+import { Effect } from 'effect'
+import {
+  SpanTreeImpl,
+  resetGlobalSpanTree,
+  makeSpanTreeService,
+  SpanStarted,
+  SpanEnded
+} from '../../../src/core/span-tree.js'
 import type { Span } from '@opentelemetry/sdk-trace-base'
 import type { Context, SpanContext } from '@opentelemetry/api'
 import { ROOT_CONTEXT } from '@opentelemetry/api'
@@ -164,6 +171,83 @@ describe('SpanTree', () => {
       const deepest = spanTree.getDeepestPath('trace-1')
       expect(deepest).toEqual(['root', 'child2', 'grandchild'])
       expect(spanTree.getMaxDepth('trace-1')).toBe(3)
+    })
+
+    it('should find deepest path among multiple branches with varying depths', () => {
+      // Build a tree with multiple branches at different depths:
+      // root -> branch1 -> level2 -> level3 -> level4 (depth 5)
+      //      -> branch2 -> level2b (depth 3)
+      //      -> branch3 -> level2c -> level3c -> level4c -> level5c -> level6c (depth 7) <- deepest
+      //      -> branch4 (depth 2)
+
+      const root = createMockSpan('root', 'span-root', 'trace-1')
+      spanTree.recordStart(root, ROOT_CONTEXT)
+
+      // Branch 1: depth 5
+      const branch1 = createMockSpan('branch1', 'span-branch1', 'trace-1')
+      spanTree.recordStart(branch1, createParentContext('span-root', 'trace-1'))
+
+      const b1_level2 = createMockSpan('b1-level2', 'span-b1-l2', 'trace-1')
+      spanTree.recordStart(b1_level2, createParentContext('span-branch1', 'trace-1'))
+
+      const b1_level3 = createMockSpan('b1-level3', 'span-b1-l3', 'trace-1')
+      spanTree.recordStart(b1_level3, createParentContext('span-b1-l2', 'trace-1'))
+
+      const b1_level4 = createMockSpan('b1-level4', 'span-b1-l4', 'trace-1')
+      spanTree.recordStart(b1_level4, createParentContext('span-b1-l3', 'trace-1'))
+
+      // Branch 2: depth 3
+      const branch2 = createMockSpan('branch2', 'span-branch2', 'trace-1')
+      spanTree.recordStart(branch2, createParentContext('span-root', 'trace-1'))
+
+      const b2_level2 = createMockSpan('b2-level2', 'span-b2-l2', 'trace-1')
+      spanTree.recordStart(b2_level2, createParentContext('span-branch2', 'trace-1'))
+
+      // Branch 3: depth 7 (deepest)
+      const branch3 = createMockSpan('branch3', 'span-branch3', 'trace-1')
+      spanTree.recordStart(branch3, createParentContext('span-root', 'trace-1'))
+
+      const b3_level2 = createMockSpan('b3-level2', 'span-b3-l2', 'trace-1')
+      spanTree.recordStart(b3_level2, createParentContext('span-branch3', 'trace-1'))
+
+      const b3_level3 = createMockSpan('b3-level3', 'span-b3-l3', 'trace-1')
+      spanTree.recordStart(b3_level3, createParentContext('span-b3-l2', 'trace-1'))
+
+      const b3_level4 = createMockSpan('b3-level4', 'span-b3-l4', 'trace-1')
+      spanTree.recordStart(b3_level4, createParentContext('span-b3-l3', 'trace-1'))
+
+      const b3_level5 = createMockSpan('b3-level5', 'span-b3-l5', 'trace-1')
+      spanTree.recordStart(b3_level5, createParentContext('span-b3-l4', 'trace-1'))
+
+      const b3_level6 = createMockSpan('b3-level6', 'span-b3-l6', 'trace-1')
+      spanTree.recordStart(b3_level6, createParentContext('span-b3-l5', 'trace-1'))
+
+      // Branch 4: depth 2
+      const branch4 = createMockSpan('branch4', 'span-branch4', 'trace-1')
+      spanTree.recordStart(branch4, createParentContext('span-root', 'trace-1'))
+
+      // Verify deepest path is branch3 with depth 7
+      const deepest = spanTree.getDeepestPath('trace-1')
+      expect(deepest).toEqual([
+        'root',
+        'branch3',
+        'b3-level2',
+        'b3-level3',
+        'b3-level4',
+        'b3-level5',
+        'b3-level6'
+      ])
+      expect(spanTree.getMaxDepth('trace-1')).toBe(7)
+
+      // Verify other branch depths
+      const branch1Path = spanTree.getPath('span-b1-l4')
+      expect(branch1Path.length).toBe(5)
+
+      const branch2Path = spanTree.getPath('span-b2-l2')
+      expect(branch2Path.length).toBe(3)
+
+      const branch4Path = spanTree.getPath('span-branch4')
+      expect(branch4Path.length).toBe(2)
     })
   })
 
@@ -367,6 +451,643 @@ describe('SpanTree', () => {
 
       expect(spanTree.getStats().spanCount).toBe(0)
       expect(spanTree.getStats().traceCount).toBe(0)
+    })
+  })
+})
+
+// ============================================
+// Effect-Based SpanTreeService Tests
+// ============================================
+
+describe('SpanTreeService (Effect-based)', () => {
+  describe('event recording', () => {
+    it('should record span events and query after flush', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          // Record a span start
+          const accepted = service.recordStart(
+            new SpanStarted({
+              spanId: 'span-1',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'root',
+              startTimeMs: Date.now()
+            })
+          )
+          expect(accepted).toBe(true)
+
+          // Flush to ensure event is processed
+          yield* service.flush
+
+          // Query the path
+          const path = yield* service.getPath('span-1')
+          expect(path).toEqual(['root'])
+        }).pipe(Effect.scoped)
+      )
+    })
+
+    it('should build parent-child hierarchy', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          // Record root span
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-root',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'root',
+              startTimeMs: Date.now()
+            })
+          )
+
+          // Record child span
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-child',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'child',
+              startTimeMs: Date.now()
+            })
+          )
+
+          yield* service.flush
+
+          const path = yield* service.getPath('span-child')
+          expect(path).toEqual(['root', 'child'])
+
+          const children = yield* service.getChildren('span-root')
+          expect(children.length).toBe(1)
+          expect(children[0].name).toBe('child')
+        }).pipe(Effect.scoped)
+      )
+    })
+
+    it('should record span end and update status', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-1',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'test',
+              startTimeMs: Date.now()
+            })
+          )
+
+          yield* service.flush
+          let isRunning = yield* service.isRunning('span-1')
+          expect(isRunning).toBe(true)
+
+          service.recordEnd(
+            new SpanEnded({
+              spanId: 'span-1',
+              traceId: 'trace-1',
+              endTimeMs: Date.now()
+            })
+          )
+
+          yield* service.flush
+          isRunning = yield* service.isRunning('span-1')
+          expect(isRunning).toBe(false)
+
+          const spanInfo = yield* service.getSpan('span-1')
+          expect(spanInfo?.status).toBe('ended')
+          expect(spanInfo?.endTime).toBeDefined()
+        }).pipe(Effect.scoped)
+      )
+    })
+  })
+
+  describe('trace queries', () => {
+    it('should get deepest path in trace', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          // root -> child1 (depth 2)
+          // root -> child2 -> grandchild (depth 3) <- deepest
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-root',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'root',
+              startTimeMs: Date.now()
+            })
+          )
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-child1',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'child1',
+              startTimeMs: Date.now()
+            })
+          )
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-child2',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'child2',
+              startTimeMs: Date.now()
+            })
+          )
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-grandchild',
+              traceId: 'trace-1',
+              parentSpanId: 'span-child2',
+              name: 'grandchild',
+              startTimeMs: Date.now()
+            })
+          )
+
+          yield* service.flush
+
+          const deepest = yield* service.getDeepestPath('trace-1')
+          expect(deepest).toEqual(['root', 'child2', 'grandchild'])
+
+          const maxDepth = yield* service.getMaxDepth('trace-1')
+          expect(maxDepth).toBe(3)
+        }).pipe(Effect.scoped)
+      )
+    })
+
+    it('should find deepest path among multiple branches with varying depths', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          // Build a tree with multiple branches at different depths:
+          // root -> branch1 -> level2 -> level3 -> level4 (depth 5)
+          //      -> branch2 -> level2b (depth 3)
+          //      -> branch3 -> level2c -> level3c -> level4c -> level5c -> level6c (depth 7) <- deepest
+          //      -> branch4 (depth 2)
+
+          // Root
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-root',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'root',
+              startTimeMs: Date.now()
+            })
+          )
+
+          // Branch 1: depth 5
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-branch1',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'branch1',
+              startTimeMs: Date.now()
+            })
+          )
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-b1-l2',
+              traceId: 'trace-1',
+              parentSpanId: 'span-branch1',
+              name: 'b1-level2',
+              startTimeMs: Date.now()
+            })
+          )
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-b1-l3',
+              traceId: 'trace-1',
+              parentSpanId: 'span-b1-l2',
+              name: 'b1-level3',
+              startTimeMs: Date.now()
+            })
+          )
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-b1-l4',
+              traceId: 'trace-1',
+              parentSpanId: 'span-b1-l3',
+              name: 'b1-level4',
+              startTimeMs: Date.now()
+            })
+          )
+
+          // Branch 2: depth 3
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-branch2',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'branch2',
+              startTimeMs: Date.now()
+            })
+          )
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-b2-l2',
+              traceId: 'trace-1',
+              parentSpanId: 'span-branch2',
+              name: 'b2-level2',
+              startTimeMs: Date.now()
+            })
+          )
+
+          // Branch 3: depth 7 (deepest)
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-branch3',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'branch3',
+              startTimeMs: Date.now()
+            })
+          )
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-b3-l2',
+              traceId: 'trace-1',
+              parentSpanId: 'span-branch3',
+              name: 'b3-level2',
+              startTimeMs: Date.now()
+            })
+          )
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-b3-l3',
+              traceId: 'trace-1',
+              parentSpanId: 'span-b3-l2',
+              name: 'b3-level3',
+              startTimeMs: Date.now()
+            })
+          )
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-b3-l4',
+              traceId: 'trace-1',
+              parentSpanId: 'span-b3-l3',
+              name: 'b3-level4',
+              startTimeMs: Date.now()
+            })
+          )
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-b3-l5',
+              traceId: 'trace-1',
+              parentSpanId: 'span-b3-l4',
+              name: 'b3-level5',
+              startTimeMs: Date.now()
+            })
+          )
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-b3-l6',
+              traceId: 'trace-1',
+              parentSpanId: 'span-b3-l5',
+              name: 'b3-level6',
+              startTimeMs: Date.now()
+            })
+          )
+
+          // Branch 4: depth 2
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-branch4',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'branch4',
+              startTimeMs: Date.now()
+            })
+          )
+
+          yield* service.flush
+
+          // Verify deepest path is branch3 with depth 7
+          const deepest = yield* service.getDeepestPath('trace-1')
+          expect(deepest).toEqual([
+            'root',
+            'branch3',
+            'b3-level2',
+            'b3-level3',
+            'b3-level4',
+            'b3-level5',
+            'b3-level6'
+          ])
+
+          const maxDepth = yield* service.getMaxDepth('trace-1')
+          expect(maxDepth).toBe(7)
+
+          // Verify other branch depths
+          const branch1Path = yield* service.getPath('span-b1-l4')
+          expect(branch1Path.length).toBe(5)
+
+          const branch2Path = yield* service.getPath('span-b2-l2')
+          expect(branch2Path.length).toBe(3)
+
+          const branch4Path = yield* service.getPath('span-branch4')
+          expect(branch4Path.length).toBe(2)
+        }).pipe(Effect.scoped)
+      )
+    })
+
+    it('should get trace summary', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-root',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'root',
+              startTimeMs: Date.now()
+            })
+          )
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-child',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'child',
+              startTimeMs: Date.now()
+            })
+          )
+
+          yield* service.flush
+
+          const summary = yield* service.getTraceSummary('trace-1', {
+            traceUrlBase: 'https://honeycomb.io'
+          })
+
+          expect(summary.traceId).toBe('trace-1')
+          expect(summary.depth).toBe(2)
+          expect(summary.spanCount).toBe(2)
+          expect(summary.formattedPath).toBe('root → child')
+          expect(summary.traceUrl).toBe('https://honeycomb.io/trace/trace-1')
+        }).pipe(Effect.scoped)
+      )
+    })
+
+    it('should get leaf spans', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          // root -> child1 (leaf)
+          //      -> child2 -> grandchild (leaf)
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-root',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'root',
+              startTimeMs: Date.now()
+            })
+          )
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-child1',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'child1',
+              startTimeMs: Date.now()
+            })
+          )
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-child2',
+              traceId: 'trace-1',
+              parentSpanId: 'span-root',
+              name: 'child2',
+              startTimeMs: Date.now()
+            })
+          )
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-grandchild',
+              traceId: 'trace-1',
+              parentSpanId: 'span-child2',
+              name: 'grandchild',
+              startTimeMs: Date.now()
+            })
+          )
+
+          yield* service.flush
+
+          const leaves = yield* service.getLeafSpans('trace-1')
+          expect(leaves.length).toBe(2)
+          expect(leaves.map((l) => l.name).sort()).toEqual(['child1', 'grandchild'])
+        }).pipe(Effect.scoped)
+      )
+    })
+  })
+
+  describe('queue behavior', () => {
+    it('should handle queue overflow with sliding strategy', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          // Create service with small queue
+          const service = yield* makeSpanTreeService({ queueCapacity: 3 })
+
+          // Fill queue beyond capacity
+          for (let i = 0; i < 10; i++) {
+            service.recordStart(
+              new SpanStarted({
+                spanId: `span-${i}`,
+                traceId: 'trace-1',
+                parentSpanId: undefined,
+                name: `span-${i}`,
+                startTimeMs: Date.now()
+              })
+            )
+          }
+
+          yield* service.flush
+
+          // Should have processed some spans (sliding drops oldest)
+          const stats = yield* service.stats
+          expect(stats.spanCount).toBeGreaterThan(0)
+          // With sliding queue, newer events survive
+        }).pipe(Effect.scoped)
+      )
+    })
+  })
+
+  describe('memory statistics', () => {
+    it('should provide accurate memory estimates', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          // Add some spans
+          for (let i = 0; i < 10; i++) {
+            service.recordStart(
+              new SpanStarted({
+                spanId: `span-${i}`,
+                traceId: 'trace-1',
+                parentSpanId: i > 0 ? `span-${i - 1}` : undefined,
+                name: `span-${i}`,
+                startTimeMs: Date.now()
+              })
+            )
+          }
+
+          yield* service.flush
+
+          const stats = yield* service.stats
+          expect(stats.spanCount).toBe(10)
+          expect(stats.traceCount).toBe(1)
+          expect(stats.memory.totalBytes).toBeGreaterThan(0)
+          expect(stats.memory.spanRecordsBytes).toBeGreaterThan(0)
+          expect(stats.memory.avgBytesPerSpan).toBeGreaterThan(0)
+          expect(stats.memory.estimatedCapacityPercent).toBeGreaterThan(0)
+          expect(stats.memory.estimatedCapacityPercent).toBeLessThan(1) // 10 out of 10000 default
+        }).pipe(Effect.scoped)
+      )
+    })
+
+    it('should track child references in memory', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          // Create parent with multiple children
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'parent',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'parent',
+              startTimeMs: Date.now()
+            })
+          )
+
+          for (let i = 0; i < 5; i++) {
+            service.recordStart(
+              new SpanStarted({
+                spanId: `child-${i}`,
+                traceId: 'trace-1',
+                parentSpanId: 'parent',
+                name: `child-${i}`,
+                startTimeMs: Date.now()
+              })
+            )
+          }
+
+          yield* service.flush
+
+          const stats = yield* service.stats
+          expect(stats.memory.childRefsBytes).toBeGreaterThan(0)
+        }).pipe(Effect.scoped)
+      )
+    })
+  })
+
+  describe('disabled state', () => {
+    it('should return false for recordStart when disabled', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService({ enabled: false })
+
+          const accepted = service.recordStart(
+            new SpanStarted({
+              spanId: 'span-1',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'test',
+              startTimeMs: Date.now()
+            })
+          )
+
+          expect(accepted).toBe(false)
+
+          const isEnabled = yield* service.isEnabled()
+          expect(isEnabled).toBe(false)
+        }).pipe(Effect.scoped)
+      )
+    })
+
+    it('should return empty results when disabled', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService({ enabled: false })
+
+          const path = yield* service.getPath('any')
+          expect(path).toEqual([])
+
+          const deepest = yield* service.getDeepestPath('any')
+          expect(deepest).toEqual([])
+
+          const stats = yield* service.stats
+          expect(stats.spanCount).toBe(0)
+          expect(stats.memory.totalBytes).toBe(0)
+        }).pipe(Effect.scoped)
+      )
+    })
+  })
+
+  describe('clear and management', () => {
+    it('should clear a specific trace', async () => {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const service = yield* makeSpanTreeService()
+
+          // Add spans to two traces
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-1',
+              traceId: 'trace-1',
+              parentSpanId: undefined,
+              name: 'trace1-span',
+              startTimeMs: Date.now()
+            })
+          )
+
+          service.recordStart(
+            new SpanStarted({
+              spanId: 'span-2',
+              traceId: 'trace-2',
+              parentSpanId: undefined,
+              name: 'trace2-span',
+              startTimeMs: Date.now()
+            })
+          )
+
+          yield* service.flush
+
+          let stats = yield* service.stats
+          expect(stats.traceCount).toBe(2)
+          expect(stats.spanCount).toBe(2)
+
+          // Clear trace-1
+          yield* service.clear('trace-1')
+
+          stats = yield* service.stats
+          expect(stats.traceCount).toBe(1)
+          expect(stats.spanCount).toBe(1)
+
+          // trace-2 should still exist
+          const spans = yield* service.getTraceSpans('trace-2')
+          expect(spans.length).toBe(1)
+        }).pipe(Effect.scoped)
+      )
     })
   })
 })
