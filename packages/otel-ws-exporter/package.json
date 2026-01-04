@@ -1,0 +1,81 @@
+{
+  "name": "@atrim/otel-ws-exporter",
+  "version": "0.1.0",
+  "description": "WebSocket-based OpenTelemetry trace exporter for browser and Node.js",
+  "type": "module",
+  "license": "MIT",
+  "author": "Atrim AI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atrim-ai/instrumentation.git",
+    "directory": "packages/otel-ws-exporter"
+  },
+  "bugs": {
+    "url": "https://github.com/atrim-ai/instrumentation/issues"
+  },
+  "homepage": "https://github.com/atrim-ai/instrumentation#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "opentelemetry",
+    "exporter",
+    "websocket",
+    "tracing",
+    "browser",
+    "webcontainer",
+    "otlp"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./target/dist/index.d.ts",
+      "import": "./target/dist/index.js",
+      "require": "./target/dist/index.cjs"
+    }
+  },
+  "main": "./target/dist/index.cjs",
+  "module": "./target/dist/index.js",
+  "types": "./target/dist/index.d.ts",
+  "files": [
+    "target/dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:watch": "vitest --config vitest.integration.config.ts",
+    "test:all": "pnpm test && pnpm test:integration",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "clean": "rm -rf target"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/core": "^2.2.0",
+    "@opentelemetry/otlp-exporter-base": "^0.208.0",
+    "@opentelemetry/otlp-transformer": "^0.208.0",
+    "@opentelemetry/sdk-trace-base": "^2.2.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/resources": "^2.2.0",
+    "@opentelemetry/semantic-conventions": "^1.38.0",
+    "@types/node": "^25.0.0",
+    "@types/ws": "^8.5.13",
+    "@vitest/coverage-v8": "^4.0.8",
+    "tsup": "^8.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.8",
+    "ws": "^8.18.0"
+  }
+}
