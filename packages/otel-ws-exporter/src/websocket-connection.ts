@@ -23,7 +23,7 @@ export class WebSocketConnection {
   /**
    * Connect to WebSocket server with optional handshake
    */
-  async connect(): Promise<void> {
+  connect(): Promise<void> {
     // If already connected or connecting, return existing promise
     if (this.state.status === 'connected') {
       return Promise.resolve()

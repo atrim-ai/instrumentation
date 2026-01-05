@@ -130,10 +130,14 @@ describe('WebSocketConnection', () => {
 
       const connection = new WebSocketConnection({
         url: 'ws://localhost:8080',
-        enableHandshake: true
+        enableHandshake: true,
+        enableReconnect: false // Disable reconnect to avoid unhandled promise rejections
       })
 
       const connectPromise = connection.connect()
+
+      // Set up rejection handler BEFORE advancing timers to avoid unhandled rejection
+      const rejectionPromise = expect(connectPromise).rejects.toThrow('Handshake timeout')
 
       // Fast-forward past connection opening
       await vi.advanceTimersByTimeAsync(10)
@@ -141,7 +145,12 @@ describe('WebSocketConnection', () => {
       // Fast-forward past handshake timeout (5000ms)
       await vi.advanceTimersByTimeAsync(5100)
 
-      await expect(connectPromise).rejects.toThrow('Handshake timeout')
+      // Now await the rejection
+      await rejectionPromise
+
+      // Clean up and flush any remaining async operations
+      await connection.close()
+      await vi.runAllTimersAsync()
 
       vi.useRealTimers()
     })
@@ -362,25 +371,59 @@ describe('WebSocketConnection', () => {
         reconnectDelayMs: 100
       })
 
-      // Mock WebSocket to always fail
+      // Mock WebSocket to always fail (don't call super to avoid parent's 'open' event)
       const originalWebSocket = global.WebSocket
-      global.WebSocket = class extends MockWebSocket {
+      global.WebSocket = class FailingWebSocket {
+        static CONNECTING = 0
+        static OPEN = 1
+        static CLOSING = 2
+        static CLOSED = 3
+
+        readyState = FailingWebSocket.CONNECTING
+        url: string
+        private listeners: Map<string, Set<Function>> = new Map()
+
         constructor(url: string) {
-          super(url)
+          this.url = url
+          // Only trigger error, never open
           setTimeout(() => {
             this.trigger('error', {})
           }, 5)
         }
+
+        addEventListener(event: string, handler: Function) {
+          if (!this.listeners.has(event)) {
+            this.listeners.set(event, new Set())
+          }
+          this.listeners.get(event)!.add(handler)
+        }
+
+        removeEventListener(event: string, handler: Function) {
+          this.listeners.get(event)?.delete(handler)
+        }
+
+        send(_data: string) {}
+        close() {}
+
+        trigger(event: string, data: any) {
+          const handlers = this.listeners.get(event)
+          if (handlers) {
+            handlers.forEach((handler) => handler(data))
+          }
+        }
       } as any
 
-      const connectPromise = connection.connect()
+      connection.connect().catch(() => {
+        // Ignore the initial connection error
+      })
 
       // Wait for initial connection attempt to fail
       await vi.advanceTimersByTimeAsync(10)
 
-      // Wait for all retry attempts
+      // Wait for all retry attempts (3 retries with exponential backoff)
+      // Initial delay: 100ms, then 200ms, then 400ms
       for (let i = 0; i < 3; i++) {
-        await vi.advanceTimersByTimeAsync(150)
+        await vi.advanceTimersByTimeAsync(500)
       }
 
       const state = connection.getState()

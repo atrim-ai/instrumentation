@@ -7,24 +7,19 @@ const mockConnectionInstances: any[] = []
 
 // Mock WebSocketConnection
 vi.mock('../../src/websocket-connection.js', () => {
-  class MockWebSocketConnection {
-    connect = vi.fn().mockResolvedValue(undefined)
-    send = vi.fn().mockResolvedValue(undefined)
-    close = vi.fn().mockResolvedValue(undefined)
-    getState = vi.fn().mockReturnValue({
+  const MockWebSocketConnection = vi.fn(function (this: any, ...args: any[]) {
+    mockConnectionInstances.push({ args, instance: this })
+    this.connect = vi.fn().mockResolvedValue(undefined)
+    this.send = vi.fn().mockResolvedValue(undefined)
+    this.close = vi.fn().mockResolvedValue(undefined)
+    this.getState = vi.fn().mockReturnValue({
       status: 'connected',
       reconnectAttempts: 0
     })
-
-    constructor(...args: any[]) {
-      mockConnectionInstances.push({ args, instance: this })
-    }
-  }
+  })
 
   return {
-    WebSocketConnection: vi.fn().mockImplementation((...args: any[]) => {
-      return new MockWebSocketConnection(...args)
-    })
+    WebSocketConnection: MockWebSocketConnection
   }
 })
 

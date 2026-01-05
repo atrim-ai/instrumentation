@@ -6,15 +6,13 @@ import { WebSocketTransport } from '../../src/websocket-transport.js'
 
 // Mock WebSocketTransport
 vi.mock('../../src/websocket-transport.js', () => {
-  class MockWebSocketTransport {
-    send = vi.fn().mockResolvedValue({ status: 'success' })
-    shutdown = vi.fn().mockResolvedValue(undefined)
-  }
+  const MockWebSocketTransport = vi.fn(function (this: any) {
+    this.send = vi.fn().mockResolvedValue({ status: 'success' })
+    this.shutdown = vi.fn().mockResolvedValue(undefined)
+  })
 
   return {
-    WebSocketTransport: vi.fn().mockImplementation(() => {
-      return new MockWebSocketTransport()
-    })
+    WebSocketTransport: MockWebSocketTransport
   }
 })
 
