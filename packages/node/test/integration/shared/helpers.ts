@@ -79,7 +79,7 @@ export interface CollectorContainer {
  *
  * Traces are forwarded to both:
  * 1. Debug exporter (for test logs)
- * 2. Dev instance at localhost:4318 (for inspection in your local collector) - if available
+ * 2. atrim2 backend at localhost:4319 (for inspection in atrim2 UI) - if available
  */
 export async function startCollectorContainer(): Promise<CollectorContainer> {
   console.log('🚀 Starting isolated OTEL Collector container...')
@@ -93,12 +93,14 @@ export async function startCollectorContainer(): Promise<CollectorContainer> {
   } else {
     // Try to enable dev collector forwarding in local dev, but don't fail if unavailable
     try {
-      await TestContainers.exposeHostPorts(4318)
+      await TestContainers.exposeHostPorts(4319)
       devForwardingEnabled = true
-      console.log('📤 Traces will be forwarded to host.testcontainers.internal:4318 for inspection')
+      console.log(
+        '📤 Traces will be forwarded to host.testcontainers.internal:4319 (atrim2 backend)'
+      )
     } catch (error) {
       console.log(
-        '⚠️  Dev collector forwarding disabled (port 4318 unavailable or already exposed)'
+        '⚠️  Dev collector forwarding disabled (port 4319 unavailable or already exposed)'
       )
     }
   }

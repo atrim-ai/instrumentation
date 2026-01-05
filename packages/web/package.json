@@ -91,7 +91,7 @@
     "@opentelemetry/semantic-conventions": "^1.38.0",
     "@types/node": "^25.0.0",
     "@vitest/coverage-v8": "^4.0.8",
-    "jsdom": "^24.0.0",
+    "jsdom": "^27.3.0",
     "tsup": "^8.0.1",
     "typescript": "^5.7.2",
     "vitest": "^4.0.8"

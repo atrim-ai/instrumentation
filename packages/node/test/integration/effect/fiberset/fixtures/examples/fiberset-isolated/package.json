@@ -17,8 +17,5 @@
     "@opentelemetry/sdk-trace-web": "^2.2.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
     "@opentelemetry/semantic-conventions": "^1.33.0"
-  },
-  "devDependencies": {
-    "tsx": "^4.7.0"
   }
 }

@@ -38,7 +38,7 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "changeset publish",
-    "publish:dev": "pnpm build && bash scripts/publish-snapshot.sh",
+    "publish:dev": "pnpm build && bash scripts/publish-snapshot.sh $npm_config_otp",
     "publish:dev:node": "pnpm --filter @atrim/instrument-node publish:dev",
     "publish:dev:web": "pnpm --filter @atrim/instrument-web publish:dev"
   },
@@ -67,7 +67,7 @@
     "@types/express": "^5.0.5",
     "@types/node": "^25.0.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
+    "@typescript-eslint/parser": "^8.50.0",
     "eslint": "^9.0.0",
     "globals": "^15.0.0",
     "husky": "^9.1.7",

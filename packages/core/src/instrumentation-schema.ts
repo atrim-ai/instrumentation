@@ -93,6 +93,13 @@ export const InstrumentationConfigSchema = z.object({
   }),
   effect: z
     .object({
+      // Enable/disable Effect tracing entirely
+      // When false, EffectInstrumentationLive returns Layer.empty
+      enabled: z.boolean().default(true),
+      // Exporter mode:
+      // - "unified": Use global TracerProvider from Node SDK (recommended, enables filtering)
+      // - "standalone": Use Effect's own OTLP exporter (bypasses Node SDK filtering)
+      exporter: z.enum(['unified', 'standalone']).default('unified'),
       auto_extract_metadata: z.boolean(),
       auto_isolation: AutoIsolationConfigSchema.optional()
     })
@@ -126,6 +133,8 @@ export const defaultConfig: InstrumentationConfig = {
     ]
   },
   effect: {
+    enabled: true,
+    exporter: 'unified' as const,
     auto_extract_metadata: true
   }
 }
