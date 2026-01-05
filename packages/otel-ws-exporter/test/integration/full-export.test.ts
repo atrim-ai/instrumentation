@@ -13,36 +13,43 @@ describe('WebSocket Trace Exporter Integration', () => {
   let receivedMessages: any[] = []
 
   beforeAll(async () => {
-    // Use random port to avoid conflicts
-    port = 8080 + Math.floor(Math.random() * 1000)
+    // Use port 0 to let OS assign an available port
+    await new Promise<void>((resolve, reject) => {
+      server = new WebSocketServer({ port: 0 })
 
-    // Create WebSocket server
-    server = new WebSocketServer({ port })
-
-    server.on('connection', (ws: WebSocket) => {
-      // Handle handshake
-      ws.on('message', (data) => {
-        const message = data.toString()
-
-        // Respond to handshake
-        if (message === 'init-request') {
-          ws.send('init-response')
-          return
+      server.on('listening', () => {
+        // Get the actual port assigned by the OS
+        const address = server.address()
+        if (address && typeof address === 'object') {
+          port = address.port
         }
-
-        // Store received trace messages
-        try {
-          const parsed = JSON.parse(message)
-          receivedMessages.push(parsed)
-        } catch (error) {
-          console.error('Failed to parse message:', error)
-        }
+        resolve()
       })
-    })
 
-    // Wait for server to be listening
-    await new Promise<void>((resolve) => {
-      server.on('listening', () => resolve())
+      server.on('error', (err) => {
+        reject(err)
+      })
+
+      server.on('connection', (ws: WebSocket) => {
+        // Handle handshake
+        ws.on('message', (data) => {
+          const message = data.toString()
+
+          // Respond to handshake
+          if (message === 'init-request') {
+            ws.send('init-response')
+            return
+          }
+
+          // Store received trace messages
+          try {
+            const parsed = JSON.parse(message)
+            receivedMessages.push(parsed)
+          } catch (error) {
+            console.error('Failed to parse message:', error)
+          }
+        })
+      })
     })
   })
 
