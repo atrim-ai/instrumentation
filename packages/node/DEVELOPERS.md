@@ -267,6 +267,23 @@ pnpm --filter @atrim/instrument-core build
 pnpm --filter @atrim/instrument-node build
 ```
 
+## Known Limitations
+
+### `auto_extract_metadata` config option not implemented
+
+The `effect.auto_extract_metadata` configuration option in `instrumentation.yaml` is **defined but not implemented**. The config flag is parsed but never consulted at runtime.
+
+**Current behavior:** Metadata extraction is entirely manual. Users must explicitly call:
+- `autoEnrichSpan()` inside a span
+- `withAutoEnrichedSpan('span.name')(effect)` as a wrapper
+
+**Why it exists:** The config option is reserved for future automatic extraction support, where setting `auto_extract_metadata: true` would automatically enrich all Effect spans with fiber metadata without explicit calls.
+
+**Files involved:**
+- Schema definition: `packages/core/src/instrumentation-schema.ts` (line ~103)
+- Unused option: `packages/node/src/integrations/effect/effect-tracer.ts` (line ~63)
+- Manual extraction: `packages/node/src/integrations/effect/auto-enrichment.ts`
+
 ## Resources
 
 - [OpenTelemetry JS](https://github.com/open-telemetry/opentelemetry-js)

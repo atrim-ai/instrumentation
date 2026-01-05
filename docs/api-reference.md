@@ -126,10 +126,12 @@ interface InstrumentationConfig {
     ignore_patterns: PatternConfig[]
   }
   effect?: {
-    auto_extract_metadata: boolean
+    auto_extract_metadata: boolean  // ⚠️ NOT IMPLEMENTED - see note below
   }
 }
 ```
+
+> **⚠️ Note:** `effect.auto_extract_metadata` is defined but **not implemented**. Metadata extraction requires explicit calls to `autoEnrichSpan()` or `withAutoEnrichedSpan()`. See [Effect Metadata Extraction](#effect-metadata-extraction) for usage.
 
 ---
 
@@ -487,6 +489,67 @@ await tracer.startActiveSpan('cache.get', async (span) => {
 
 ---
 
+## Effect Metadata Extraction
+
+Functions for adding Effect-TS fiber metadata to spans. Import from `@atrim/instrument-node/effect`.
+
+> **Note:** The `effect.auto_extract_metadata` config option is **not implemented**. You must explicitly call these functions to add fiber metadata.
+
+### `autoEnrichSpan()`
+
+Add Effect fiber metadata to the current span.
+
+```typescript
+function autoEnrichSpan(): Effect.Effect<void>
+```
+
+**Example:**
+
+```typescript
+import { autoEnrichSpan } from '@atrim/instrument-node/effect'
+
+const operation = Effect.gen(function* () {
+  yield* autoEnrichSpan()  // Adds fiber metadata to current span
+  // ... your logic
+}).pipe(Effect.withSpan('app.operation'))
+```
+
+**Added attributes:**
+- `effect.fiber.id` - Unique fiber thread name
+- `effect.fiber.status` - Current fiber status
+- `effect.operation.root` - `true` if root operation
+- `effect.operation.nested` - `true` if nested under another span
+- `effect.parent.span.id` - Parent span ID (if nested)
+- `effect.parent.span.name` - Parent span name (if nested)
+- `effect.parent.trace.id` - Parent trace ID (if nested)
+
+---
+
+### `withAutoEnrichedSpan()`
+
+Convenience wrapper that combines span creation with automatic metadata enrichment.
+
+```typescript
+function withAutoEnrichedSpan<A, E, R>(
+  spanName: string,
+  options?: { readonly attributes?: Record<string, unknown> }
+): (self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+```
+
+**Example:**
+
+```typescript
+import { withAutoEnrichedSpan } from '@atrim/instrument-node/effect'
+
+const operation = withAutoEnrichedSpan('app.operation')(
+  Effect.gen(function* () {
+    // ... your logic (fiber metadata added automatically)
+  })
+)
+```
+
+---
+
 ## TypeScript Types
 
 All types are exported from the main entry point:
@@ -519,7 +582,7 @@ export interface InstrumentationConfig {
     ignore_patterns: PatternConfig[]
   }
   effect?: {
-    auto_extract_metadata: boolean
+    auto_extract_metadata: boolean  // ⚠️ NOT IMPLEMENTED
   }
 }
 

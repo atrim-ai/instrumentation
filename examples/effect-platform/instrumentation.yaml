@@ -31,4 +31,7 @@ instrumentation:
 
 # Effect-specific configuration
 effect:
+  # NOTE: auto_extract_metadata is NOT YET IMPLEMENTED.
+  # You must explicitly call autoEnrichSpan() or use withAutoEnrichedSpan()
+  # to add fiber metadata to spans. See README.md for usage examples.
   auto_extract_metadata: true

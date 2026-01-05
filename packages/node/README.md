@@ -80,6 +80,35 @@ const process = Effect.gen(function* () {
 
 Available: `annotateUser`, `annotateBatch`, `annotateDataSize`, `annotateLLM`, `annotateQuery`, `annotateHttpRequest`, `annotateError`, `annotatePriority`, `annotateCache`
 
+### Effect Fiber Metadata Extraction
+
+To add Effect fiber metadata (fiber ID, status, parent span info) to your spans, you must **explicitly call** the enrichment functions:
+
+```typescript
+import { autoEnrichSpan, withAutoEnrichedSpan } from '@atrim/instrument-node/effect'
+
+// Option 1: Call autoEnrichSpan() inside a span
+const operation = Effect.gen(function* () {
+  yield* autoEnrichSpan()  // Adds fiber metadata to current span
+  // ... your logic
+}).pipe(Effect.withSpan('app.operation'))
+
+// Option 2: Use the convenience wrapper
+const operation = withAutoEnrichedSpan('app.operation')(
+  Effect.gen(function* () {
+    // ... your logic (fiber metadata added automatically)
+  })
+)
+```
+
+**Extracted metadata:**
+- `effect.fiber.id` - Unique fiber thread name
+- `effect.fiber.status` - Current fiber status
+- `effect.operation.root` / `effect.operation.nested` - Operation hierarchy
+- `effect.parent.span.id`, `effect.parent.span.name`, `effect.parent.trace.id` - Parent span info
+
+> **Note:** The `auto_extract_metadata` config option is currently not implemented. Metadata extraction requires explicit calls as shown above. See [#issue] for tracking automatic extraction support.
+
 ## Configuration (Optional)
 
 Create `instrumentation.yaml` in your project root:

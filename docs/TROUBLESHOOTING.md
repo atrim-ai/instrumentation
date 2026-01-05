@@ -75,6 +75,52 @@ console.log(shouldInstrumentSpan('app.users.list'))    // true
 console.log(shouldInstrumentSpan('health.check'))      // false
 ```
 
+## Effect Fiber Metadata Not Appearing
+
+If your Effect spans are missing fiber metadata (like `effect.fiber.id`, `effect.fiber.status`), this is expected behavior.
+
+### Root Cause
+
+The `auto_extract_metadata` configuration option is **not implemented**. The config flag in `instrumentation.yaml` is parsed but never actually used at runtime.
+
+### Solution: Explicit Metadata Extraction
+
+You must explicitly call the enrichment functions to add fiber metadata:
+
+```typescript
+import { autoEnrichSpan, withAutoEnrichedSpan } from '@atrim/instrument-node/effect'
+
+// Option 1: Call autoEnrichSpan() inside a span
+const operation = Effect.gen(function* () {
+  yield* autoEnrichSpan()  // Adds fiber metadata to current span
+  // ... your logic
+}).pipe(Effect.withSpan('app.operation'))
+
+// Option 2: Use the convenience wrapper
+const operation = withAutoEnrichedSpan('app.operation')(
+  Effect.gen(function* () {
+    // ... your logic (fiber metadata added automatically)
+  })
+)
+```
+
+### What Metadata Gets Added
+
+When you call `autoEnrichSpan()` or use `withAutoEnrichedSpan()`:
+- `effect.fiber.id` - Unique fiber thread name
+- `effect.fiber.status` - Current fiber status
+- `effect.operation.root` - `true` if this is a root operation
+- `effect.operation.nested` - `true` if this is nested under another span
+- `effect.parent.span.id` - Parent span ID (if nested)
+- `effect.parent.span.name` - Parent span name (if nested)
+- `effect.parent.trace.id` - Parent trace ID (if nested)
+
+### Why Isn't It Automatic?
+
+The `auto_extract_metadata: true` config option was designed for future automatic extraction but hasn't been implemented yet. Currently, metadata extraction is opt-in on a per-span basis.
+
+---
+
 ## Effect.withSpan() Spans Not Appearing
 
 For pure Effect applications (no Express/Fastify):
