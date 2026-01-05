@@ -16,6 +16,10 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Get path to tsx binary from packages/node
+const packageRoot = path.resolve(__dirname, '../../../')
+const tsxBin = path.resolve(packageRoot, 'node_modules/.bin/tsx')
+
 let collector: CollectorContainer
 
 /**
@@ -30,7 +34,8 @@ async function runAnnotationTest(
     let stdout = ''
     let stderr = ''
 
-    const child = spawn('pnpm', ['exec', 'tsx', scriptPath], {
+    // Use tsx binary directly from packages/node to avoid pnpm resolution issues
+    const child = spawn(tsxBin, [scriptPath], {
       env: {
         ...process.env,
         OTEL_EXPORTER_OTLP_ENDPOINT: otlpEndpoint,

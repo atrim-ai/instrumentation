@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Enable version updates for npm
+  # Root package.json
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -9,7 +9,6 @@ updates:
       time: "09:00"
       timezone: "America/Los_Angeles"
     open-pull-requests-limit: 10
-    # Group all non-major updates together to reduce PR noise
     groups:
       development-dependencies:
         dependency-type: "development"
@@ -21,22 +20,166 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # Allow semantic versioning
     versioning-strategy: increase
-    # Add labels for easier PR management
     labels:
       - "dependencies"
-      - "automated"
-    # Commit message prefix
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+
+  # Examples - these can be auto-merged more freely
+  - package-ecosystem: "npm"
+    directory: "/examples/bun"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "examples"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
-    # Reviewers (optional - add your GitHub username)
-    # reviewers:
-    #   - "croach"
-    # Auto-merge minor/patch updates (optional - requires branch protection)
-    # assignees:
-    #   - "croach"
+
+  - package-ecosystem: "npm"
+    directory: "/examples/effect-platform"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "examples"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "/examples/effect-ts"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "examples"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "/examples/express"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "examples"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "/examples/remote-config"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "examples"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "/examples/vanilla"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "examples"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "/examples/web-react"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "examples"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "/examples/web-vanilla"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "examples"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"

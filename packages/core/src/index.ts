@@ -22,7 +22,12 @@ export {
 } from './pattern-matcher.js'
 
 // Schema and types
-export { InstrumentationConfigSchema, PatternConfigSchema } from './instrumentation-schema.js'
+export {
+  InstrumentationConfigSchema,
+  PatternConfigSchema,
+  defaultConfig,
+  parseAndValidateConfig
+} from './instrumentation-schema.js'
 export type { InstrumentationConfig, PatternConfig } from './instrumentation-schema.js'
 
 // Logging
