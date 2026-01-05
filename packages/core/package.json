@@ -29,8 +29,8 @@
     "clean": "rm -rf target"
   },
   "dependencies": {
-    "effect": "^3.19.0",
-    "@effect/platform": "^0.93.0",
+    "effect": "^3.19.14",
+    "@effect/platform": "^0.94.1",
     "yaml": "^2.3.0",
     "zod": "^3.22.0"
   },
