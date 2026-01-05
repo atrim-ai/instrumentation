@@ -1,5 +1,11 @@
 # @atrim/instrument-node
 
+## 0.6.0
+
+### Minor Changes
+
+- f0ec254: Bundle SDK Deps and WebSocket Exporter
+
 ## 0.5.1
 
 ### Patch Changes

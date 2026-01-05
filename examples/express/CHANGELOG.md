@@ -1,5 +1,12 @@
 # @atrim/instrumentation-example-express
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [f0ec254]
+  - @atrim/instrument-node@0.6.0
+
 ## 0.5.1
 
 ### Patch Changes

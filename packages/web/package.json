@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrument-web",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "description": "OpenTelemetry instrumentation for browsers with centralized YAML configuration",
   "type": "module",
   "license": "MIT",
