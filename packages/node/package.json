@@ -95,14 +95,14 @@
     "@opentelemetry/sdk-trace-node": "^2.2.0",
     "@opentelemetry/sdk-trace-web": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.38.0",
-    "@types/node": "^25.0.0",
-    "@vitest/coverage-v8": "^4.0.8",
+    "@types/node": "^25.0.3",
+    "@vitest/coverage-v8": "^4.0.16",
     "effect": "^3.19.8",
-    "testcontainers": "^11.10.0",
+    "testcontainers": "^11.11.0",
     "tsup": "^8.0.1",
     "tsx": "^4.7.0",
     "typescript": "^5.7.2",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.16"
   },
   "peerDependencies": {
     "@effect/opentelemetry": ">=0.40.0",
