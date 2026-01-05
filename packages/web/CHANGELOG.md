@@ -1,5 +1,14 @@
 # @atrim/instrument-web
 
+## 0.7.0
+
+### Minor Changes
+
+- 60e56c4: Remove unused Effect package overrides and resolve version mismatches
+  - Removed pnpm overrides for unused `@effect/cluster`, `@effect/rpc`, and `@effect/sql` packages
+  - Added `peerDependencyRules.ignoreMissing` to suppress peer dependency warnings
+  - Allow pnpm to auto-resolve compatible versions for transitive Effect dependencies
+
 ## 0.6.0
 
 ### Minor Changes

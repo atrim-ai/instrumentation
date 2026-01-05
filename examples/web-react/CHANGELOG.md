@@ -1,5 +1,12 @@
 # web-react-example
 
+## 0.5.5
+
+### Patch Changes
+
+- Updated dependencies [60e56c4]
+  - @atrim/instrument-web@0.7.0
+
 ## 0.5.4
 
 ### Patch Changes

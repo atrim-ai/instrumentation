@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrumentation-example-remote-config",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Remote configuration example for @atrim/instrumentation",
   "type": "module",
   "private": true,
