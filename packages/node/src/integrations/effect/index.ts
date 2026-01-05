@@ -11,7 +11,16 @@
  */
 
 // Effect-specific exports
-export { EffectInstrumentationLive, createEffectInstrumentation } from './effect-tracer.js'
+export {
+  EffectInstrumentationLive,
+  createEffectInstrumentation,
+  // Context bridging utilities (OTel ↔ Effect)
+  withOtelParentSpan, // OTel → Effect: Capture active OTel span as Effect parent
+  withFullOtelBridging, // Bidirectional bridging (recommended for HTTP handlers)
+  runWithOtelContext, // Effect → OTel: Set Effect span as active OTel span
+  getCurrentOtelSpanContext, // Get current OTel span context
+  getOtelParentSpan // Create ExternalSpan from active OTel span
+} from './effect-tracer.js'
 
 // Effect-specific span helpers
 export {

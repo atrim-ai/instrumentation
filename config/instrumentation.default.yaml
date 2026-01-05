@@ -76,3 +76,10 @@ effect:
 
   # Automatically extract Effect fiber metadata as span attributes
   auto_extract_metadata: true
+
+  # Auto-bridge OpenTelemetry context to Effect spans (default: true)
+  # When true, Effect spans automatically become children of the active OTel span
+  # (e.g., HTTP request span from auto-instrumentation)
+  # This ensures proper parent-child relationships in traces when using Effect
+  # with HTTP frameworks like Express, Fastify, or @effect/platform
+  auto_bridge_context: true

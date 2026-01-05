@@ -100,6 +100,11 @@ export const InstrumentationConfigSchema = z.object({
       // - "standalone": Use Effect's own OTLP exporter (bypasses Node SDK filtering)
       exporter: z.enum(['unified', 'standalone']).default('unified'),
       auto_extract_metadata: z.boolean(),
+      // Auto-bridge OpenTelemetry context to Effect spans
+      // When true, Effect spans automatically become children of the active OTel span
+      // (e.g., HTTP request span from auto-instrumentation)
+      // This is essential for proper trace hierarchy when using Effect with HTTP frameworks
+      auto_bridge_context: z.boolean().default(true),
       auto_isolation: AutoIsolationConfigSchema.optional()
     })
     .optional(),

@@ -7,7 +7,11 @@
  * - Effect.timeout for operation timeouts
  * - Effect.either for error handling
  * - Effect.all for parallel execution
- * - Context propagation from Express to Effect
+ * - Context propagation from Express to Effect (using withOtelParentSpan)
+ *
+ * IMPORTANT: The withOtelParentSpan utility bridges HTTP spans (created by OTel
+ * auto-instrumentation) to Effect spans. This ensures Effect spans appear as
+ * children of the HTTP request span in your trace viewer.
  *
  * To run this example:
  * 1. Make sure you have an OpenTelemetry collector running:
@@ -24,7 +28,7 @@
 
 import express from 'express'
 import { Effect, Schedule, Duration, Exit, Layer } from 'effect'
-import { EffectInstrumentationLive } from '@atrim/instrument-node/effect'
+import { EffectInstrumentationLive, withOtelParentSpan } from '@atrim/instrument-node/effect'
 import { initializeInstrumentation } from '@atrim/instrument-node'
 
 // ============================================================================
@@ -351,8 +355,12 @@ function createApp() {
   })
 
   // List all users
+  // withOtelParentSpan bridges the HTTP span to Effect spans
   app.get('/users', async (_req, res) => {
-    const program = fetchAllUsers().pipe(Effect.provide(EffectInstrumentationLive))
+    const program = fetchAllUsers().pipe(
+      withOtelParentSpan, // Bridge HTTP span → Effect spans
+      Effect.provide(EffectInstrumentationLive)
+    )
 
     const exit = await Effect.runPromiseExit(program)
 
@@ -366,7 +374,10 @@ function createApp() {
 
   // Get user by ID (with race condition demo)
   app.get('/users/:id', async (req, res) => {
-    const program = fetchUserWithRace(req.params.id).pipe(Effect.provide(EffectInstrumentationLive))
+    const program = fetchUserWithRace(req.params.id).pipe(
+      withOtelParentSpan, // Bridge HTTP span → Effect spans
+      Effect.provide(EffectInstrumentationLive)
+    )
 
     const exit = await Effect.runPromiseExit(program)
 
@@ -380,7 +391,10 @@ function createApp() {
 
   // Create user
   app.post('/users', async (req, res) => {
-    const program = createUser(req.body).pipe(Effect.provide(EffectInstrumentationLive))
+    const program = createUser(req.body).pipe(
+      withOtelParentSpan, // Bridge HTTP span → Effect spans
+      Effect.provide(EffectInstrumentationLive)
+    )
 
     const exit = await Effect.runPromiseExit(program)
 
@@ -395,6 +409,7 @@ function createApp() {
   // Complex workflow demo
   app.get('/workflow/:id', async (req, res) => {
     const program = complexUserWorkflow(req.params.id).pipe(
+      withOtelParentSpan, // Bridge HTTP span → Effect spans
       Effect.provide(EffectInstrumentationLive)
     )
 
@@ -444,6 +459,7 @@ async function main() {
       console.log('   3. Effect.timeout - Cache operation timeouts')
       console.log('   4. Effect.all - Parallel bulk operations')
       console.log('   5. Effect.either - Graceful error handling')
+      console.log('   6. withOtelParentSpan - HTTP → Effect span bridging')
       console.log('\n💡 Try these endpoints:')
       console.log(`   curl http://localhost:${PORT}/users`)
       console.log(`   curl http://localhost:${PORT}/users/1`)

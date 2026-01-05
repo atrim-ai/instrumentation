@@ -123,7 +123,8 @@ function getDefaultConfig(): InstrumentationConfig {
     effect: {
       enabled: true,
       exporter: 'unified' as const,
-      auto_extract_metadata: true
+      auto_extract_metadata: true,
+      auto_bridge_context: true
     }
   }
 }
