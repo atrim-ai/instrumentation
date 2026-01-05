@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrumentation-example-vanilla",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Vanilla TypeScript example for @atrim/instrumentation",
   "type": "module",
   "private": true,
