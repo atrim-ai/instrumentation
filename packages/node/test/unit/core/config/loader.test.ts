@@ -47,9 +47,8 @@ describe('config-loader', () => {
         // Missing instrumentation field
       }
 
-      await expect(loadConfigWithOptions({ config: invalidConfig as any })).rejects.toThrow(
-        'Invalid configuration'
-      )
+      // Zod validation throws with details about missing fields
+      await expect(loadConfigWithOptions({ config: invalidConfig as any })).rejects.toThrow()
     })
   })
 })

@@ -206,19 +206,34 @@ ignore_patterns:
 **Required:** No (only if using Effect-TS integration)
 **Default:** `true`
 
-Enable automatic extraction of Effect-TS fiber metadata.
+> **⚠️ Not Implemented:** This configuration option is currently **not implemented**. The config flag is parsed but never consulted at runtime. Metadata extraction requires explicit function calls. See below for usage.
 
-**Note:** This field is only used when importing from `@atrim/instrumentation/effect`.
+**Intended behavior (not yet implemented):** Automatically extract Effect-TS fiber metadata for all spans.
 
-```yaml
-effect:
-  auto_extract_metadata: true
+**Current behavior:** You must explicitly call `autoEnrichSpan()` or use `withAutoEnrichedSpan()`:
+
+```typescript
+import { autoEnrichSpan, withAutoEnrichedSpan } from '@atrim/instrument-node/effect'
+
+// Option 1: Explicit call inside span
+const operation = Effect.gen(function* () {
+  yield* autoEnrichSpan()  // Adds fiber metadata to current span
+  // ... your logic
+}).pipe(Effect.withSpan('app.operation'))
+
+// Option 2: Use convenience wrapper
+const operation = withAutoEnrichedSpan('app.operation')(
+  Effect.gen(function* () {
+    // ... your logic (fiber metadata added automatically)
+  })
+)
 ```
 
-This adds the following attributes automatically:
-- `effect.fiber.id`
-- `effect.fiber.status`
-- `effect.operation.root`
+**Available metadata when using explicit calls:**
+- `effect.fiber.id` - Unique fiber thread name
+- `effect.fiber.status` - Current fiber status
+- `effect.operation.root` / `effect.operation.nested` - Operation hierarchy
+- `effect.parent.span.id`, `effect.parent.span.name`, `effect.parent.trace.id` - Parent span info
 
 ---
 

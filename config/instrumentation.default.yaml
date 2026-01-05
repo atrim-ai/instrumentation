@@ -74,5 +74,8 @@ effect:
   #                 Bypasses Node SDK filtering (not recommended)
   exporter: unified
 
-  # Automatically extract Effect fiber metadata as span attributes
+  # NOTE: This option is currently NOT IMPLEMENTED.
+  # Metadata extraction requires explicit calls to autoEnrichSpan() or
+  # withAutoEnrichedSpan() in your code. See README.md for usage examples.
+  # This option is reserved for future automatic extraction support.
   auto_extract_metadata: true

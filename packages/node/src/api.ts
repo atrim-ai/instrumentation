@@ -15,6 +15,7 @@ import { initializeSdk, type SdkInitializationOptions } from './core/sdk-initial
 import { initializePatternMatcher, logger } from '@atrim/instrument-core'
 import { loadConfigWithOptions } from './core/config-loader.js'
 import { InitializationError, ConfigError } from './core/errors.js'
+import { validateOpenTelemetryApi, validateDependencies } from './core/dependency-check.js'
 
 /**
  * Initialize OpenTelemetry instrumentation with complete SDK setup
@@ -101,6 +102,9 @@ import { InitializationError, ConfigError } from './core/errors.js'
 export async function initializeInstrumentation(
   options: SdkInitializationOptions = {}
 ): Promise<NodeSDK | null> {
+  // Validate required peer dependencies
+  validateOpenTelemetryApi()
+
   // Initialize the complete SDK with all features
   // Returns null if OpenTelemetry is already initialized elsewhere
   const sdk = await initializeSdk(options)
@@ -185,6 +189,9 @@ export const initializeInstrumentationEffect = (
   options: SdkInitializationOptions = {}
 ): Effect.Effect<NodeSDK | null, InitializationError | ConfigError> =>
   Effect.gen(function* () {
+    // Validate required peer dependencies
+    yield* validateDependencies
+
     // Initialize SDK with error handling
     const sdk = yield* Effect.tryPromise({
       try: () => initializeSdk(options),
