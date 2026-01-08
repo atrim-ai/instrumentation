@@ -84,6 +84,9 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
   // Active fiber count (for max_concurrent limiting)
   private activeFiberCount = 0
 
+  // Root span for parent context (set by withAutoTracing)
+  private _rootSpan: OtelApi.Span | null = null
+
   constructor(private readonly config: AutoInstrumentationConfig) {
     super()
 
@@ -95,6 +98,13 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
     logger.log(`  Granularity: ${config.granularity || 'fiber'}`)
     logger.log(`  Sampling rate: ${config.performance?.sampling_rate ?? 1.0}`)
     logger.log(`  Infer from source: ${config.span_naming?.infer_from_source ?? true}`)
+  }
+
+  /**
+   * Set the root span for parent context propagation
+   */
+  setRootSpan(span: OtelApi.Span): void {
+    this._rootSpan = span
   }
 
   /**
@@ -173,6 +183,9 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
       if (parentSpan) {
         parentContext = OtelApi.trace.setSpan(parentContext, parentSpan)
       }
+    } else if (this._rootSpan) {
+      // No fiber parent, but we have a root span - use it as the parent
+      parentContext = OtelApi.trace.setSpan(parentContext, this._rootSpan)
     }
 
     // Create the span with full attributes
@@ -453,6 +466,9 @@ export const withAutoTracing = <A, E, R>(
       'effect.main_fiber': true
     }
   })
+
+  // Set the root span on the supervisor so child fibers use it as parent
+  supervisor.setRootSpan(mainSpan)
 
   // Wrap the effect to handle the main span lifecycle
   return Effect.acquireUseRelease(
