@@ -1,0 +1,87 @@
+version: "1.0"
+
+# Standard instrumentation config
+instrumentation:
+  enabled: true
+  description: "Effect auto-tracing example with console exporter"
+
+  instrument_patterns:
+    - pattern: "^app\\."
+      enabled: true
+      description: "Application operations"
+    - pattern: "^service\\."
+      enabled: true
+      description: "Service layer"
+    - pattern: "^http\\."
+      enabled: true
+      description: "HTTP operations"
+
+  ignore_patterns:
+    - pattern: "^internal\\."
+      description: "Internal operations"
+    - pattern: "^health\\."
+      description: "Health checks"
+
+# Effect-TS auto-instrumentation configuration
+effect:
+  auto_instrumentation:
+    enabled: true
+    granularity: fiber
+
+    # Span naming configuration
+    span_naming:
+      # Default template when no rules match
+      default: "effect.{function}"
+
+      # Infer function names from stack traces
+      infer_from_source: true
+
+      # Naming rules (first match wins)
+      rules:
+        # Internal operations: internalHealthCheck -> internal.healthCheck
+        # These will be excluded by filter.exclude pattern below
+        - match:
+            function: "internal.*"
+          name: "internal.{function}"
+
+        # Service layer: UserService.getUser -> service.User.getUser
+        - match:
+            file: "services/.*"
+          name: "service.{module}.{function}"
+
+        # HTTP operations: fetchUser -> http.fetchUser
+        - match:
+            function: "fetch.*"
+          name: "http.{function}"
+
+        # Database operations
+        - match:
+            function: ".*Query|.*Insert|.*Update|.*Delete"
+          name: "db.{function}"
+
+    # Filter patterns
+    filter:
+      include: []  # Empty = trace all
+      exclude:
+        - "^internal\\."
+        - "^debug\\."
+
+    # Performance controls
+    performance:
+      sampling_rate: 1.0      # Sample all fibers
+      min_duration: "0ms"     # No minimum duration
+      max_concurrent: 0       # No limit
+
+    # Metadata to include
+    metadata:
+      fiber_info: true
+      source_location: true
+      parent_fiber: true
+
+  # Exporter configuration (YAML-driven - no code setup needed!)
+  exporter_config:
+    type: console                 # Use console exporter for development
+    processor: simple             # Immediate export for debugging
+
+  # Backward compatibility
+  auto_extract_metadata: true

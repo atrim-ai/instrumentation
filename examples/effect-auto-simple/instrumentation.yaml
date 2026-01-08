@@ -1,0 +1,14 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  instrument_patterns: []
+  ignore_patterns: []
+
+effect:
+  auto_extract_metadata: true
+  auto_instrumentation:
+    enabled: true
+  exporter_config:
+    type: console
+    processor: simple

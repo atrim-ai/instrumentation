@@ -8,7 +8,10 @@
 import { Effect, Context, Layer } from 'effect'
 import {
   type AutoInstrumentationConfig,
+  type InstrumentationConfig,
+  type ExporterConfig,
   AutoInstrumentationConfigSchema,
+  defaultConfig,
   logger
 } from '@atrim/instrument-core'
 import { loadConfigWithOptions, type ConfigLoaderOptions } from '../../../core/config-loader.js'
@@ -135,3 +138,45 @@ export const AutoTracingConfigLive = Layer.effect(AutoTracingConfig, loadAutoTra
 export const AutoTracingConfigLayer = (
   config: AutoInstrumentationConfig
 ): Layer.Layer<AutoTracingConfig> => Layer.succeed(AutoTracingConfig, config)
+
+// ============================================================================
+// Full Config Loading
+// ============================================================================
+
+/**
+ * Load the full instrumentation config from instrumentation.yaml
+ *
+ * Returns the complete config including exporter settings for setting up
+ * the full auto-instrumentation pipeline.
+ */
+export const loadFullConfig = (
+  options?: ConfigLoaderOptions
+): Effect.Effect<InstrumentationConfig, never, never> =>
+  Effect.gen(function* () {
+    const config = yield* Effect.tryPromise({
+      try: () => loadConfigWithOptions(options),
+      catch: (error) => {
+        logger.log(`@atrim/auto-trace: Failed to load config: ${error}`)
+        return error
+      }
+    }).pipe(Effect.catchAll(() => Effect.succeed(null)))
+
+    if (!config) {
+      logger.log('@atrim/auto-trace: No config found, using defaults')
+      return defaultConfig
+    }
+
+    return config
+  })
+
+/**
+ * Default exporter configuration
+ */
+export const defaultExporterConfig: ExporterConfig = {
+  type: 'otlp',
+  processor: 'batch',
+  batch: {
+    scheduled_delay_millis: 1000,
+    max_export_batch_size: 100
+  }
+}

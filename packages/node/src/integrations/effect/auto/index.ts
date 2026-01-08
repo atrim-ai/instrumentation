@@ -25,10 +25,16 @@
 
 // Core supervisor and layers
 export {
+  // Full YAML-driven layer (recommended)
+  FullAutoTracingLive,
+  createFullAutoTracingLayer,
+  // Supervisor-only layer (requires separate exporter setup)
   AutoTracingLive,
   createAutoTracingLayer,
   AutoTracingSupervisor,
   createAutoTracingSupervisor,
+  // Effect wrapper (uses Effect.supervised)
+  withAutoTracing,
   // Opt-out utilities
   withoutAutoTracing,
   setSpanName,

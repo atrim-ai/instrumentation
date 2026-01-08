@@ -27,6 +27,7 @@ export {
   PatternConfigSchema,
   AutoInstrumentationConfigSchema,
   SpanNamingRuleSchema,
+  ExporterConfigSchema,
   defaultConfig,
   parseAndValidateConfig
 } from './instrumentation-schema.js'
@@ -34,7 +35,8 @@ export type {
   InstrumentationConfig,
   PatternConfig,
   AutoInstrumentationConfig,
-  SpanNamingRule
+  SpanNamingRule,
+  ExporterConfig
 } from './instrumentation-schema.js'
 
 // Logging

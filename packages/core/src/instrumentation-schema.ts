@@ -188,6 +188,40 @@ export const HttpFilteringConfigSchema = z.object({
     .optional()
 })
 
+/**
+ * Exporter configuration for OpenTelemetry tracing
+ *
+ * Allows configuring how traces are exported via instrumentation.yaml
+ */
+export const ExporterConfigSchema = z.object({
+  // Exporter type: 'otlp' | 'console' | 'none'
+  // - 'otlp': Export to OTLP endpoint (production)
+  // - 'console': Log spans to console (development)
+  // - 'none': No export (disable tracing)
+  type: z.enum(['otlp', 'console', 'none']).default('otlp'),
+
+  // OTLP endpoint URL (for type: otlp)
+  // Defaults to OTEL_EXPORTER_OTLP_ENDPOINT env var or http://localhost:4318
+  endpoint: z.string().optional(),
+
+  // Span processor type
+  // - 'batch': Batch spans for export (production, lower overhead)
+  // - 'simple': Export immediately (development, no batching delay)
+  processor: z.enum(['batch', 'simple']).default('batch'),
+
+  // Batch processor settings (for processor: batch)
+  batch: z
+    .object({
+      // Max time to wait before exporting (milliseconds)
+      scheduled_delay_millis: z.number().default(1000),
+      // Max batch size
+      max_export_batch_size: z.number().default(100)
+    })
+    .optional()
+})
+
+export type ExporterConfig = z.infer<typeof ExporterConfigSchema>
+
 export const InstrumentationConfigSchema = z.object({
   version: z.string(),
   instrumentation: z.object({
@@ -202,10 +236,12 @@ export const InstrumentationConfigSchema = z.object({
       // Enable/disable Effect tracing entirely
       // When false, EffectInstrumentationLive returns Layer.empty
       enabled: z.boolean().default(true),
-      // Exporter mode:
+      // Exporter mode (legacy - use exporter.type instead):
       // - "unified": Use global TracerProvider from Node SDK (recommended, enables filtering)
       // - "standalone": Use Effect's own OTLP exporter (bypasses Node SDK filtering)
       exporter: z.enum(['unified', 'standalone']).default('unified'),
+      // Exporter configuration (for auto-instrumentation)
+      exporter_config: ExporterConfigSchema.optional(),
       auto_extract_metadata: z.boolean(),
       auto_isolation: AutoIsolationConfigSchema.optional(),
       // Auto-instrumentation: automatic tracing of all Effect fibers
