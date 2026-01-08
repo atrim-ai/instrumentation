@@ -175,17 +175,23 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
     }
 
     // Get parent span context and fiber ID if available
-    let parentContext = OtelApi.context.active()
+    // Use ROOT_CONTEXT as base since Effect's fiber scheduler runs in a different async context
+    let parentContext: OtelApi.Context = OtelApi.ROOT_CONTEXT
     let parentFiberId: number | undefined
+
     if (Option.isSome(parent)) {
+      // Fiber has a parent fiber - try to find its span
       parentFiberId = parent.value.id().id
       const parentSpan = this.fiberSpans.get(parent.value)
       if (parentSpan) {
-        parentContext = OtelApi.trace.setSpan(parentContext, parentSpan)
+        parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, parentSpan)
+      } else if (this._rootSpan) {
+        // Parent fiber exists but no span found - fall back to root span
+        parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, this._rootSpan)
       }
     } else if (this._rootSpan) {
       // No fiber parent, but we have a root span - use it as the parent
-      parentContext = OtelApi.trace.setSpan(parentContext, this._rootSpan)
+      parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, this._rootSpan)
     }
 
     // Create the span with full attributes
