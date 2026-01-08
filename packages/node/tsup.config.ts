@@ -59,5 +59,23 @@ export default defineConfig([
     tsconfig: 'tsconfig.build.json',
     external: externalPackages,
     noExternal: ['@atrim/instrument-core']
+  },
+  // Effect auto-tracing integration
+  {
+    entry: {
+      'integrations/effect/auto/index': 'src/integrations/effect/auto/index.ts'
+    },
+    format: ['esm', 'cjs'],
+    dts: true,
+    splitting: false,
+    sourcemap: true,
+    clean: false, // Don't clean - main entry already did
+    treeshake: true,
+    minify: false,
+    target: 'es2020',
+    outDir: 'target/dist',
+    tsconfig: 'tsconfig.build.json',
+    external: externalPackages,
+    noExternal: ['@atrim/instrument-core']
   }
 ])

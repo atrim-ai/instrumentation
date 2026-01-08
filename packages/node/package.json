@@ -43,6 +43,11 @@
       "types": "./target/dist/integrations/effect/index.d.ts",
       "import": "./target/dist/integrations/effect/index.js",
       "require": "./target/dist/integrations/effect/index.cjs"
+    },
+    "./effect/auto": {
+      "types": "./target/dist/integrations/effect/auto/index.d.ts",
+      "import": "./target/dist/integrations/effect/auto/index.js",
+      "require": "./target/dist/integrations/effect/auto/index.cjs"
     }
   },
   "main": "./target/dist/index.js",

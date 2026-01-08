@@ -54,6 +54,112 @@ export const AutoIsolationConfigSchema = z.object({
  * Allows filtering of HTTP requests to prevent noisy traces
  * (e.g., health checks, OTLP exports, internal endpoints)
  */
+/**
+ * Span naming rule for auto-instrumentation
+ *
+ * Allows matching fibers based on file path, function name, etc.
+ * and applying custom span names with template variables.
+ */
+export const SpanNamingRuleSchema = z.object({
+  // Match criteria (all specified criteria must match)
+  match: z.object({
+    // Regex pattern to match file path
+    file: z.string().optional(),
+    // Regex pattern to match function name
+    function: z.string().optional(),
+    // Regex pattern to match module name
+    module: z.string().optional()
+  }),
+  // Span name template with variables:
+  // {fiber_id} - Fiber ID
+  // {function} - Function name
+  // {module} - Module name
+  // {file} - File path
+  // {line} - Line number
+  // {operator} - Effect operator (gen, all, forEach, etc.)
+  // {match:field:N} - Captured regex group from match
+  name: z.string()
+})
+
+/**
+ * Auto-instrumentation configuration for Effect operations
+ *
+ * Enables automatic tracing of all Effect fibers without manual
+ * Effect.withSpan() calls. Configuration-driven via instrumentation.yaml.
+ */
+export const AutoInstrumentationConfigSchema = z.object({
+  // Enable/disable auto-instrumentation
+  enabled: z.boolean().default(false),
+
+  // Tracing granularity
+  // - 'fiber': Trace at fiber creation (recommended, lower overhead)
+  // - 'operator': Trace each Effect operator (higher granularity, more overhead)
+  granularity: z.enum(['fiber', 'operator']).default('fiber'),
+
+  // Smart span naming configuration
+  span_naming: z
+    .object({
+      // Default span name template when no rules match
+      default: z.string().default('effect.fiber.{fiber_id}'),
+
+      // Infer span names from source code (requires stack trace parsing)
+      // Adds ~50-100μs overhead per fiber
+      infer_from_source: z.boolean().default(true),
+
+      // Naming rules (first match wins)
+      rules: z.array(SpanNamingRuleSchema).default([])
+    })
+    .default({}),
+
+  // Pattern-based filtering
+  filter: z
+    .object({
+      // Only trace spans matching these patterns (empty = trace all)
+      include: z.array(z.string()).default([]),
+
+      // Never trace spans matching these patterns
+      exclude: z.array(z.string()).default([])
+    })
+    .default({}),
+
+  // Performance controls
+  performance: z
+    .object({
+      // Sample rate (0.0 - 1.0)
+      sampling_rate: z.number().min(0).max(1).default(1.0),
+
+      // Skip fibers shorter than this duration (e.g., "10ms", "100 millis")
+      min_duration: z.string().default('0ms'),
+
+      // Maximum concurrent traced fibers (0 = unlimited)
+      max_concurrent: z.number().default(0)
+    })
+    .default({}),
+
+  // Automatic metadata extraction
+  metadata: z
+    .object({
+      // Extract Effect fiber information
+      fiber_info: z.boolean().default(true),
+
+      // Extract source location (file:line)
+      source_location: z.boolean().default(true),
+
+      // Extract parent fiber information
+      parent_fiber: z.boolean().default(true)
+    })
+    .default({})
+})
+
+export type AutoInstrumentationConfig = z.infer<typeof AutoInstrumentationConfigSchema>
+export type SpanNamingRule = z.infer<typeof SpanNamingRuleSchema>
+
+/**
+ * HTTP instrumentation filtering configuration
+ *
+ * Allows filtering of HTTP requests to prevent noisy traces
+ * (e.g., health checks, OTLP exports, internal endpoints)
+ */
 export const HttpFilteringConfigSchema = z.object({
   // Patterns to ignore for outgoing HTTP requests (string patterns only in YAML)
   ignore_outgoing_urls: z.array(z.string()).optional(),
@@ -101,7 +207,9 @@ export const InstrumentationConfigSchema = z.object({
       // - "standalone": Use Effect's own OTLP exporter (bypasses Node SDK filtering)
       exporter: z.enum(['unified', 'standalone']).default('unified'),
       auto_extract_metadata: z.boolean(),
-      auto_isolation: AutoIsolationConfigSchema.optional()
+      auto_isolation: AutoIsolationConfigSchema.optional(),
+      // Auto-instrumentation: automatic tracing of all Effect fibers
+      auto_instrumentation: AutoInstrumentationConfigSchema.optional()
     })
     .optional(),
   http: HttpFilteringConfigSchema.optional()
