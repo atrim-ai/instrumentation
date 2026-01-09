@@ -111,6 +111,31 @@ export const AutoInstrumentationConfigSchema = z.object({
     })
     .default({}),
 
+  // Span relationship configuration for forked fibers
+  // Controls how child fiber spans relate to their parent/forking context
+  span_relationships: z
+    .object({
+      // Relationship type between forked fiber spans and their parent context
+      // - 'parent-child': Use parent-child relationship (default, traditional tracing)
+      //   Parent span shows child as nested. Works well with most observability tools.
+      // - 'span-links': Use span links (semantically correct for async forks per OTel spec)
+      //   Fibers get independent traces linked to parent. Better for long-running fibers.
+      // - 'both': Create parent-child AND add span links
+      //   Maximum visibility but may create redundant data.
+      type: z.enum(['parent-child', 'span-links', 'both']).default('parent-child'),
+
+      // Custom attributes to add to span links (only used when type includes links)
+      link_attributes: z
+        .object({
+          // Link type identifier
+          'link.type': z.string().default('fork'),
+          // Custom attributes (key-value pairs)
+          custom: z.record(z.string()).optional()
+        })
+        .optional()
+    })
+    .default({}),
+
   // Pattern-based filtering
   filter: z
     .object({
@@ -203,6 +228,10 @@ export const ExporterConfigSchema = z.object({
   // OTLP endpoint URL (for type: otlp)
   // Defaults to OTEL_EXPORTER_OTLP_ENDPOINT env var or http://localhost:4318
   endpoint: z.string().optional(),
+
+  // Custom headers to send with OTLP requests (for type: otlp)
+  // Useful for authentication (x-api-key, Authorization, etc.)
+  headers: z.record(z.string()).optional(),
 
   // Span processor type
   // - 'batch': Batch spans for export (production, lower overhead)

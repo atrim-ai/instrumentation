@@ -2,10 +2,9 @@
 
 The simplest possible setup for Effect-TS auto-instrumentation.
 
-## Files
+## Prerequisites
 
-- `index.ts` - 20 lines of code
-- `instrumentation.yaml` - 10 lines of config
+A local OpenTelemetry collector running on `http://localhost:4318`.
 
 ## Run
 
@@ -16,4 +15,4 @@ pnpm start
 
 ## What You Get
 
-Every Effect fiber is automatically traced - no `Effect.withSpan()` needed.
+Every Effect fiber is automatically traced and exported to your collector - no `Effect.withSpan()` needed.

@@ -23,9 +23,15 @@
  * @packageDocumentation
  */
 
+// Effect-native tracing (RECOMMENDED for HTTP apps)
+export { EffectTracingLive, createEffectTracingLayer } from './effect-tracing.js'
+
+// Combined tracing: HTTP + Fiber-level (MOST COMPREHENSIVE)
+export { CombinedTracingLive, createCombinedTracingLayer } from './effect-tracing.js'
+
 // Core supervisor and layers
 export {
-  // Full YAML-driven layer (recommended)
+  // Full YAML-driven fiber tracing
   FullAutoTracingLive,
   createFullAutoTracingLayer,
   // Supervisor-only layer (requires separate exporter setup)

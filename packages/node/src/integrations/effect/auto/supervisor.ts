@@ -24,7 +24,8 @@ import {
   Context,
   Option,
   Exit,
-  Fiber
+  Fiber,
+  Tracer as EffectTracer
 } from 'effect'
 import * as OtelApi from '@opentelemetry/api'
 import {
@@ -77,6 +78,9 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
   // OpenTelemetry tracer - lazily initialized
   private _tracer: OtelApi.Tracer | null = null
 
+  // Optional TracerProvider (if provided, use this instead of global)
+  private readonly tracerProvider: OtelApi.TracerProvider | null = null
+
   // Compiled filter patterns
   private readonly includePatterns: RegExp[]
   private readonly excludePatterns: RegExp[]
@@ -87,8 +91,17 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
   // Root span for parent context (set by withAutoTracing)
   private _rootSpan: OtelApi.Span | null = null
 
-  constructor(private readonly config: AutoInstrumentationConfig) {
+  constructor(
+    private readonly config: AutoInstrumentationConfig,
+    tracerProvider?: OtelApi.TracerProvider
+  ) {
     super()
+
+    // Store tracer provider if provided
+    if (tracerProvider) {
+      this.tracerProvider = tracerProvider
+      logger.log('@atrim/auto-trace: Using provided TracerProvider')
+    }
 
     // Compile filter patterns
     this.includePatterns = (config.filter?.include || []).map((p) => new RegExp(p))
@@ -108,11 +121,17 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
   }
 
   /**
-   * Get the tracer lazily - this allows time for the NodeSdk layer to register the global provider
+   * Get the tracer lazily - uses provided TracerProvider if available, otherwise uses global
    */
   private get tracer(): OtelApi.Tracer {
     if (!this._tracer) {
-      this._tracer = OtelApi.trace.getTracer('@atrim/auto-trace', '1.0.0')
+      if (this.tracerProvider) {
+        logger.log('@atrim/auto-trace: Getting tracer from provided TracerProvider')
+        this._tracer = this.tracerProvider.getTracer('@atrim/auto-trace', '1.0.0')
+      } else {
+        logger.log('@atrim/auto-trace: Getting tracer from global API')
+        this._tracer = OtelApi.trace.getTracer('@atrim/auto-trace', '1.0.0')
+      }
     }
     return this._tracer
   }
@@ -133,11 +152,14 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
     parent: Option.Option<Fiber.RuntimeFiber<unknown, unknown>>,
     fiber: Fiber.RuntimeFiber<A, E>
   ): void {
+    logger.log(`@atrim/auto-trace: onStart called for fiber ${fiber.id().id}`)
+
     // Check if auto-tracing is enabled for this fiber
     // Note: FiberRef access in supervisor hooks must be synchronous
     const fiberRefsValue = fiber.getFiberRefs()
     const enabled = FiberRefs.getOrDefault(fiberRefsValue, AutoTracingEnabled)
     if (!enabled) {
+      logger.log(`@atrim/auto-trace: Auto-tracing disabled for fiber ${fiber.id().id}`)
       return
     }
 
@@ -175,34 +197,115 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
     }
 
     // Get parent span context and fiber ID if available
-    // Use ROOT_CONTEXT as base since Effect's fiber scheduler runs in a different async context
+    // Priority: Effect ParentSpan (from context) > parent fiber's span > root span > no parent
+    //
+    // KEY INSIGHT: Effect stores the current span in Context via Tracer.ParentSpan.
+    // This is properly propagated through fibers, unlike OTel's AsyncLocalStorage-based
+    // context which gets lost across Effect's fiber scheduler boundaries.
+
+    // Get span relationship type from config
+    const relationshipType = this.config.span_relationships?.type ?? 'parent-child'
+    const useParentChild = relationshipType === 'parent-child' || relationshipType === 'both'
+    const useSpanLinks = relationshipType === 'span-links' || relationshipType === 'both'
+
     let parentContext: OtelApi.Context = OtelApi.ROOT_CONTEXT
     let parentFiberId: number | undefined
+    let spanLinks: OtelApi.Link[] = []
 
-    if (Option.isSome(parent)) {
+    // First, try to get the Effect parent span from the context
+    // This is the key to linking fiber spans to HTTP spans created by @effect/opentelemetry
+    const maybeEffectParentSpan = Context.getOption(_context, EffectTracer.ParentSpan)
+
+    if (Option.isSome(maybeEffectParentSpan)) {
+      // We have an Effect parent span - extract its OTel identifiers
+      const effectSpan = maybeEffectParentSpan.value
+      logger.log(
+        `@atrim/auto-trace: Found ParentSpan - traceId=${effectSpan.traceId.slice(0, 8)}..., spanId=${effectSpan.spanId.slice(0, 8)}...`
+      )
+
+      // Create an OTel SpanContext from the Effect span's identifiers
+      const otelSpanContext: OtelApi.SpanContext = {
+        traceId: effectSpan.traceId,
+        spanId: effectSpan.spanId,
+        traceFlags: effectSpan.sampled ? OtelApi.TraceFlags.SAMPLED : OtelApi.TraceFlags.NONE,
+        isRemote: false
+      }
+
+      if (useParentChild) {
+        // Wrap the SpanContext in a span object for proper parent-child linking
+        // This creates a non-recording span that acts as the parent
+        const wrappedSpan = OtelApi.trace.wrapSpanContext(otelSpanContext)
+        parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, wrappedSpan)
+      }
+
+      if (useSpanLinks) {
+        // Create a span link to the parent context
+        // Per OTel spec, span links are semantically correct for forked/async operations
+        const linkAttributes = this.getLinkAttributes()
+        spanLinks.push({
+          context: otelSpanContext,
+          attributes: linkAttributes
+        })
+        logger.log(`@atrim/auto-trace: Added span link to parent (${relationshipType})`)
+      }
+    } else if (Option.isSome(parent)) {
       // Fiber has a parent fiber - try to find its span
       parentFiberId = parent.value.id().id
       const parentSpan = this.fiberSpans.get(parent.value)
       if (parentSpan) {
-        parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, parentSpan)
+        if (useParentChild) {
+          parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, parentSpan)
+        }
+        if (useSpanLinks) {
+          const linkAttributes = this.getLinkAttributes()
+          spanLinks.push({
+            context: parentSpan.spanContext(),
+            attributes: linkAttributes
+          })
+        }
       } else if (this._rootSpan) {
-        // Parent fiber exists but no span found - fall back to root span
-        parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, this._rootSpan)
+        if (useParentChild) {
+          parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, this._rootSpan)
+        }
+        if (useSpanLinks) {
+          const linkAttributes = this.getLinkAttributes()
+          spanLinks.push({
+            context: this._rootSpan.spanContext(),
+            attributes: linkAttributes
+          })
+        }
       }
     } else if (this._rootSpan) {
-      // No fiber parent, but we have a root span - use it as the parent
-      parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, this._rootSpan)
+      // No fiber parent and no Effect parent span - use root span if available
+      if (useParentChild) {
+        parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, this._rootSpan)
+      }
+      if (useSpanLinks) {
+        const linkAttributes = this.getLinkAttributes()
+        spanLinks.push({
+          context: this._rootSpan.spanContext(),
+          attributes: linkAttributes
+        })
+      }
     }
 
-    // Create the span with full attributes
-    const span = this.tracer.startSpan(
-      spanName,
-      {
-        kind: OtelApi.SpanKind.INTERNAL,
-        attributes: this.getInitialAttributes(fiber, sourceInfo, parentFiberId)
-      },
-      parentContext
-    )
+    // Also capture parent fiber ID for metadata
+    if (Option.isSome(parent)) {
+      parentFiberId = parent.value.id().id
+    }
+
+    // Create the span with full attributes and optional links
+    const spanOptions: OtelApi.SpanOptions = {
+      kind: OtelApi.SpanKind.INTERNAL,
+      attributes: this.getInitialAttributes(fiber, sourceInfo, parentFiberId)
+    }
+    if (spanLinks.length > 0) {
+      spanOptions.links = spanLinks
+    }
+
+    const span = this.tracer.startSpan(spanName, spanOptions, parentContext)
+
+    logger.log(`@atrim/auto-trace: Created span "${spanName}" for fiber ${fiber.id().id}`)
 
     // Store span and start time
     this.fiberSpans.set(fiber as Fiber.RuntimeFiber<unknown, unknown>, span)
@@ -214,8 +317,13 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
    * Called when a fiber completes (success or failure)
    */
   override onEnd<A, E>(exit: Exit.Exit<A, E>, fiber: Fiber.RuntimeFiber<A, E>): void {
+    logger.log(`@atrim/auto-trace: onEnd called for fiber ${fiber.id().id}`)
+
     const span = this.fiberSpans.get(fiber as Fiber.RuntimeFiber<unknown, unknown>)
     if (!span) {
+      logger.log(
+        `@atrim/auto-trace: No span found for fiber ${fiber.id().id} (skipped or filtered)`
+      )
       return
     }
 
@@ -250,11 +358,31 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
 
     // End the span
     span.end()
+    logger.log(`@atrim/auto-trace: Ended span for fiber ${fiber.id().id}`)
 
     // Cleanup
     this.fiberSpans.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
     this.fiberStartTimes.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
     this.activeFiberCount--
+  }
+
+  /**
+   * Get attributes for span links from config
+   */
+  private getLinkAttributes(): OtelApi.Attributes {
+    const linkConfig = this.config.span_relationships?.link_attributes
+    const attrs: OtelApi.Attributes = {
+      'link.type': linkConfig?.['link.type'] ?? 'fork'
+    }
+
+    // Add custom attributes if configured
+    if (linkConfig?.custom) {
+      for (const [key, value] of Object.entries(linkConfig.custom)) {
+        attrs[key] = value
+      }
+    }
+
+    return attrs
   }
 
   /**
@@ -388,9 +516,10 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
  * Create a custom AutoTracingSupervisor with the given config
  */
 export const createAutoTracingSupervisor = (
-  config: AutoInstrumentationConfig
+  config: AutoInstrumentationConfig,
+  tracerProvider?: OtelApi.TracerProvider
 ): AutoTracingSupervisor => {
-  return new AutoTracingSupervisor(config)
+  return new AutoTracingSupervisor(config, tracerProvider)
 }
 
 /**
@@ -591,9 +720,16 @@ const createExporterLayer = (
     const endpoint =
       config.endpoint || process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
     logger.log(`@atrim/auto-trace: Using OTLPTraceExporter (${endpoint})`)
-    return new OTLPTraceExporter({
+    const exporterConfig: { url: string; headers?: Record<string, string> } = {
       url: `${endpoint}/v1/traces`
-    })
+    }
+    if (config.headers) {
+      exporterConfig.headers = config.headers
+      logger.log(
+        `@atrim/auto-trace: Using custom headers: ${Object.keys(config.headers).join(', ')}`
+      )
+    }
+    return new OTLPTraceExporter(exporterConfig)
   }
 
   // Create the span processor

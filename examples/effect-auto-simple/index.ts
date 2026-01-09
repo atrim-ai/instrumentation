@@ -19,8 +19,8 @@ const fetchUser = (id: number) =>
 const main = Effect.gen(function* () {
   const user = yield* fetchUser(1)
   yield* Console.log(`Got user: ${user.name}`)
-  // Allow spans to flush
-  yield* Effect.sleep('100 millis')
+  // Allow spans to export
+  yield* Effect.sleep('1 second')
 })
 
 // Run with auto-instrumentation - that's it!

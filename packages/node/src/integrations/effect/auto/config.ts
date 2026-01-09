@@ -36,6 +36,9 @@ export const defaultAutoTracingConfig: AutoInstrumentationConfig = {
     infer_from_source: true,
     rules: []
   },
+  span_relationships: {
+    type: 'parent-child'
+  },
   filter: {
     include: [],
     exclude: []
