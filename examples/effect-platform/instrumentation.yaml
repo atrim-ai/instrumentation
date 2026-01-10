@@ -31,7 +31,16 @@ instrumentation:
 
 # Effect-specific configuration
 effect:
-  # NOTE: auto_extract_metadata is NOT YET IMPLEMENTED.
-  # You must explicitly call autoEnrichSpan() or use withAutoEnrichedSpan()
-  # to add fiber metadata to spans. See README.md for usage examples.
   auto_extract_metadata: true
+
+  # Auto-instrumentation: automatic tracing of all forked fibers
+  auto_instrumentation:
+    enabled: true
+    span_relationships:
+      type: parent-child  # or 'span-links' or 'both'
+
+  # OTLP exporter configuration
+  exporter_config:
+    type: otlp
+    endpoint: http://localhost:4318
+    processor: batch
