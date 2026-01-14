@@ -27,6 +27,8 @@ import {
   Fiber,
   Tracer as EffectTracer
 } from 'effect'
+import { CapturedSourceLocation } from './traced-fork.js'
+import { patchEffectFork } from './patch-fork.js'
 import * as OtelApi from '@opentelemetry/api'
 import {
   BatchSpanProcessor,
@@ -178,10 +180,28 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
     // Check for span name override
     const nameOverride = FiberRefs.getOrDefault(fiberRefsValue, AutoTracingSpanName)
 
-    // Parse source info for span naming and attributes
-    const sourceInfo = this.config.span_naming?.infer_from_source
-      ? this.parseStackTrace()
-      : undefined
+    // Get source info - Priority:
+    // 1. CapturedSourceLocation (from tracedFork()) - most accurate
+    // 2. Stack trace parsing (fallback, often doesn't work in supervisor hooks)
+    let sourceInfo = FiberRefs.getOrDefault(fiberRefsValue, CapturedSourceLocation)
+
+    if (sourceInfo) {
+      logger.log(`@atrim/auto-trace: Using captured source location for fiber ${fiber.id().id}`)
+      logger.log(`  function: ${sourceInfo.function}`)
+      logger.log(`  file: ${sourceInfo.file}`)
+      logger.log(`  line: ${sourceInfo.line}`)
+    } else if (this.config.span_naming?.infer_from_source) {
+      // Fallback to stack trace parsing (often doesn't work in supervisor)
+      sourceInfo = this.parseStackTrace()
+      if (sourceInfo) {
+        logger.log(`@atrim/auto-trace: Inferred source from stack for fiber ${fiber.id().id}`)
+        logger.log(`  function: ${sourceInfo.function}`)
+        logger.log(`  file: ${sourceInfo.file}`)
+        logger.log(`  line: ${sourceInfo.line}`)
+      } else {
+        logger.log(`@atrim/auto-trace: No source info for fiber ${fiber.id().id}`)
+      }
+    }
 
     // Infer span name
     let spanName: string
@@ -448,9 +468,19 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
    */
   private parseStackTrace(): SourceInfo | undefined {
     const stack = new Error().stack
-    if (!stack) return undefined
+    if (!stack) {
+      logger.log('@atrim/auto-trace: [parseStackTrace] No stack available')
+      return undefined
+    }
 
     const lines = stack.split('\n')
+    logger.log(`@atrim/auto-trace: [parseStackTrace] Stack has ${lines.length} lines`)
+
+    // Debug: show first 10 lines of stack
+    for (let i = 0; i < Math.min(10, lines.length); i++) {
+      logger.log(`@atrim/auto-trace: [stack ${i}] ${lines[i]}`)
+    }
+
     // Skip Error, parseStackTrace, onStart, Effect internals
     // Look for first line that's not from effect or this module
     for (let i = 3; i < lines.length; i++) {
@@ -462,20 +492,26 @@ export class AutoTracingSupervisor extends Supervisor.AbstractSupervisor<void> {
         !line.includes('@atrim/instrument') &&
         !line.includes('auto/supervisor')
       ) {
+        logger.log(`@atrim/auto-trace: [parseStackTrace] Found user frame: ${line}`)
         // Parse line like "    at functionName (file:line:col)"
         const match = line.match(/at\s+(?:(.+?)\s+)?\(?(.+?):(\d+):(\d+)\)?/)
         if (match) {
           const [, funcName, filePath, lineNum, colNum] = match
-          return {
+          const sourceInfo = {
             function: funcName ?? 'anonymous',
             file: filePath ?? 'unknown',
             line: parseInt(lineNum ?? '0', 10),
             column: parseInt(colNum ?? '0', 10)
           }
+          logger.log(
+            `@atrim/auto-trace: [parseStackTrace] Parsed: ${sourceInfo.function} at ${sourceInfo.file}:${sourceInfo.line}`
+          )
+          return sourceInfo
         }
       }
     }
 
+    logger.log('@atrim/auto-trace: [parseStackTrace] No user code frame found in stack')
     return undefined
   }
 
@@ -548,6 +584,10 @@ export const createAutoTracingLayer = (options?: {
         logger.log('@atrim/auto-trace: Auto-tracing disabled via config')
         return Layer.empty
       }
+
+      // Note: For proper span names on forked fibers, use tracedFork() instead of Effect.fork()
+      // ESM module immutability prevents automatic patching of Effect.fork
+      patchEffectFork() // Logs a reminder about using tracedFork
 
       // Create supervisor
       const supervisor = createAutoTracingSupervisor(config)
@@ -817,6 +857,10 @@ export const createFullAutoTracingLayer = (): Layer.Layer<never> => {
         logger.log('@atrim/auto-trace: Auto-instrumentation disabled via config')
         return Layer.empty
       }
+
+      // Note: For proper span names on forked fibers, use tracedFork() instead of Effect.fork()
+      // ESM module immutability prevents automatic patching of Effect.fork
+      patchEffectFork() // Logs a reminder about using tracedFork
 
       // Get exporter config
       const exporterConfig = config.effect?.exporter_config

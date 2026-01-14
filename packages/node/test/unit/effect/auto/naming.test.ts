@@ -19,6 +19,9 @@ describe('inferSpanName', () => {
       infer_from_source: true,
       rules: []
     },
+    span_relationships: {
+      type: 'parent-child'
+    },
     filter: { include: [], exclude: [] },
     performance: { sampling_rate: 1.0, min_duration: '0ms', max_concurrent: 0 },
     metadata: { fiber_info: true, source_location: true, parent_fiber: true }
@@ -47,6 +50,46 @@ describe('inferSpanName', () => {
       }
       const result = inferSpanName(123, sourceInfo, config)
       expect(result).toBe('effect.myFunction')
+    })
+
+    it('should fallback to module:line when function is anonymous', () => {
+      const sourceInfo: SourceInfo = {
+        function: 'anonymous',
+        file: '/path/to/index.ts',
+        line: 92,
+        column: 10
+      }
+      const config: AutoInstrumentationConfig = {
+        ...baseConfig,
+        span_naming: {
+          default: 'effect.{function}',
+          infer_from_source: true,
+          rules: []
+        }
+      }
+      const result = inferSpanName(123, sourceInfo, config)
+      // Should use module:line instead of "anonymous"
+      expect(result).toBe('effect.index:92')
+    })
+
+    it('should use module:line for anonymous Effect.gen() functions', () => {
+      const sourceInfo: SourceInfo = {
+        function: 'anonymous',
+        file: '/Users/croach/projects/app/src/routes/user.ts',
+        line: 134,
+        column: 15
+      }
+      const config: AutoInstrumentationConfig = {
+        ...baseConfig,
+        span_naming: {
+          default: 'effect.{function}',
+          infer_from_source: true,
+          rules: []
+        }
+      }
+      const result = inferSpanName(456, sourceInfo, config)
+      // Should show "user:134" instead of "anonymous"
+      expect(result).toBe('effect.user:134')
     })
 
     it('should extract module name from file path', () => {

@@ -196,6 +196,10 @@ function findMatchingRule(
  * 2. Use default template with source info if available
  * 3. Fallback to default template with fiber ID only
  *
+ * Smart anonymous handling:
+ * - When function is "anonymous", falls back to "module:line" format
+ * - Example: "effect.index:42" instead of "effect.anonymous"
+ *
  * @param fiberId - The fiber's numeric ID
  * @param sourceInfo - Optional source code information from stack trace
  * @param config - Auto-instrumentation configuration
@@ -206,11 +210,20 @@ export function inferSpanName(
   sourceInfo: SourceInfo | undefined,
   config: AutoInstrumentationConfig
 ): string {
+  // Determine the best function name
+  let functionName = sourceInfo?.function || 'anonymous'
+  const moduleName = sourceInfo?.file ? extractModuleName(sourceInfo.file) : 'unknown'
+
+  // If function is anonymous and we have source location, use module:line format
+  if (functionName === 'anonymous' && sourceInfo?.file && sourceInfo?.line) {
+    functionName = `${moduleName}:${sourceInfo.line}`
+  }
+
   // Build template variables
   const variables: TemplateVariables = {
     fiber_id: String(fiberId),
-    function: sourceInfo?.function || 'anonymous',
-    module: sourceInfo?.file ? extractModuleName(sourceInfo.file) : 'unknown',
+    function: functionName,
+    module: moduleName,
     file: sourceInfo?.file || 'unknown',
     line: sourceInfo?.line ? String(sourceInfo.line) : '0',
     operator: 'gen' // Default operator, could be enhanced with more context

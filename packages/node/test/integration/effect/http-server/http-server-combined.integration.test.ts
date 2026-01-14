@@ -24,6 +24,7 @@ import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic
 import * as OtelApi from '@opentelemetry/api'
 import { Tracer as OtelTracer, Resource } from '@effect/opentelemetry'
 import { createAutoTracingSupervisor } from '../../../../src/integrations/effect/auto/supervisor.js'
+import { tracedFork } from '../../../../src/integrations/effect/auto/traced-fork.js'
 import type { AutoInstrumentationConfig } from '@atrim/instrument-core'
 import {
   startCollectorContainer,
@@ -157,15 +158,15 @@ describe('Effect HTTP Server with Combined Tracing', () => {
           Effect.gen(function* () {
             console.log('[test-app] Handling / request')
 
-            // Fork some fibers to see fiber-level tracing
-            const fiber1 = yield* Effect.fork(
+            // Fork some fibers with traced fork to capture call site
+            const fiber1 = yield* tracedFork(
               Effect.gen(function* () {
                 yield* Effect.sleep('5 millis')
                 console.log('[test-app] Task 1 completed')
                 return 'task1'
               })
             )
-            const fiber2 = yield* Effect.fork(
+            const fiber2 = yield* tracedFork(
               Effect.gen(function* () {
                 yield* Effect.sleep('10 millis')
                 console.log('[test-app] Task 2 completed')

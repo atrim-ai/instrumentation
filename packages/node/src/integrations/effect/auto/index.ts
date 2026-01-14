@@ -63,3 +63,14 @@ export type { AutoInstrumentationConfig } from './config.js'
 // Naming utilities (for advanced use)
 export { inferSpanName, sanitizeSpanName } from './naming.js'
 export type { SourceInfo, TemplateVariables } from './naming.js'
+
+// Traced fork utilities (for better span names)
+export {
+  tracedFork,
+  tracedForkDaemon,
+  CapturedSourceLocation,
+  captureCallSite
+} from './traced-fork.js'
+
+// Runtime patching for automatic call-site capture
+export { patchEffectFork, unpatchEffectFork, isEffectForkPatched } from './patch-fork.js'
