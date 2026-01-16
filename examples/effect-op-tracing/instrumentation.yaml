@@ -1,0 +1,41 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  instrument_patterns: []
+  ignore_patterns: []
+
+effect:
+  auto_extract_metadata: true
+
+  # Operation Tracing Configuration
+  # Traces high-level Effect operations (Effect.all, Effect.forEach, etc.)
+  # using OpSupervision to hook into every operation
+  operation_tracing:
+    enabled: true
+    operations:
+      - name: all
+        # span_name: custom.all  # Optional: custom span name
+        include_count: true       # Include item count in attributes
+        include_stack: true        # Include source location
+      - name: forEach
+        include_count: true
+        include_stack: true
+      # Add more operations as needed:
+      # - name: retry
+      #   include_count: false
+      #   include_stack: true
+
+  # Exporter Configuration
+  exporter_config:
+    # Export to local Atrim backend (default)
+    type: otlp
+    endpoint: "http://localhost:4319"
+    processor: simple
+    headers:
+      x-api-key: "atrim_internal_tenant_000000000002"
+
+    # Export to console (development/debugging)
+    # Uncomment to see spans printed to console instead
+    # type: console
+    # processor: simple

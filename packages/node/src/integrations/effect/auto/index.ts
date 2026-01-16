@@ -109,3 +109,40 @@ export {
   flushAndShutdown,
   forceFlush
 } from './source-capture-supervisor.js'
+
+// ============================================================================
+// POC: OpSupervision-based Operation Tracing (issue #XXX)
+// Traces Effect.all, Effect.forEach, etc. using the trace field metadata
+// ============================================================================
+
+/**
+ * Operation Tracing - Automatic tracing of Effect.all, Effect.forEach, etc.
+ *
+ * Zero-config by default - just provide the layer and it works. Customize
+ * via instrumentation.yaml only if needed. Requires the @clayroach/effect fork.
+ *
+ * @example
+ * ```typescript
+ * import { OperationTracingLive } from '@atrim/instrument-node/effect/auto'
+ *
+ * const program = Effect.gen(function* () {
+ *   // Automatically traced with span "effect.all" and item count
+ *   yield* Effect.all([doA(), doB(), doC()])
+ *
+ *   // Automatically traced with span "effect.forEach"
+ *   yield* Effect.forEach(items, processItem)
+ * }).pipe(Effect.provide(OperationTracingLive))
+ * ```
+ */
+export {
+  // Simplest API - wraps effect with operation tracing
+  withOperationTracing,
+  // Layer for manual composition
+  OperationTracingLive,
+  makeOperationTracingLayer,
+  // Helper to manually enable OpSupervision
+  enableOpSupervision,
+  // Supervisor class (for advanced use)
+  OperationTracingSupervisor
+} from './operation-tracing-supervisor.js'
+export type { OperationConfig, OperationMeta } from './operation-tracing-supervisor.js'

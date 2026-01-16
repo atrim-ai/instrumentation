@@ -180,6 +180,35 @@ export type AutoInstrumentationConfig = z.infer<typeof AutoInstrumentationConfig
 export type SpanNamingRule = z.infer<typeof SpanNamingRuleSchema>
 
 /**
+ * Operation tracing configuration for Effect.all, Effect.forEach, etc.
+ *
+ * Enables automatic tracing of high-level Effect operations without manual
+ * Effect.withSpan() calls. Uses OpSupervision to hook into every operation.
+ */
+export const OperationTracingConfigSchema = z.object({
+  // Enable/disable operation tracing
+  enabled: z.boolean().default(false),
+
+  // Operations to trace
+  operations: z
+    .array(
+      z.object({
+        // Operation name: 'all', 'forEach', 'retry', etc.
+        name: z.string(),
+        // Custom span name (default: effect.{name})
+        span_name: z.string().optional(),
+        // Include item count in span attributes
+        include_count: z.boolean().default(true),
+        // Include stack trace in span attributes
+        include_stack: z.boolean().default(true)
+      })
+    )
+    .default([])
+})
+
+export type OperationTracingConfig = z.infer<typeof OperationTracingConfigSchema>
+
+/**
  * HTTP instrumentation filtering configuration
  *
  * Allows filtering of HTTP requests to prevent noisy traces
@@ -274,7 +303,9 @@ export const InstrumentationConfigSchema = z.object({
       auto_extract_metadata: z.boolean(),
       auto_isolation: AutoIsolationConfigSchema.optional(),
       // Auto-instrumentation: automatic tracing of all Effect fibers
-      auto_instrumentation: AutoInstrumentationConfigSchema.optional()
+      auto_instrumentation: AutoInstrumentationConfigSchema.optional(),
+      // Operation tracing: automatic tracing of Effect.all, Effect.forEach, etc.
+      operation_tracing: OperationTracingConfigSchema.optional()
     })
     .optional(),
   http: HttpFilteringConfigSchema.optional()
