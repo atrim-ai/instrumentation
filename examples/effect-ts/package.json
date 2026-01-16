@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrumentation-example-effect-ts",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "Effect-TS example for @atrim/instrumentation with advanced patterns",
   "type": "module",
   "private": true,

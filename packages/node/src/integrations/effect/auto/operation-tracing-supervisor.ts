@@ -56,11 +56,29 @@ export interface OperationMeta {
 }
 
 /**
+ * Global span naming configuration for operation tracing
+ */
+export interface SpanNamingConfig {
+  /** Include source location in span name (default: true) */
+  readonly includeLocation: boolean
+  /** Span name template with variables: {op}, {file}, {filename}, {line}, {column} */
+  readonly template: string
+}
+
+/**
+ * Default span naming configuration
+ */
+const defaultSpanNaming: SpanNamingConfig = {
+  includeLocation: true,
+  template: 'effect.{op} ({filename}:{line})'
+}
+
+/**
  * Configuration for which operations to trace
  */
 export interface OperationConfig {
   readonly name: string // 'all', 'forEach', 'retry'
-  readonly spanName?: string // Custom span name (default: effect.{name})
+  readonly spanNameTemplate?: string // Custom span name template (overrides global template)
   readonly includeCount?: boolean // Add item count to attributes
   readonly includeStack?: boolean // Add stack trace to attributes
 }
@@ -124,6 +142,31 @@ function getOperationMeta(
   return undefined
 }
 
+/**
+ * Template variables for span naming
+ */
+interface TemplateVariables {
+  op: string
+  file: string
+  filename: string
+  line: string
+  column: string
+}
+
+/**
+ * Apply template variables to a span name template
+ *
+ * Supports: {op}, {file}, {filename}, {line}, {column}
+ */
+function applyTemplate(template: string, vars: TemplateVariables): string {
+  return template
+    .replace(/\{op\}/g, vars.op)
+    .replace(/\{file\}/g, vars.file)
+    .replace(/\{filename\}/g, vars.filename)
+    .replace(/\{line\}/g, vars.line)
+    .replace(/\{column\}/g, vars.column)
+}
+
 // ============================================================================
 // OperationTracingSupervisor
 // ============================================================================
@@ -139,6 +182,9 @@ export class OperationTracingSupervisor extends Supervisor.AbstractSupervisor<vo
   // Map of configured operations by name
   private readonly configuredOps: Map<string, OperationConfig>
 
+  // Global span naming configuration
+  private readonly spanNaming: SpanNamingConfig
+
   // Track processed effects to avoid duplicate spans (using WeakSet for GC)
   private readonly processedEffects = new WeakSet<object>()
 
@@ -151,9 +197,10 @@ export class OperationTracingSupervisor extends Supervisor.AbstractSupervisor<vo
   // OpenTelemetry tracer - lazily initialized
   private _tracer: OtelApi.Tracer | null = null
 
-  constructor(operations: OperationConfig[]) {
+  constructor(operations: OperationConfig[], spanNaming: SpanNamingConfig = defaultSpanNaming) {
     super()
     this.configuredOps = new Map(operations.map((op) => [op.name, op]))
+    this.spanNaming = spanNaming
     logger.log('@atrim/operation-tracing: Supervisor initialized')
     logger.log(`  Configured operations: ${Array.from(this.configuredOps.keys()).join(', ')}`)
   }
@@ -218,23 +265,41 @@ export class OperationTracingSupervisor extends Supervisor.AbstractSupervisor<vo
       attributes['effect.item_count'] = meta.count
     }
 
-    if (config.includeStack) {
-      attributes['code.stacktrace'] = meta.capturedAt
+    // Parse source location first - we need it for span name and attributes
+    const location = config.includeStack ? parseSourceLocation(meta.capturedAt) : undefined
 
-      // Parse file:line from stack for easier debugging
-      const location = parseSourceLocation(meta.capturedAt)
-      if (location) {
-        attributes['code.filepath'] = location.file
-        // Set as numbers directly (parseInt already returns number)
-        attributes['code.lineno'] = location.line
-        if (location.column !== undefined) {
-          attributes['code.column'] = location.column
-        }
+    if (config.includeStack && location) {
+      attributes['code.filepath'] = location.file
+      // Set as numbers directly (parseInt already returns number)
+      attributes['code.lineno'] = location.line
+      if (location.column !== undefined) {
+        attributes['code.column'] = location.column
       }
     }
 
-    // Get span name
-    const spanName = config.spanName ?? `effect.${meta.op}`
+    // Build span name using template system
+    // Priority: per-operation template > global template > fallback
+    let spanName: string
+
+    // Build template variables
+    const templateVars: TemplateVariables = {
+      op: meta.op,
+      file: location?.file ?? 'unknown',
+      filename: location?.file?.split('/').pop() ?? 'unknown',
+      line: location?.line?.toString() ?? '0',
+      column: location?.column?.toString() ?? '0'
+    }
+
+    if (config.spanNameTemplate) {
+      // Per-operation template override
+      spanName = applyTemplate(config.spanNameTemplate, templateVars)
+    } else if (this.spanNaming.includeLocation && location) {
+      // Use global template with location info
+      spanName = applyTemplate(this.spanNaming.template, templateVars)
+    } else {
+      // Fallback: just operation name without location
+      spanName = `effect.${meta.op}`
+    }
 
     // Get parent context from Effect fiber's context (like SourceCaptureSupervisor does)
     let parentContext: OtelApi.Context = OtelApi.ROOT_CONTEXT
@@ -273,16 +338,12 @@ export class OperationTracingSupervisor extends Supervisor.AbstractSupervisor<vo
       span.setAttribute('effect.item_count', meta.count)
     }
 
-    if (config.includeStack) {
-      // Parse and set clean source location (file, line, column)
-      // Skip the raw stack trace to avoid confusing "Error at all" messages
-      const location = parseSourceLocation(meta.capturedAt)
-      if (location) {
-        span.setAttribute('code.filepath', location.file)
-        span.setAttribute('code.lineno', location.line)
-        if (location.column !== undefined) {
-          span.setAttribute('code.column', location.column)
-        }
+    if (config.includeStack && location) {
+      // Set source location attributes (already parsed above for span name)
+      span.setAttribute('code.filepath', location.file)
+      span.setAttribute('code.lineno', location.line)
+      if (location.column !== undefined) {
+        span.setAttribute('code.column', location.column)
       }
     }
 
@@ -362,11 +423,13 @@ const defaultOperations: OperationConfig[] = [
  * OpSupervision, or use the enableOpSupervision helper.
  *
  * @param operations - Configuration for which operations to trace
+ * @param spanNaming - Global span naming configuration
  */
 export const makeOperationTracingLayer = (
-  operations: OperationConfig[] = defaultOperations
+  operations: OperationConfig[] = defaultOperations,
+  spanNaming: SpanNamingConfig = defaultSpanNaming
 ): Layer.Layer<never> => {
-  const supervisor = new OperationTracingSupervisor(operations)
+  const supervisor = new OperationTracingSupervisor(operations, spanNaming)
   return Supervisor.addSupervisor(supervisor)
 }
 
@@ -418,11 +481,21 @@ const loadOperationTracingLayer = (): Layer.Layer<never> =>
         return Layer.empty
       }
 
+      // Extract span naming config with defaults
+      const spanNaming: SpanNamingConfig = {
+        includeLocation: opTracingConfig?.span_naming?.include_location ?? true,
+        template: opTracingConfig?.span_naming?.template ?? 'effect.{op} ({filename}:{line})'
+      }
+
+      logger.log(
+        `@atrim/operation-tracing: Span naming - includeLocation=${spanNaming.includeLocation}, template="${spanNaming.template}"`
+      )
+
       // Use config operations if provided, otherwise use defaults
       const operations: OperationConfig[] = opTracingConfig?.operations
         ? opTracingConfig.operations.map((op) => ({
             name: op.name,
-            ...(op.span_name && { spanName: op.span_name }),
+            ...(op.span_name && { spanNameTemplate: op.span_name }),
             includeCount: op.include_count ?? true,
             includeStack: op.include_stack ?? true
           }))
@@ -433,7 +506,7 @@ const loadOperationTracingLayer = (): Layer.Layer<never> =>
         `@atrim/operation-tracing: Loaded ${operations.length} operation configs from ${source}`
       )
 
-      return makeOperationTracingLayer(operations)
+      return makeOperationTracingLayer(operations, spanNaming)
     })
   )
 

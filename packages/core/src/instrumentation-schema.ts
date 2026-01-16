@@ -189,13 +189,33 @@ export const OperationTracingConfigSchema = z.object({
   // Enable/disable operation tracing
   enabled: z.boolean().default(false),
 
+  // Global span naming settings
+  span_naming: z
+    .object({
+      // Include source location (file:line) in span name
+      // Default: true - produces "effect.all (index.ts:42)"
+      // When false - produces "effect.all"
+      include_location: z.boolean().default(true),
+
+      // Span name template with variables:
+      // {op} - Operation name (all, forEach, retry, etc.)
+      // {file} - Full file path
+      // {filename} - Just the filename (basename)
+      // {line} - Line number
+      // {column} - Column number
+      // Default: "effect.{op} ({filename}:{line})"
+      template: z.string().default('effect.{op} ({filename}:{line})')
+    })
+    .default({}),
+
   // Operations to trace
   operations: z
     .array(
       z.object({
         // Operation name: 'all', 'forEach', 'retry', etc.
         name: z.string(),
-        // Custom span name (default: effect.{name})
+        // Custom span name template (overrides global span_naming.template)
+        // Supports same variables: {op}, {file}, {filename}, {line}, {column}
         span_name: z.string().optional(),
         // Include item count in span attributes
         include_count: z.boolean().default(true),

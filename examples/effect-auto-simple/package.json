@@ -1,6 +1,6 @@
 {
   "name": "effect-auto-simple-example",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Minimal Effect-TS auto-tracing example",
   "type": "module",
   "private": true,

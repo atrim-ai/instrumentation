@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrumentation-example-express",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "Express example for @atrim/instrumentation",
   "type": "module",
   "private": true,
