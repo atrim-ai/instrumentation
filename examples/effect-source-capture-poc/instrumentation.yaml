@@ -1,0 +1,58 @@
+# POC: Native Source Capture Configuration
+# This example uses Effect's native source capture feature
+# No need for tracedFork() - source locations are captured automatically!
+
+version: "1.0"
+
+# Standard instrumentation config (required by schema)
+instrumentation:
+  enabled: true
+  description: "Effect source capture POC"
+
+  instrument_patterns:
+    - pattern: "^effect\\."
+      enabled: true
+      description: "Effect operations"
+
+  ignore_patterns: []
+
+# Effect-TS auto-instrumentation configuration
+effect:
+  # Auto-instrumentation configuration
+  auto_instrumentation:
+    enabled: true
+    granularity: fiber
+
+    # Span naming (source info is captured automatically now!)
+    span_naming:
+      default: "effect.{function}"
+      infer_from_source: true
+      rules: []
+
+    # No filter - trace everything for this demo
+    filter:
+      include: []
+      exclude: []
+
+    # Performance - no limits for demo
+    performance:
+      sampling_rate: 1.0
+      min_duration: "0ms"
+      max_concurrent: 0
+
+    # Full metadata for demo
+    metadata:
+      fiber_info: true
+      source_location: true
+      parent_fiber: true
+
+  # OTLP exporter to local Atrim backend
+  exporter_config:
+    type: otlp
+    endpoint: "http://localhost:4319"
+    processor: simple
+    headers:
+      x-api-key: "atrim_internal_tenant_000000000002"
+
+  # Backward compatibility
+  auto_extract_metadata: true

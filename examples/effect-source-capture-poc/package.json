@@ -1,0 +1,19 @@
+{
+  "name": "effect-source-capture-poc",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "POC: Native source capture in Effect runtime for automatic tracing",
+  "scripts": {
+    "start": "OTEL_SERVICE_NAME=effect-source-capture-poc tsx index.ts",
+    "start:debug": "OTEL_SERVICE_NAME=effect-source-capture-poc ATRIM_DEBUG=true tsx index.ts"
+  },
+  "dependencies": {
+    "@atrim/instrument-node": "workspace:*",
+    "effect": "npm:@clayroach/effect@3.19.14-source-capture.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.7.2"
+  }
+}

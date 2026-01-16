@@ -74,3 +74,38 @@ export {
 
 // Runtime patching for automatic call-site capture
 export { patchEffectFork, unpatchEffectFork, isEffectForkPatched } from './patch-fork.js'
+
+// ============================================================================
+// POC: Native Source Capture (issue #145)
+// Uses Effect's native source capture instead of manual tracedFork() wrapper
+// ============================================================================
+
+/**
+ * Native Source Capture Tracing - POC for issue #145
+ *
+ * This uses Effect's native source capture feature from the custom Effect build
+ * (@clayroach/effect@3.19.14-source-capture.0) to automatically capture call-site
+ * locations when fibers are forked - NO wrapper functions needed!
+ *
+ * @example
+ * ```typescript
+ * import { SourceCaptureTracingLive } from '@atrim/instrument-node/effect/auto'
+ *
+ * const program = Effect.gen(function* () {
+ *   // Just use regular Effect.fork() - source location captured automatically!
+ *   yield* Effect.fork(sendEmail())  // Span: "effect.sendEmail (user-handlers.ts:42)"
+ * }).pipe(Effect.provide(SourceCaptureTracingLive))
+ * ```
+ */
+export {
+  // Main layer - enables native source capture + supervisor
+  SourceCaptureTracingLive,
+  createSourceCaptureTracingLayer,
+  // Supervisor class (for advanced use)
+  SourceCaptureSupervisor,
+  // Opt-out utilities
+  withoutSourceCapture,
+  // Provider shutdown (call before exit to ensure spans are exported)
+  flushAndShutdown,
+  forceFlush
+} from './source-capture-supervisor.js'

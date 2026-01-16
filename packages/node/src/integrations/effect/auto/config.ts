@@ -6,11 +6,15 @@
  */
 
 import { Effect, Context, Layer } from 'effect'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import * as yaml from 'yaml'
 import {
   type AutoInstrumentationConfig,
   type InstrumentationConfig,
   type ExporterConfig,
   AutoInstrumentationConfigSchema,
+  InstrumentationConfigSchema,
   defaultConfig,
   logger
 } from '@atrim/instrument-core'
@@ -171,6 +175,37 @@ export const loadFullConfig = (
 
     return config
   })
+
+/**
+ * Load the full instrumentation config synchronously
+ *
+ * This is needed for layers that cannot use Layer.unwrapEffect (which breaks
+ * tracer propagation). Falls back to default config if file doesn't exist.
+ */
+export const loadFullConfigSync = (): InstrumentationConfig => {
+  const defaultPath = path.join(process.cwd(), 'instrumentation.yaml')
+
+  try {
+    if (fs.existsSync(defaultPath)) {
+      const content = fs.readFileSync(defaultPath, 'utf-8')
+      const parsed = yaml.parse(content)
+      const result = InstrumentationConfigSchema.safeParse(parsed)
+
+      if (result.success) {
+        logger.log(`@atrim/auto-trace: Loaded config from ${defaultPath}`)
+        return result.data
+      } else {
+        logger.log(`@atrim/auto-trace: Invalid config, using defaults: ${result.error.message}`)
+        return defaultConfig
+      }
+    }
+  } catch (error) {
+    logger.log(`@atrim/auto-trace: Failed to load config: ${error}`)
+  }
+
+  logger.log('@atrim/auto-trace: No config found, using defaults')
+  return defaultConfig
+}
 
 /**
  * Default exporter configuration
