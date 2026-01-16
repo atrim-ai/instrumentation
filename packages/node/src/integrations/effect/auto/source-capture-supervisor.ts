@@ -189,11 +189,31 @@ export class SourceCaptureSupervisor extends Supervisor.AbstractSupervisor<void>
   // Active fiber count (for max_concurrent limiting)
   private activeFiberCount = 0
 
+  // Default root span for fibers without a ParentSpan in their context
+  // This enables auto-instrumentation without requiring Effect.withSpan()
+  private _rootSpan: OtelApi.Span | null = null
+
   constructor(private readonly config: AutoInstrumentationConfig) {
     super()
     logger.log('@atrim/source-capture: Supervisor initialized (native source capture)')
     logger.log(`  Granularity: ${config.granularity || 'fiber'}`)
     logger.log(`  Sampling rate: ${config.performance?.sampling_rate ?? 1.0}`)
+  }
+
+  /**
+   * Set the default root span for auto-instrumentation.
+   * Fibers without a ParentSpan will use this as their parent.
+   */
+  setRootSpan(span: OtelApi.Span): void {
+    this._rootSpan = span
+    logger.log(`@atrim/source-capture: Root span set - spanId=${span.spanContext().spanId}`)
+  }
+
+  /**
+   * Get the root span (if set)
+   */
+  get rootSpan(): OtelApi.Span | null {
+    return this._rootSpan
   }
 
   /**

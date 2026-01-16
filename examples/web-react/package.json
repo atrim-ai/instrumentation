@@ -6,7 +6,7 @@
   "description": "React example for @atrim/instrument-web - production-ready template",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },

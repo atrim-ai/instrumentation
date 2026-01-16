@@ -19,6 +19,9 @@
       "mcp__effect-docs__effect_docs_search"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/croach/projects/effect-main-fork"
+    ]
   }
 }

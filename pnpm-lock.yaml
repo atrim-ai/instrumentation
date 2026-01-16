@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  effect: ^3.19.8
+  effect: npm:@clayroach/effect@3.19.14-source-capture.1
   '@effect/platform': ^0.93.6
   '@effect/platform-node': ^0.103.0
   '@effect/opentelemetry': ^0.59.1
@@ -113,7 +113,7 @@ importers:
         version: link:../../packages/node
       '@effect/opentelemetry':
         specifier: ^0.59.1
-        version: 0.59.3(@effect/platform@0.93.8(effect@3.19.14))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)(effect@3.19.14)
+        version: 0.59.3(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -121,8 +121,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       effect:
-        specifier: ^3.19.8
-        version: 3.19.14
+        specifier: npm:@clayroach/effect@3.19.14-source-capture.1
+        version: '@clayroach/effect@3.19.14-source-capture.1'
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -138,13 +138,13 @@ importers:
         version: link:../../packages/node
       '@effect/opentelemetry':
         specifier: ^0.59.1
-        version: 0.59.3(@effect/platform@0.93.8(effect@3.19.14))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)(effect@3.19.14)
+        version: 0.59.3(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)
       '@effect/platform':
         specifier: ^0.93.6
-        version: 0.93.8(effect@3.19.14)
+        version: 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
       '@effect/platform-node':
         specifier: ^0.103.0
-        version: 0.103.0(@effect/cluster@0.55.0(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)
+        version: 0.103.0(98c17cb3001cdcbdbe7b41d31bb5e794)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -155,8 +155,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       effect:
-        specifier: ^3.19.8
-        version: 3.19.14
+        specifier: npm:@clayroach/effect@3.19.14-source-capture.1
+        version: '@clayroach/effect@3.19.14-source-capture.1'
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -172,7 +172,7 @@ importers:
         version: link:../../packages/node
       '@effect/opentelemetry':
         specifier: ^0.59.1
-        version: 0.59.3(@effect/platform@0.93.8(effect@3.19.14))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)(effect@3.19.14)
+        version: 0.59.3(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -180,8 +180,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       effect:
-        specifier: ^3.19.8
-        version: 3.19.14
+        specifier: npm:@clayroach/effect@3.19.14-source-capture.1
+        version: '@clayroach/effect@3.19.14-source-capture.1'
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -197,25 +197,41 @@ importers:
         version: link:../../packages/node
       '@effect/opentelemetry':
         specifier: ^0.59.1
-        version: 0.59.3(@effect/platform@0.93.8(effect@3.19.14))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)(effect@3.19.14)
+        version: 0.59.3(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)
       '@effect/platform':
         specifier: ^0.93.6
-        version: 0.93.8(effect@3.19.14)
+        version: 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
       '@effect/platform-node':
         specifier: ^0.103.0
-        version: 0.103.0(@effect/cluster@0.55.0(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)
+        version: 0.103.0(98c17cb3001cdcbdbe7b41d31bb5e794)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
       effect:
-        specifier: ^3.19.8
-        version: 3.19.14
+        specifier: npm:@clayroach/effect@3.19.14-source-capture.1
+        version: '@clayroach/effect@3.19.14-source-capture.1'
     devDependencies:
       tsx:
         specifier: ^4.20.6
         version: 4.21.0
       typescript:
         specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/effect-source-capture-poc:
+    dependencies:
+      '@atrim/instrument-node':
+        specifier: workspace:*
+        version: link:../../packages/node
+      effect:
+        specifier: npm:@clayroach/effect@3.19.14-source-capture.1
+        version: '@clayroach/effect@3.19.14-source-capture.1'
+    devDependencies:
+      tsx:
+        specifier: ^4.7.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.2
         version: 5.9.3
 
   examples/effect-ts:
@@ -225,10 +241,10 @@ importers:
         version: link:../../packages/node
       '@effect/opentelemetry':
         specifier: ^0.59.1
-        version: 0.59.3(@effect/platform@0.93.8(effect@3.19.14))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)(effect@3.19.14)
+        version: 0.59.3(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)
       '@effect/platform':
         specifier: ^0.93.6
-        version: 0.93.8(effect@3.19.14)
+        version: 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -242,8 +258,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       effect:
-        specifier: ^3.19.8
-        version: 3.19.14
+        specifier: npm:@clayroach/effect@3.19.14-source-capture.1
+        version: '@clayroach/effect@3.19.14-source-capture.1'
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -420,10 +436,10 @@ importers:
     dependencies:
       '@effect/platform':
         specifier: ^0.93.6
-        version: 0.93.8(effect@3.19.14)
+        version: 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
       effect:
-        specifier: ^3.19.8
-        version: 3.19.14
+        specifier: npm:@clayroach/effect@3.19.14-source-capture.1
+        version: '@clayroach/effect@3.19.14-source-capture.1'
       yaml:
         specifier: ^2.3.0
         version: 2.8.2
@@ -470,6 +486,9 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.38.0
         version: 1.38.0
+      effect:
+        specifier: npm:@clayroach/effect@3.19.14-source-capture.1
+        version: '@clayroach/effect@3.19.14-source-capture.1'
       yaml:
         specifier: ^2.3.0
         version: 2.8.2
@@ -482,13 +501,13 @@ importers:
         version: link:../core
       '@effect/opentelemetry':
         specifier: ^0.59.1
-        version: 0.59.3(@effect/platform@0.93.8(effect@3.19.14))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)(effect@3.19.14)
+        version: 0.59.3(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)
       '@effect/platform':
         specifier: ^0.93.6
-        version: 0.93.8(effect@3.19.14)
+        version: 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
       '@effect/platform-node':
         specifier: ^0.103.0
-        version: 0.103.0(@effect/cluster@0.55.0(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)
+        version: 0.103.0(98c17cb3001cdcbdbe7b41d31bb5e794)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -504,9 +523,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.0.16
         version: 4.0.16(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jsdom@27.4.0)(tsx@4.21.0)(yaml@2.8.2))
-      effect:
-        specifier: ^3.19.8
-        version: 3.19.14
       testcontainers:
         specifier: ^11.11.0
         version: 11.11.0
@@ -573,7 +589,7 @@ importers:
     dependencies:
       '@effect/platform':
         specifier: ^0.93.6
-        version: 0.93.8(effect@3.19.14)
+        version: 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -596,8 +612,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       effect:
-        specifier: ^3.19.8
-        version: 3.19.14
+        specifier: npm:@clayroach/effect@3.19.14-source-capture.1
+        version: '@clayroach/effect@3.19.14-source-capture.1'
       yaml:
         specifier: ^2.8.1
         version: 2.8.2
@@ -793,6 +809,9 @@ packages:
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
 
+  '@clayroach/effect@3.19.14-source-capture.1':
+    resolution: {integrity: sha512-hbFNbgGw7oda6M6TIjtvyCfUS7YioKHmpSWGhwu9FxmimDFvrbBCCQ690zyFNS2xb5QgfdJrLqwmlCR63v8ELA==}
+
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
     engines: {node: '>=18'}
@@ -838,7 +857,7 @@ packages:
     resolution: {integrity: sha512-M5uug3Drs/gyTHLfA+XzcIZQGUEV/Jn5yi1POki4oZswhpzNmsVTHl4THpxAordRKwa5lFvTSlsRP684YH7pSw==}
     peerDependencies:
       '@effect/platform': ^0.93.6
-      effect: ^3.19.8
+      effect: ^3.19.9
       ioredis: ^5
       lmdb: ^3
     peerDependenciesMeta:
@@ -859,7 +878,7 @@ packages:
       '@opentelemetry/sdk-trace-node': ^2.0.0
       '@opentelemetry/sdk-trace-web': ^2.0.0
       '@opentelemetry/semantic-conventions': ^1.33.0
-      effect: ^3.19.8
+      effect: ^3.19.12
     peerDependenciesMeta:
       '@opentelemetry/api':
         optional: true
@@ -897,13 +916,13 @@ packages:
   '@effect/platform@0.93.8':
     resolution: {integrity: sha512-xTEy6fyTy4ijmFC3afKgtvYtn/JyPoIov4ZSUWJZUv3VeOcUPNGrrqG6IJlWkXs3NhvSywKv7wc1kw3epCQVZw==}
     peerDependencies:
-      effect: ^3.19.8
+      effect: ^3.19.12
 
   '@effect/rpc@0.72.2':
     resolution: {integrity: sha512-BmTXybXCOq96D2r9mvSW/YdiTQs5CStnd4II+lfVKrMr3pMNERKLZ2LG37Tfm4Sy3Q8ire6IVVKO/CN+VR0uQQ==}
     peerDependencies:
       '@effect/platform': ^0.93.6
-      effect: ^3.19.8
+      effect: ^3.19.5
 
   '@effect/sql@0.48.6':
     resolution: {integrity: sha512-OBIG/DYFxYTA9EXXhqi6sAcX0YLz8Huu8L+wj3a0aOSRPpHm9HkL9a5lacRPPvrVl31rKcEteGa/lO6n26gIFg==}
@@ -918,7 +937,7 @@ packages:
       '@effect/experimental': ^0.57.11
       '@effect/platform': ^0.93.6
       '@effect/rpc': ^0.72.2
-      effect: ^3.19.8
+      effect: ^3.19.10
 
   '@esbuild/aix-ppc64@0.27.2':
     resolution: {integrity: sha512-GZMB+a0mOMZs4MpDbj8RJp4cw+w1WV5NYD6xzgvzUJ5Ek2jerwfO2eADyI6ExDSUED+1X8aMbegahsJi+8mgpw==}
@@ -2653,9 +2672,6 @@ packages:
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
-
-  effect@3.19.14:
-    resolution: {integrity: sha512-3vwdq0zlvQOxXzXNKRIPKTqZNMyGCdaFUBfMPqpsyzZDre67kgC1EEHDV4EoQTovJ4w5fmJW756f86kkuz7WFA==}
 
   electron-to-chromium@1.5.267:
     resolution: {integrity: sha512-0Drusm6MVRXSOJpGbaSVgcQsuB4hEkMpHXaVstcPmhu5LIedxs1xNK/nIxmQIU/RPC0+1/o0AVZfBTkTNJOdUw==}
@@ -4511,6 +4527,11 @@ snapshots:
       human-id: 4.1.3
       prettier: 2.8.8
 
+  '@clayroach/effect@3.19.14-source-capture.1':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      fast-check: 3.23.2
+
   '@csstools/color-helpers@5.1.0': {}
 
   '@csstools/css-calc@2.1.4(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)':
@@ -4533,26 +4554,26 @@ snapshots:
 
   '@csstools/css-tokenizer@3.0.4': {}
 
-  '@effect/cluster@0.55.0(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)':
+  '@effect/cluster@0.55.0(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@effect/rpc@0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/sql@0.48.6(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/workflow@0.15.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@effect/rpc@0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))))':
     dependencies:
-      '@effect/platform': 0.93.8(effect@3.19.14)
-      '@effect/rpc': 0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)
-      '@effect/sql': 0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)
-      '@effect/workflow': 0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)
-      effect: 3.19.14
+      '@effect/platform': 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
+      '@effect/rpc': 0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))
+      '@effect/sql': 0.48.6(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))
+      '@effect/workflow': 0.15.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@effect/rpc@0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))
+      effect: '@clayroach/effect@3.19.14-source-capture.1'
       kubernetes-types: 1.30.0
 
-  '@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)':
+  '@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))':
     dependencies:
-      '@effect/platform': 0.93.8(effect@3.19.14)
-      effect: 3.19.14
+      '@effect/platform': 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
+      effect: '@clayroach/effect@3.19.14-source-capture.1'
       uuid: 11.1.0
 
-  '@effect/opentelemetry@0.59.3(@effect/platform@0.93.8(effect@3.19.14))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)(effect@3.19.14)':
+  '@effect/opentelemetry@0.59.3(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)':
     dependencies:
-      '@effect/platform': 0.93.8(effect@3.19.14)
+      '@effect/platform': 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
       '@opentelemetry/semantic-conventions': 1.38.0
-      effect: 3.19.14
+      effect: '@clayroach/effect@3.19.14-source-capture.1'
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
@@ -4562,28 +4583,28 @@ snapshots:
       '@opentelemetry/sdk-trace-node': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-web': 2.2.0(@opentelemetry/api@1.9.0)
 
-  '@effect/platform-node-shared@0.56.0(@effect/cluster@0.55.0(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)':
+  '@effect/platform-node-shared@0.56.0(98c17cb3001cdcbdbe7b41d31bb5e794)':
     dependencies:
-      '@effect/cluster': 0.55.0(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)
-      '@effect/platform': 0.93.8(effect@3.19.14)
-      '@effect/rpc': 0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)
-      '@effect/sql': 0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)
+      '@effect/cluster': 0.55.0(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@effect/rpc@0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/sql@0.48.6(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/workflow@0.15.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@effect/rpc@0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))))
+      '@effect/platform': 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
+      '@effect/rpc': 0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))
+      '@effect/sql': 0.48.6(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))
       '@parcel/watcher': 2.5.1
-      effect: 3.19.14
+      effect: '@clayroach/effect@3.19.14-source-capture.1'
       multipasta: 0.2.7
       ws: 8.19.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform-node@0.103.0(@effect/cluster@0.55.0(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)':
+  '@effect/platform-node@0.103.0(98c17cb3001cdcbdbe7b41d31bb5e794)':
     dependencies:
-      '@effect/cluster': 0.55.0(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)
-      '@effect/platform': 0.93.8(effect@3.19.14)
-      '@effect/platform-node-shared': 0.56.0(@effect/cluster@0.55.0(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)
-      '@effect/rpc': 0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)
-      '@effect/sql': 0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)
-      effect: 3.19.14
+      '@effect/cluster': 0.55.0(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@effect/rpc@0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/sql@0.48.6(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/workflow@0.15.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@effect/rpc@0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))))
+      '@effect/platform': 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
+      '@effect/platform-node-shared': 0.56.0(98c17cb3001cdcbdbe7b41d31bb5e794)
+      '@effect/rpc': 0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))
+      '@effect/sql': 0.48.6(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))
+      effect: '@clayroach/effect@3.19.14-source-capture.1'
       mime: 3.0.0
       undici: 7.18.0
       ws: 8.19.0
@@ -4591,32 +4612,32 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform@0.93.8(effect@3.19.14)':
+  '@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)':
     dependencies:
-      effect: 3.19.14
+      effect: '@clayroach/effect@3.19.14-source-capture.1'
       find-my-way-ts: 0.1.6
       msgpackr: 1.11.8
       multipasta: 0.2.7
 
-  '@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)':
+  '@effect/rpc@0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))':
     dependencies:
-      '@effect/platform': 0.93.8(effect@3.19.14)
-      effect: 3.19.14
+      '@effect/platform': 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
+      effect: '@clayroach/effect@3.19.14-source-capture.1'
       msgpackr: 1.11.8
 
-  '@effect/sql@0.48.6(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)':
+  '@effect/sql@0.48.6(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))':
     dependencies:
-      '@effect/experimental': 0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)
-      '@effect/platform': 0.93.8(effect@3.19.14)
-      effect: 3.19.14
+      '@effect/experimental': 0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))
+      '@effect/platform': 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
+      effect: '@clayroach/effect@3.19.14-source-capture.1'
       uuid: 11.1.0
 
-  '@effect/workflow@0.15.2(@effect/experimental@0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(@effect/platform@0.93.8(effect@3.19.14))(@effect/rpc@0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14))(effect@3.19.14)':
+  '@effect/workflow@0.15.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/experimental@0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))(@effect/rpc@0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1)))':
     dependencies:
-      '@effect/experimental': 0.57.11(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)
-      '@effect/platform': 0.93.8(effect@3.19.14)
-      '@effect/rpc': 0.72.2(@effect/platform@0.93.8(effect@3.19.14))(effect@3.19.14)
-      effect: 3.19.14
+      '@effect/experimental': 0.57.11(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))
+      '@effect/platform': 0.93.8(@clayroach/effect@3.19.14-source-capture.1)
+      '@effect/rpc': 0.72.2(@clayroach/effect@3.19.14-source-capture.1)(@effect/platform@0.93.8(@clayroach/effect@3.19.14-source-capture.1))
+      effect: '@clayroach/effect@3.19.14-source-capture.1'
 
   '@esbuild/aix-ppc64@0.27.2':
     optional: true
@@ -6527,11 +6548,6 @@ snapshots:
   eastasianwidth@0.2.0: {}
 
   ee-first@1.1.1: {}
-
-  effect@3.19.14:
-    dependencies:
-      '@standard-schema/spec': 1.1.0
-      fast-check: 3.23.2
 
   electron-to-chromium@1.5.267: {}
 
