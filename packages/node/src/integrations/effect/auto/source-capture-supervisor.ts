@@ -32,6 +32,8 @@ import {
   Tracer as EffectTracer,
   GlobalValue
 } from 'effect'
+// Import for currentOtelSpanContext FiberRef (OTel context propagation)
+import * as TracerModule from 'effect/Tracer'
 import { Tracer as OtelTracer } from '@effect/opentelemetry'
 import * as fs from 'node:fs'
 import * as OtelApi from '@opentelemetry/api'
@@ -180,6 +182,12 @@ export class SourceCaptureSupervisor extends Supervisor.AbstractSupervisor<void>
   // WeakMap to associate fibers with their OTel spans
   private readonly fiberSpans = new WeakMap<Fiber.RuntimeFiber<unknown, unknown>, OtelApi.Span>()
 
+  // WeakMap to associate fibers with their OTel contexts (for child fiber lookups)
+  private readonly fiberContexts = new WeakMap<
+    Fiber.RuntimeFiber<unknown, unknown>,
+    OtelApi.Context
+  >()
+
   // WeakMap for fiber start times (for min_duration filtering)
   private readonly fiberStartTimes = new WeakMap<Fiber.RuntimeFiber<unknown, unknown>, bigint>()
 
@@ -315,36 +323,70 @@ export class SourceCaptureSupervisor extends Supervisor.AbstractSupervisor<void>
     }
 
     // Get parent span context
-    // Priority: Effect ParentSpan (from context) > parent fiber's span > no parent
+    // Priority: Inherited OTel context (FiberRef) > Effect ParentSpan > parent fiber's span > root
     let parentContext: OtelApi.Context = OtelApi.ROOT_CONTEXT
     let parentFiberId: number | undefined
 
-    // First, try to get the Effect parent span from the context
-    const maybeEffectParentSpan = Context.getOption(_context, EffectTracer.ParentSpan)
+    // ============================================================================
+    // KEY FIX: Read inherited OTel context from FiberRef
+    // This propagates correctly through fiber hierarchy even when AsyncLocalStorage is lost
+    // ============================================================================
+    const inheritedOtelContext = FiberRefs.getOrDefault(
+      fiberRefsValue,
+      TracerModule.currentOtelSpanContext
+    ) as OtelApi.Context | undefined
 
-    if (Option.isSome(maybeEffectParentSpan)) {
-      const effectSpan = maybeEffectParentSpan.value
-      logger.log(
-        `@atrim/source-capture: Found ParentSpan - traceId=${effectSpan.traceId}, spanId=${effectSpan.spanId}`
-      )
-
-      // Create an OTel SpanContext from the Effect span's identifiers
-      const otelSpanContext: OtelApi.SpanContext = {
-        traceId: effectSpan.traceId,
-        spanId: effectSpan.spanId,
-        traceFlags: effectSpan.sampled ? OtelApi.TraceFlags.SAMPLED : OtelApi.TraceFlags.NONE,
-        isRemote: false
+    if (inheritedOtelContext) {
+      // Use the inherited OTel context from parent fiber
+      parentContext = inheritedOtelContext
+      const inheritedSpan = OtelApi.trace.getSpan(inheritedOtelContext)
+      if (inheritedSpan) {
+        const spanCtx = inheritedSpan.spanContext()
+        logger.log(
+          `@atrim/source-capture: Using inherited OTel context - traceId=${spanCtx.traceId}, spanId=${spanCtx.spanId}`
+        )
       }
+    } else {
+      // Fallback: Try to get the Effect parent span from the context
+      const maybeEffectParentSpan = Context.getOption(_context, EffectTracer.ParentSpan)
 
-      // Wrap the SpanContext in a span object for proper parent-child linking
-      const wrappedSpan = OtelApi.trace.wrapSpanContext(otelSpanContext)
-      parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, wrappedSpan)
-    } else if (Option.isSome(parent)) {
-      // Fiber has a parent fiber - try to find its span
-      parentFiberId = parent.value.id().id
-      const parentSpan = this.fiberSpans.get(parent.value)
-      if (parentSpan) {
-        parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, parentSpan)
+      if (Option.isSome(maybeEffectParentSpan)) {
+        const effectSpan = maybeEffectParentSpan.value
+        logger.log(
+          `@atrim/source-capture: Found ParentSpan - traceId=${effectSpan.traceId}, spanId=${effectSpan.spanId}`
+        )
+
+        // Create an OTel SpanContext from the Effect span's identifiers
+        const otelSpanContext: OtelApi.SpanContext = {
+          traceId: effectSpan.traceId,
+          spanId: effectSpan.spanId,
+          traceFlags: effectSpan.sampled ? OtelApi.TraceFlags.SAMPLED : OtelApi.TraceFlags.NONE,
+          isRemote: false
+        }
+
+        // Wrap the SpanContext in a span object for proper parent-child linking
+        const wrappedSpan = OtelApi.trace.wrapSpanContext(otelSpanContext)
+        parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, wrappedSpan)
+      } else if (Option.isSome(parent)) {
+        // Fiber has a parent fiber - try to find its context/span
+        parentFiberId = parent.value.id().id
+        // First try to get the full OTel context (preserves all context values)
+        const parentOtelContext = this.fiberContexts.get(parent.value)
+        if (parentOtelContext) {
+          parentContext = parentOtelContext
+          const parentSpan = OtelApi.trace.getSpan(parentOtelContext)
+          if (parentSpan) {
+            logger.log(
+              `@atrim/source-capture: Using parent fiber's OTel context - traceId=${parentSpan.spanContext().traceId}`
+            )
+          }
+        } else {
+          // Fall back to span lookup
+          const parentSpan = this.fiberSpans.get(parent.value)
+          if (parentSpan) {
+            parentContext = OtelApi.trace.setSpan(OtelApi.ROOT_CONTEXT, parentSpan)
+          }
+        }
       }
     }
 
@@ -387,8 +429,14 @@ export class SourceCaptureSupervisor extends Supervisor.AbstractSupervisor<void>
 
     logger.log(`@atrim/source-capture: Created span "${spanName}" for fiber ${fiberId}`)
 
-    // Store span and start time
+    // Store the new OTel context with the span for child fibers to inherit
+    // Note: We can't directly set FiberRef on the fiber here (it's already created),
+    // but we store the context in a map so parent fiber lookups work
+    const newContext = OtelApi.trace.setSpan(parentContext, span)
+
+    // Store span, context, and start time
     this.fiberSpans.set(fiber as Fiber.RuntimeFiber<unknown, unknown>, span)
+    this.fiberContexts.set(fiber as Fiber.RuntimeFiber<unknown, unknown>, newContext)
     this.fiberStartTimes.set(fiber as Fiber.RuntimeFiber<unknown, unknown>, process.hrtime.bigint())
     this.activeFiberCount++
   }
@@ -414,6 +462,7 @@ export class SourceCaptureSupervisor extends Supervisor.AbstractSupervisor<void>
       if (minDuration > 0 && duration < minDuration) {
         // Drop span if too short
         this.fiberSpans.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
+        this.fiberContexts.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
         this.fiberStartTimes.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
         this.activeFiberCount--
         return
@@ -437,6 +486,7 @@ export class SourceCaptureSupervisor extends Supervisor.AbstractSupervisor<void>
 
     // Cleanup
     this.fiberSpans.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
+    this.fiberContexts.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
     this.fiberStartTimes.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
     this.activeFiberCount--
   }

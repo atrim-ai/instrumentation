@@ -146,3 +146,48 @@ export {
   OperationTracingSupervisor
 } from './operation-tracing-supervisor.js'
 export type { OperationConfig, OperationMeta } from './operation-tracing-supervisor.js'
+
+// ============================================================================
+// Unified Tracing (RECOMMENDED) - Correct fork span hierarchy
+// Combines operation + fiber tracing with fork spans as parents of fiber spans
+// ============================================================================
+
+/**
+ * Unified Tracing - RECOMMENDED for correct fork span hierarchy
+ *
+ * This supervisor combines operation tracing and fiber tracing, ensuring that
+ * fork spans are correctly set as parents of their resulting fiber spans.
+ *
+ * @example
+ * ```typescript
+ * import { withUnifiedTracing } from '@atrim/instrument-node/effect/auto'
+ *
+ * const program = Effect.gen(function* () {
+ *   // Fork span is PARENT of the forked fiber span (correct hierarchy!)
+ *   yield* Effect.fork(backgroundTask())
+ *
+ *   // effect.all span contains item count
+ *   yield* Effect.all([doA(), doB()])
+ * }).pipe(withUnifiedTracing)
+ * ```
+ *
+ * Resulting trace hierarchy:
+ * ```
+ * http.server GET
+ * ├── effect.fork (index.ts:15)
+ * │   └── effect.fiber (index.ts:15)  ← child of fork!
+ * └── effect.all (index.ts:18)
+ * ```
+ */
+export {
+  // Simplest API - wraps effect with unified tracing
+  withUnifiedTracing,
+  // Layer for manual composition
+  UnifiedTracingLive,
+  createUnifiedTracingLayer,
+  // Supervisor class (for advanced use)
+  UnifiedTracingSupervisor,
+  // Provider shutdown
+  flushAndShutdown as unifiedFlushAndShutdown,
+  forceFlush as unifiedForceFlush
+} from './unified-tracing-supervisor.js'
