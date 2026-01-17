@@ -12,5 +12,7 @@ export default defineConfig({
       reportsDirectory: 'target/coverage',
       exclude: ['**/node_modules/**', '**/target/**', '**/test/integration/**', '**/examples/**']
     }
+    // Note: NODE_OPTIONS='--import tsx' is set in package.json test script
+    // to handle @clayroach/effect which exports .ts source files directly
   }
 })

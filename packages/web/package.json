@@ -50,9 +50,9 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test": "NODE_OPTIONS='--import tsx' vitest run",
+    "test:watch": "NODE_OPTIONS='--import tsx' vitest",
+    "test:coverage": "NODE_OPTIONS='--import tsx' vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
@@ -93,6 +93,7 @@
     "@vitest/coverage-v8": "^4.0.16",
     "jsdom": "^27.4.0",
     "tsup": "^8.0.1",
+    "tsx": "^4.7.0",
     "typescript": "^5.7.2",
     "vitest": "^4.0.16"
   }

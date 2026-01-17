@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrument-node",
-  "version": "0.8.0",
+  "version": "0.5.0",
   "description": "OpenTelemetry instrumentation for Node.js with centralized YAML configuration",
   "type": "module",
   "license": "MIT",
@@ -61,10 +61,10 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:integration": "OTEL_BSP_SCHEDULE_DELAY=500 vitest run --config vitest.integration.config.ts",
+    "test": "NODE_OPTIONS='--import tsx' vitest run",
+    "test:watch": "NODE_OPTIONS='--import tsx' vitest",
+    "test:coverage": "NODE_OPTIONS='--import tsx' vitest run --coverage",
+    "test:integration": "NODE_OPTIONS='--import tsx' OTEL_BSP_SCHEDULE_DELAY=500 vitest run --config vitest.integration.config.ts",
     "test:all": "pnpm test && pnpm test:integration",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
