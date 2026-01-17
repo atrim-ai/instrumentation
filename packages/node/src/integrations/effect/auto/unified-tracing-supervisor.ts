@@ -641,10 +641,17 @@ export const createUnifiedTracingLayer = (): Layer.Layer<never> => {
   // Provide Resource to effectTracerLayer and discard the output service
   const tracerWithResource = effectTracerLayer.pipe(Layer.provide(resourceLayer))
 
+  // Enable OpSupervision runtime flag so onEffect hook fires
+  // This allows us to trace Effect.all, Effect.forEach, Effect.fork operations
+  const opSupervisionLayer = Layer.effectDiscard(
+    Effect.patchRuntimeFlags(RuntimeFlagsPatch.enable(RuntimeFlags.OpSupervision))
+  )
+
   return Layer.mergeAll(
     Layer.discard(tracerWithResource),
     Layer.enableSourceCapture,
-    supervisorLayer
+    supervisorLayer,
+    opSupervisionLayer
   )
 }
 
