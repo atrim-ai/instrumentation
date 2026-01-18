@@ -1,6 +1,6 @@
 {
   "name": "effect-op-tracing-example",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Effect operation tracing example using OpSupervision",
   "type": "module",
   "private": true,

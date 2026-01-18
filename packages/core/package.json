@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrument-core",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Core instrumentation logic shared across platform packages (internal)",
   "type": "module",
