@@ -65,7 +65,7 @@
     "@opentelemetry/core": "^2.2.0",
     "@opentelemetry/otlp-exporter-base": "^0.208.0",
     "@opentelemetry/otlp-transformer": "^0.208.0",
-    "@opentelemetry/sdk-trace-base": "^2.2.0"
+    "@opentelemetry/sdk-trace-base": "^2.4.0"
   },
   "devDependencies": {
     "@opentelemetry/resources": "^2.2.0",
