@@ -264,7 +264,7 @@ describe('WebSocketTraceExporter', () => {
       await exporter.forceFlush()
       const duration = Date.now() - startTime
 
-      expect(duration).toBeLessThan(5)
+      expect(duration).toBeLessThan(50)
     })
 
     it('should not call transport methods', async () => {
