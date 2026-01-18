@@ -611,9 +611,17 @@ const setupGlobalTracerProvider = (): {
   return { provider, spanProcessor }
 }
 
-// Set up the global TracerProvider immediately at module load time
-// This ensures it's available before any Effect layers try to access it
-const globalProviderSetup = setupGlobalTracerProvider()
+// Lazy initialization of the global TracerProvider
+// Only sets up the provider when first accessed, not at module load time
+// This allows tests to set OTEL_EXPORTER_OTLP_ENDPOINT before the provider is created
+let _globalProviderSetup: ReturnType<typeof setupGlobalTracerProvider> | undefined
+
+function getGlobalProviderSetup() {
+  if (_globalProviderSetup === undefined) {
+    _globalProviderSetup = setupGlobalTracerProvider()
+  }
+  return _globalProviderSetup
+}
 
 // ============================================================================
 // Layers
@@ -652,7 +660,7 @@ export const createSourceCaptureTracingLayer = (): Layer.Layer<never> => {
   }
 
   // Handle case where provider wasn't set up (exporter type = 'none')
-  if (!globalProviderSetup) {
+  if (!getGlobalProviderSetup()) {
     logger.log('@atrim/source-capture: No TracerProvider, using empty layer')
     return Layer.empty
   }
@@ -768,10 +776,11 @@ export const withoutSourceCapture = <A, E, R>(
  * ```
  */
 export const flushAndShutdown = async (): Promise<void> => {
-  if (globalProviderSetup?.provider) {
+  const setup = getGlobalProviderSetup()
+  if (setup?.provider) {
     logger.log('@atrim/source-capture: Flushing and shutting down TracerProvider...')
-    await globalProviderSetup.provider.forceFlush()
-    await globalProviderSetup.provider.shutdown()
+    await setup.provider.forceFlush()
+    await setup.provider.shutdown()
     logger.log('@atrim/source-capture: TracerProvider shutdown complete')
   }
 }
@@ -781,9 +790,10 @@ export const flushAndShutdown = async (): Promise<void> => {
  * Use this if you need to ensure spans are exported but want to continue tracing.
  */
 export const forceFlush = async (): Promise<void> => {
-  if (globalProviderSetup?.provider) {
+  const setup = getGlobalProviderSetup()
+  if (setup?.provider) {
     logger.log('@atrim/source-capture: Force flushing TracerProvider...')
-    await globalProviderSetup.provider.forceFlush()
+    await setup.provider.forceFlush()
     logger.log('@atrim/source-capture: Force flush complete')
   }
 }

@@ -85,14 +85,13 @@ describe('Pure Effect-TS Example', () => {
 
     expect(receivedTraces).toBeTruthy()
 
-    // Verify Effect spans are present
+    // Verify spans are present in collector logs
     const logs = await getCollectorLogs(collector, 100)
 
-    // Should have HTTP span from @effect/platform
-    expect(logs).toContain('http.users.list')
-
-    // Should have business logic span from Effect.withSpan()
-    expect(logs).toContain('app.users.list')
+    // Should have HTTP span from @effect/platform with route info
+    // CombinedTracingLive automatically traces HTTP requests without manual Effect.withSpan()
+    expect(logs).toContain('http.route')
+    expect(logs).toContain('/users')
   })
 
   it('should handle Effect errors gracefully', async () => {

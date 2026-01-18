@@ -14,7 +14,13 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { defaultResource, resourceFromAttributes } from '@opentelemetry/resources'
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions'
 import * as OtelApi from '@opentelemetry/api'
-import { withAutoTracing, setSpanName } from '../../../../src/integrations/effect/auto/index.js'
+// Import directly from supervisor.js to avoid triggering the module-level
+// side effect in source-capture-supervisor.js that auto-creates a global
+// TracerProvider with the default endpoint (which would overwrite our test's provider)
+import {
+  withAutoTracing,
+  setSpanName
+} from '../../../../src/integrations/effect/auto/supervisor.js'
 import {
   startCollectorContainer,
   stopCollectorContainer,

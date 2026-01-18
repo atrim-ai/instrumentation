@@ -40,7 +40,7 @@ effect:
       type: parent-child  # or 'span-links' or 'both'
 
   # OTLP exporter configuration
+  # Note: endpoint defaults to OTEL_EXPORTER_OTLP_ENDPOINT env var or http://localhost:4318
   exporter_config:
     type: otlp
-    endpoint: http://localhost:4318
     processor: batch

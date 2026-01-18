@@ -217,9 +217,9 @@ const program = Effect.gen(function* () {
   yield* Console.log('   - effect.* (forked background tasks)')
   yield* Console.log('')
 
-  // Keep the server running
-  yield* Effect.never
-}).pipe(Layer.launch(HttpLive))
+  // Launch the HTTP server layer
+  yield* Layer.launch(HttpLive)
+})
 
 // Run the Effect program directly
 Effect.runPromise(program).catch((error) => {
