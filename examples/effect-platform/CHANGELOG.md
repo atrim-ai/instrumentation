@@ -1,5 +1,12 @@
 # effect-platform-example
 
+## 0.5.5
+
+### Patch Changes
+
+- Updated dependencies [a950b59]
+  - @atrim/instrument-node@0.6.0
+
 ## 0.5.4
 
 ### Patch Changes

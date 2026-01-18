@@ -1,6 +1,6 @@
 {
   "name": "effect-auto-console-example",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Effect-TS auto-tracing example with console exporter for development",
   "type": "module",
   "private": true,
