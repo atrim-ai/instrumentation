@@ -1,47 +1,36 @@
-# Pure Effect-TS Example with @effect/platform HTTP Server
+# Pure Effect-TS Example with CombinedTracingLive
 
-This example demonstrates using `@atrim/instrumentation` with **pure Effect-TS** - no Express, no Fastify, just Effect all the way down!
+This example demonstrates `CombinedTracingLive` - the **most comprehensive** tracing option for Effect-TS HTTP applications.
 
 ## Key Features
 
 ✅ **Pure Effect-TS HTTP server** using `@effect/platform/HttpServer`
-✅ **Smart auto-detection** - Auto-instrumentation automatically disabled
-✅ **Effect.withSpan()** for all tracing
-✅ **Pattern-based filtering** from `instrumentation.yaml`
-✅ **Zero manual configuration** needed
+✅ **Automatic HTTP request tracing** - Every HTTP request traced automatically
+✅ **Automatic fiber tracing** - Every forked fiber traced automatically
+✅ **Parent-child span relationships** - Fiber spans linked to HTTP parent
+✅ **Zero Effect.withSpan() calls** - No manual tracing code needed
+✅ **YAML-driven configuration** - All settings in `instrumentation.yaml`
 
-## What Makes This Different?
+## What is CombinedTracingLive?
 
-### This Example (Pure Effect)
-```typescript
-// No Express/Fastify - just Effect!
-await initializeInstrumentation({
-  serviceName: 'effect-platform-example'
-})
+`CombinedTracingLive` provides both:
 
-// Output:
-// @atrim/instrumentation: Detected Effect-TS without web framework
-//   - Auto-instrumentation disabled by default
-//   - Effect.withSpan() will create spans
+1. **HTTP request tracing** - @effect/platform's built-in HTTP middleware creates spans
+2. **Fiber-level tracing** - Our Supervisor creates spans for all forked fibers
+
+**No manual tracing code required!**
+
+## Architecture
+
+```
+HTTP Request
+  └─ http.server.request (automatic)
+      ├─ effect.updateUserActivity (forked fiber - automatic)
+      ├─ effect.sendWelcomeEmail (forked fiber - automatic)
+      └─ effect.recordAnalytics (forked fiber - automatic)
 ```
 
-**Auto-instrumentation: DISABLED (auto-detected)**
-Because there's no traditional web framework, the library knows you don't need Express/HTTP auto-instrumentation.
-
-### Effect-TS + Express Example
-```typescript
-// Using Express with Effect
-await initializeInstrumentation({
-  serviceName: 'effect-ts-example'
-})
-
-// Output:
-// @atrim/instrumentation: SDK initialized successfully
-//   - Auto-instrumentation: enabled (auto-detected)
-```
-
-**Auto-instrumentation: ENABLED (auto-detected)**
-When using Express alongside Effect, auto-instrumentation is helpful for HTTP layer tracing.
+All spans go to the **same exporter** via a single global TracerProvider.
 
 ## Running the Example
 
@@ -65,106 +54,69 @@ When using Express alongside Effect, auto-instrumentation is helpful for HTTP la
    # Get all users
    curl http://localhost:3003/users
 
-   # Get specific user
+   # Get specific user (triggers background fiber)
    curl http://localhost:3003/users/1
 
-   # Create user
+   # Create user (triggers 2 background fibers)
    curl -X POST http://localhost:3003/users \
      -d '{"name":"Alice","email":"alice@example.com"}' \
      -H "Content-Type: application/json"
    ```
 
-## Tracing Architecture
+## What You'll See in Your Observability Tool
 
-```
-┌─────────────────────────────────────────────┐
-│  @effect/platform HTTP Server               │
-│  (Pure Effect - no Express)                 │
-└──────────────┬──────────────────────────────┘
-               │
-               │ All spans via Effect.withSpan()
-               ▼
-┌─────────────────────────────────────────────┐
-│  EffectInstrumentationLive                  │
-│  (Effect's tracing layer)                   │
-└──────────────┬──────────────────────────────┘
-               │
-               │ Automatic metadata extraction
-               ▼
-┌─────────────────────────────────────────────┐
-│  PatternSpanProcessor                       │
-│  (Filters based on instrumentation.yaml)   │
-└──────────────┬──────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────┐
-│  OTLP Exporter                              │
-│  (Sends to collector)                       │
-└─────────────────────────────────────────────┘
-```
+**HTTP Request Spans:**
+- `http.server.request` - Automatic HTTP request span
+- Method, path, status code all captured automatically
 
-## Span Hierarchy
+**Fiber Spans:**
+- `effect.updateUserActivity` - Background activity update (forked fiber)
+- `effect.sendWelcomeEmail` - Background email notification (forked fiber)
+- `effect.recordAnalytics` - Background analytics (forked fiber)
+- Fiber ID, source location, parent fiber ID all captured
 
-```
-http.users.list               (HTTP handler)
-  └─ app.users.list          (Business logic)
-      └─ db.query            (Database operation)
+**Parent-Child Relationships:**
+- Fiber spans are children of the HTTP request span
+- All spans share the same trace ID
+- Easy to see the full request flow
 
-http.users.get               (HTTP handler)
-  └─ app.users.get          (Business logic)
-      └─ db.query            (Database operation)
-
-http.users.create            (HTTP handler)
-  └─ app.users.create       (Business logic)
-      └─ db.insert           (Database operation)
-```
-
-## Pattern Filtering
+## Configuration
 
 From `instrumentation.yaml`:
 
 ```yaml
-instrument_patterns:
-  - pattern: "^app\\."      # ✅ Business logic spans
-  - pattern: "^http\\."     # ✅ HTTP handler spans
-  - pattern: "^db\\."       # ✅ Database spans
+effect:
+  auto_instrumentation:
+    enabled: true
+    span_relationships:
+      type: parent-child  # 'parent-child' | 'span-links' | 'both'
 
-ignore_patterns:
-  - pattern: "^internal\\." # ❌ Internal utilities
-  - pattern: "^test\\."     # ❌ Test operations
+  exporter_config:
+    type: otlp
+    endpoint: http://localhost:4318
+    processor: batch
 ```
 
-## Benefits of Pure Effect Approach
+## Comparison with Other Layers
 
-1. **No Framework Overhead** - Just Effect, nothing else
-2. **Type-Safe Everything** - Effect's type safety all the way
-3. **Smart Detection** - Auto-instrumentation disabled automatically
-4. **Cleaner Traces** - Only relevant spans, no HTTP auto-instrumentation noise
-5. **Full Effect Integration** - Seamless with Effect ecosystem
+| Layer | HTTP Tracing | Fiber Tracing | Use Case |
+|-------|-------------|---------------|----------|
+| `EffectTracingLive` | ✅ Automatic | ❌ No | HTTP-only apps |
+| `CombinedTracingLive` | ✅ Automatic | ✅ Automatic | HTTP apps with background tasks |
+| `FullAutoTracingLive` | ❌ No | ✅ Automatic | Non-HTTP Effect apps |
 
-## Comparison with Other Approaches
+## When to Use CombinedTracingLive
 
-| Feature | Pure Effect | Effect + Express | Vanilla Express |
-|---------|-------------|------------------|-----------------|
-| Auto-instrumentation | ❌ (disabled) | ✅ (enabled) | ✅ (enabled) |
-| Manual config needed | ❌ No | ❌ No | ❌ No |
-| HTTP layer tracing | Effect.withSpan | Auto-instrumented | Auto-instrumented |
-| Business logic | Effect.withSpan | Effect.withSpan | Manual spans |
-| Type safety | 100% | High | Manual |
+✅ **Use CombinedTracingLive when:**
+- Building Effect HTTP servers (`@effect/platform`)
+- Using `Effect.fork()` for background tasks
+- Want automatic tracing without manual spans
+- Need to see full request flow including background work
 
-## When to Use This Approach
-
-✅ **Use Pure Effect when:**
-- Building Effect-first applications
-- Want full control over tracing
-- Prefer Effect's programming model
-- Don't need framework-specific features
-
-⚠️ **Use Effect + Express when:**
-- Integrating with existing Express apps
-- Need Express middleware ecosystem
-- Want automatic HTTP tracing
-- Gradual migration to Effect
+⚠️ **Use EffectTracingLive when:**
+- Don't need fiber-level tracing (HTTP-only)
+- Want minimal overhead
+- No forked fibers in your application
 
 ## Learn More
 

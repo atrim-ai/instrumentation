@@ -1,6 +1,6 @@
 {
   "name": "@atrim/instrument-node",
-  "version": "0.7.0",
+  "version": "0.5.0",
   "description": "OpenTelemetry instrumentation for Node.js with centralized YAML configuration",
   "type": "module",
   "license": "MIT",
@@ -43,6 +43,11 @@
       "types": "./target/dist/integrations/effect/index.d.ts",
       "import": "./target/dist/integrations/effect/index.js",
       "require": "./target/dist/integrations/effect/index.cjs"
+    },
+    "./effect/auto": {
+      "types": "./target/dist/integrations/effect/auto/index.d.ts",
+      "import": "./target/dist/integrations/effect/auto/index.js",
+      "require": "./target/dist/integrations/effect/auto/index.cjs"
     }
   },
   "main": "./target/dist/index.js",
@@ -56,10 +61,10 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:integration": "OTEL_BSP_SCHEDULE_DELAY=500 vitest run --config vitest.integration.config.ts",
+    "test": "NODE_OPTIONS='--import tsx' vitest run",
+    "test:watch": "NODE_OPTIONS='--import tsx' vitest",
+    "test:coverage": "NODE_OPTIONS='--import tsx' vitest run --coverage",
+    "test:integration": "NODE_OPTIONS='--import tsx' OTEL_BSP_SCHEDULE_DELAY=500 vitest run --config vitest.integration.config.ts",
     "test:all": "pnpm test && pnpm test:integration",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
@@ -81,6 +86,7 @@
     "@opentelemetry/sdk-node": "^0.208.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
     "@opentelemetry/sdk-trace-node": "^2.2.0",
+    "@opentelemetry/sdk-trace-web": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.38.0",
     "yaml": "^2.3.0",
     "zod": "^3.22.0"

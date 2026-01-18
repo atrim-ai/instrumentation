@@ -1,0 +1,25 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  instrument_patterns: []
+  ignore_patterns: []
+
+effect:
+  auto_extract_metadata: true
+  auto_instrumentation:
+    enabled: true
+    # Span relationship type for forked fibers
+    # - 'parent-child': Traditional parent-child (default, works with most tools)
+    # - 'span-links': Use span links (semantically correct for async forks per OTel spec)
+    # - 'both': Create parent-child AND add span links
+    span_relationships:
+      type: parent-child
+      # Optional: custom attributes for span links (only used when type includes links)
+      # link_attributes:
+      #   'link.type': fork
+      #   custom:
+      #     'fork.reason': background_task
+  exporter_config:
+    type: otlp
+    endpoint: http://localhost:4318

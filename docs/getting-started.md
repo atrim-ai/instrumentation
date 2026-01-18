@@ -274,9 +274,55 @@ try {
 span.end()
 ```
 
+## Effect-TS Auto-Instrumentation
+
+For Effect-TS applications, you can enable **automatic tracing** of all Effect fibers without any manual `Effect.withSpan()` calls.
+
+### Quick Setup
+
+1. Add to your `instrumentation.yaml`:
+
+```yaml
+version: "1.0"
+
+effect:
+  auto_instrumentation:
+    enabled: true
+    span_naming:
+      default: "effect.{function}"
+      infer_from_source: true
+```
+
+2. Provide the layer once at app entry:
+
+```typescript
+import { Effect } from 'effect'
+import { AutoTracingLive } from '@atrim/instrument-node/effect/auto'
+
+const program = Effect.gen(function* () {
+  yield* doWork()      // Automatically traced!
+  yield* fetchData()   // Automatically traced!
+})
+
+Effect.runPromise(program.pipe(Effect.provide(AutoTracingLive)))
+```
+
+That's it! All Effect fibers are now automatically traced based on your YAML configuration.
+
+For detailed configuration options, naming rules, and advanced usage, see the [Effect Auto-Tracing Guide](./EFFECT_AUTO_TRACING.md).
+
+### Examples
+
+| Example | Description |
+|---------|-------------|
+| [effect-auto-nodesdk-exporter](../examples/effect-auto-nodesdk-exporter) | Production setup with OTLP export |
+| [effect-auto-effect-exporter](../examples/effect-auto-effect-exporter) | Development setup with console output |
+
 ## Next Steps
 
 - [Configuration Reference](./configuration.md) - Complete YAML schema
+- [Effect Auto-Tracing Guide](./EFFECT_AUTO_TRACING.md) - Automatic Effect instrumentation
+- [Effect Integration Guide](./EFFECT_INTEGRATION.md) - Manual Effect instrumentation
 - [API Reference](./api-reference.md) - Full TypeScript API docs
 - [Examples](../examples/) - Real-world examples
 - [Migration Guide](./migration-guide.md) - Migrate from manual instrumentation

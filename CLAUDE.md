@@ -810,18 +810,32 @@ initializeInstrumentation({
 
 ## Release & Publishing Policy
 
-**CRITICAL:** Only publish `dev` tagged releases using local builds. All official releases are handled by CI.
+**CRITICAL:** Read `docs/PUBLISHING.md` for complete publishing instructions before publishing.
 
-### Dev Releases (Local)
+**Quick Reference:**
+- Dev snapshots: `pnpm publish:dev` (requires 2FA code via --otp flag if enabled)
+- Official releases: CI-only (create changeset, push tag, CI publishes)
+- Always check `docs/PUBLISHING.md` for full process and troubleshooting
+
+### Dev Releases (Local Testing)
 Use local builds ONLY for `dev` tagged releases for testing:
 ```bash
 # Publish dev version for testing (local build)
-pnpm --filter @atrim/instrument-web publish:dev
+pnpm publish:dev
+
+# If you have 2FA enabled, provide OTP code:
+pnpm publish:dev --otp=123456
 ```
+
+**What happens:**
+- Generates version: `{latest-tag}-{git-sha}-{timestamp}` (e.g., `0.7.2-dev.e12da4b.20260116190643`)
+- Publishes to npm with `dev` tag
+- Restores package.json version after publish
+- Saves published version to `.version` file
 
 ### Official Releases (CI Only)
 **NEVER publish official releases locally.** CI handles all production releases:
-1. Create changeset: `pnpm changeset`
+1. Create changeset: `pnpm changeset add --empty` (then edit the .md file)
 2. Commit and push the changeset
 3. CI will create a "Version Packages" PR
 4. Merge the PR to trigger the release workflow
@@ -832,6 +846,14 @@ pnpm --filter @atrim/instrument-web publish:dev
 - Maintains audit trail
 - Prevents accidental releases
 - Consistent versioning across packages
+- Provenance attestations
+
+**See `docs/PUBLISHING.md` for:**
+- Complete dev snapshot publishing process
+- Troubleshooting npm authentication issues
+- 2FA/OTP handling
+- Version format details
+- Testing published packages
 
 ## Success Metrics
 

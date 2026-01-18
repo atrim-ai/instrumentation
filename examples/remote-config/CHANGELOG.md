@@ -1,5 +1,12 @@
 # @atrim/instrumentation-example-remote-config
 
+## 0.5.4
+
+### Patch Changes
+
+- Updated dependencies [e12da4b]
+  - @atrim/instrument-node@0.8.0
+
 ## 0.5.3
 
 ### Patch Changes

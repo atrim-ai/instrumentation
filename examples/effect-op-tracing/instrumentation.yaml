@@ -1,0 +1,58 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  instrument_patterns: []
+  ignore_patterns: []
+
+effect:
+  auto_extract_metadata: true
+
+  # Operation Tracing Configuration
+  # Traces high-level Effect operations (Effect.all, Effect.forEach, etc.)
+  # using OpSupervision to hook into every operation
+  operation_tracing:
+    enabled: true
+
+    # Global span naming settings
+    span_naming:
+      # Include source location (file:line) in span name
+      # Default: true - produces "effect.all (index.ts:42)"
+      # When false - produces "effect.all"
+      include_location: true
+
+      # Span name template with variables:
+      # {op} - Operation name (all, forEach, retry, etc.)
+      # {file} - Full file path
+      # {filename} - Just the filename (basename)
+      # {line} - Line number
+      # {column} - Column number
+      # Default: "effect.{op} ({filename}:{line})"
+      template: "effect.{op} ({filename}:{line})"
+
+    operations:
+      - name: all
+        # span_name: "custom.{op}"  # Optional: per-operation template override
+        include_count: true         # Include item count in attributes
+        include_stack: true         # Include source location (needed for {file}, {line}, etc.)
+      - name: forEach
+        include_count: true
+        include_stack: true
+      # Add more operations as needed:
+      # - name: retry
+      #   include_count: false
+      #   include_stack: true
+
+  # Exporter Configuration
+  exporter_config:
+    # Export to local Atrim backend (default)
+    type: otlp
+    endpoint: "http://localhost:4319"
+    processor: simple
+    headers:
+      x-api-key: "atrim_internal_tenant_000000000002"
+
+    # Export to console (development/debugging)
+    # Uncomment to see spans printed to console instead
+    # type: console
+    # processor: simple

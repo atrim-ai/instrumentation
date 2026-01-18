@@ -54,6 +54,186 @@ export const AutoIsolationConfigSchema = z.object({
  * Allows filtering of HTTP requests to prevent noisy traces
  * (e.g., health checks, OTLP exports, internal endpoints)
  */
+/**
+ * Span naming rule for auto-instrumentation
+ *
+ * Allows matching fibers based on file path, function name, etc.
+ * and applying custom span names with template variables.
+ */
+export const SpanNamingRuleSchema = z.object({
+  // Match criteria (all specified criteria must match)
+  match: z.object({
+    // Regex pattern to match file path
+    file: z.string().optional(),
+    // Regex pattern to match function name
+    function: z.string().optional(),
+    // Regex pattern to match module name
+    module: z.string().optional()
+  }),
+  // Span name template with variables:
+  // {fiber_id} - Fiber ID
+  // {function} - Function name
+  // {module} - Module name
+  // {file} - File path
+  // {line} - Line number
+  // {operator} - Effect operator (gen, all, forEach, etc.)
+  // {match:field:N} - Captured regex group from match
+  name: z.string()
+})
+
+/**
+ * Auto-instrumentation configuration for Effect operations
+ *
+ * Enables automatic tracing of all Effect fibers without manual
+ * Effect.withSpan() calls. Configuration-driven via instrumentation.yaml.
+ */
+export const AutoInstrumentationConfigSchema = z.object({
+  // Enable/disable auto-instrumentation
+  enabled: z.boolean().default(false),
+
+  // Tracing granularity
+  // - 'fiber': Trace at fiber creation (recommended, lower overhead)
+  // - 'operator': Trace each Effect operator (higher granularity, more overhead)
+  granularity: z.enum(['fiber', 'operator']).default('fiber'),
+
+  // Smart span naming configuration
+  span_naming: z
+    .object({
+      // Default span name template when no rules match
+      default: z.string().default('effect.fiber.{fiber_id}'),
+
+      // Infer span names from source code (requires stack trace parsing)
+      // Adds ~50-100μs overhead per fiber
+      infer_from_source: z.boolean().default(true),
+
+      // Naming rules (first match wins)
+      rules: z.array(SpanNamingRuleSchema).default([])
+    })
+    .default({}),
+
+  // Span relationship configuration for forked fibers
+  // Controls how child fiber spans relate to their parent/forking context
+  span_relationships: z
+    .object({
+      // Relationship type between forked fiber spans and their parent context
+      // - 'parent-child': Use parent-child relationship (default, traditional tracing)
+      //   Parent span shows child as nested. Works well with most observability tools.
+      // - 'span-links': Use span links (semantically correct for async forks per OTel spec)
+      //   Fibers get independent traces linked to parent. Better for long-running fibers.
+      // - 'both': Create parent-child AND add span links
+      //   Maximum visibility but may create redundant data.
+      type: z.enum(['parent-child', 'span-links', 'both']).default('parent-child'),
+
+      // Custom attributes to add to span links (only used when type includes links)
+      link_attributes: z
+        .object({
+          // Link type identifier
+          'link.type': z.string().default('fork'),
+          // Custom attributes (key-value pairs)
+          custom: z.record(z.string()).optional()
+        })
+        .optional()
+    })
+    .default({}),
+
+  // Pattern-based filtering
+  filter: z
+    .object({
+      // Only trace spans matching these patterns (empty = trace all)
+      include: z.array(z.string()).default([]),
+
+      // Never trace spans matching these patterns
+      exclude: z.array(z.string()).default([])
+    })
+    .default({}),
+
+  // Performance controls
+  performance: z
+    .object({
+      // Sample rate (0.0 - 1.0)
+      sampling_rate: z.number().min(0).max(1).default(1.0),
+
+      // Skip fibers shorter than this duration (e.g., "10ms", "100 millis")
+      min_duration: z.string().default('0ms'),
+
+      // Maximum concurrent traced fibers (0 = unlimited)
+      max_concurrent: z.number().default(0)
+    })
+    .default({}),
+
+  // Automatic metadata extraction
+  metadata: z
+    .object({
+      // Extract Effect fiber information
+      fiber_info: z.boolean().default(true),
+
+      // Extract source location (file:line)
+      source_location: z.boolean().default(true),
+
+      // Extract parent fiber information
+      parent_fiber: z.boolean().default(true)
+    })
+    .default({})
+})
+
+export type AutoInstrumentationConfig = z.infer<typeof AutoInstrumentationConfigSchema>
+export type SpanNamingRule = z.infer<typeof SpanNamingRuleSchema>
+
+/**
+ * Operation tracing configuration for Effect.all, Effect.forEach, etc.
+ *
+ * Enables automatic tracing of high-level Effect operations without manual
+ * Effect.withSpan() calls. Uses OpSupervision to hook into every operation.
+ */
+export const OperationTracingConfigSchema = z.object({
+  // Enable/disable operation tracing
+  enabled: z.boolean().default(false),
+
+  // Global span naming settings
+  span_naming: z
+    .object({
+      // Include source location (file:line) in span name
+      // Default: true - produces "effect.all (index.ts:42)"
+      // When false - produces "effect.all"
+      include_location: z.boolean().default(true),
+
+      // Span name template with variables:
+      // {op} - Operation name (all, forEach, retry, etc.)
+      // {file} - Full file path
+      // {filename} - Just the filename (basename)
+      // {line} - Line number
+      // {column} - Column number
+      // Default: "effect.{op} ({filename}:{line})"
+      template: z.string().default('effect.{op} ({filename}:{line})')
+    })
+    .default({}),
+
+  // Operations to trace
+  operations: z
+    .array(
+      z.object({
+        // Operation name: 'all', 'forEach', 'retry', etc.
+        name: z.string(),
+        // Custom span name template (overrides global span_naming.template)
+        // Supports same variables: {op}, {file}, {filename}, {line}, {column}
+        span_name: z.string().optional(),
+        // Include item count in span attributes
+        include_count: z.boolean().default(true),
+        // Include stack trace in span attributes
+        include_stack: z.boolean().default(true)
+      })
+    )
+    .default([])
+})
+
+export type OperationTracingConfig = z.infer<typeof OperationTracingConfigSchema>
+
+/**
+ * HTTP instrumentation filtering configuration
+ *
+ * Allows filtering of HTTP requests to prevent noisy traces
+ * (e.g., health checks, OTLP exports, internal endpoints)
+ */
 export const HttpFilteringConfigSchema = z.object({
   // Patterns to ignore for outgoing HTTP requests (string patterns only in YAML)
   ignore_outgoing_urls: z.array(z.string()).optional(),
@@ -82,6 +262,44 @@ export const HttpFilteringConfigSchema = z.object({
     .optional()
 })
 
+/**
+ * Exporter configuration for OpenTelemetry tracing
+ *
+ * Allows configuring how traces are exported via instrumentation.yaml
+ */
+export const ExporterConfigSchema = z.object({
+  // Exporter type: 'otlp' | 'console' | 'none'
+  // - 'otlp': Export to OTLP endpoint (production)
+  // - 'console': Log spans to console (development)
+  // - 'none': No export (disable tracing)
+  type: z.enum(['otlp', 'console', 'none']).default('otlp'),
+
+  // OTLP endpoint URL (for type: otlp)
+  // Defaults to OTEL_EXPORTER_OTLP_ENDPOINT env var or http://localhost:4318
+  endpoint: z.string().optional(),
+
+  // Custom headers to send with OTLP requests (for type: otlp)
+  // Useful for authentication (x-api-key, Authorization, etc.)
+  headers: z.record(z.string()).optional(),
+
+  // Span processor type
+  // - 'batch': Batch spans for export (production, lower overhead)
+  // - 'simple': Export immediately (development, no batching delay)
+  processor: z.enum(['batch', 'simple']).default('batch'),
+
+  // Batch processor settings (for processor: batch)
+  batch: z
+    .object({
+      // Max time to wait before exporting (milliseconds)
+      scheduled_delay_millis: z.number().default(1000),
+      // Max batch size
+      max_export_batch_size: z.number().default(100)
+    })
+    .optional()
+})
+
+export type ExporterConfig = z.infer<typeof ExporterConfigSchema>
+
 export const InstrumentationConfigSchema = z.object({
   version: z.string(),
   instrumentation: z.object({
@@ -96,12 +314,18 @@ export const InstrumentationConfigSchema = z.object({
       // Enable/disable Effect tracing entirely
       // When false, EffectInstrumentationLive returns Layer.empty
       enabled: z.boolean().default(true),
-      // Exporter mode:
+      // Exporter mode (legacy - use exporter.type instead):
       // - "unified": Use global TracerProvider from Node SDK (recommended, enables filtering)
       // - "standalone": Use Effect's own OTLP exporter (bypasses Node SDK filtering)
       exporter: z.enum(['unified', 'standalone']).default('unified'),
+      // Exporter configuration (for auto-instrumentation)
+      exporter_config: ExporterConfigSchema.optional(),
       auto_extract_metadata: z.boolean(),
-      auto_isolation: AutoIsolationConfigSchema.optional()
+      auto_isolation: AutoIsolationConfigSchema.optional(),
+      // Auto-instrumentation: automatic tracing of all Effect fibers
+      auto_instrumentation: AutoInstrumentationConfigSchema.optional(),
+      // Operation tracing: automatic tracing of Effect.all, Effect.forEach, etc.
+      operation_tracing: OperationTracingConfigSchema.optional()
     })
     .optional(),
   http: HttpFilteringConfigSchema.optional()

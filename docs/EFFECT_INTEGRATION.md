@@ -2,6 +2,41 @@
 
 Using `@atrim/instrumentation` with Effect-TS applications.
 
+## Auto-Tracing (Recommended)
+
+For most Effect applications, we recommend using **automatic tracing** which traces all Effect fibers without any manual instrumentation:
+
+```typescript
+import { Effect } from 'effect'
+import { AutoTracingLive } from '@atrim/instrument-node/effect/auto'
+
+const program = Effect.gen(function* () {
+  yield* doWork()      // Automatically traced!
+  yield* fetchData()   // Automatically traced!
+})
+
+Effect.runPromise(program.pipe(Effect.provide(AutoTracingLive)))
+```
+
+Configure via `instrumentation.yaml`:
+
+```yaml
+effect:
+  auto_instrumentation:
+    enabled: true
+    span_naming:
+      default: "effect.{function}"
+      infer_from_source: true
+```
+
+For full documentation on auto-tracing configuration, naming rules, and advanced usage, see the **[Effect Auto-Tracing Guide](./EFFECT_AUTO_TRACING.md)**.
+
+---
+
+## Manual Instrumentation
+
+If you prefer manual control over which operations are traced, use `Effect.withSpan()` with the standard instrumentation layer.
+
 ## Pure Effect Applications
 
 For **pure Effect apps** (using `@effect/platform`, no Express/Fastify):

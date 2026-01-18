@@ -25,10 +25,21 @@ export {
 export {
   InstrumentationConfigSchema,
   PatternConfigSchema,
+  AutoInstrumentationConfigSchema,
+  SpanNamingRuleSchema,
+  ExporterConfigSchema,
+  OperationTracingConfigSchema,
   defaultConfig,
   parseAndValidateConfig
 } from './instrumentation-schema.js'
-export type { InstrumentationConfig, PatternConfig } from './instrumentation-schema.js'
+export type {
+  InstrumentationConfig,
+  PatternConfig,
+  AutoInstrumentationConfig,
+  SpanNamingRule,
+  ExporterConfig,
+  OperationTracingConfig
+} from './instrumentation-schema.js'
 
 // Logging
 export { logger } from './logger.js'
