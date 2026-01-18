@@ -22,6 +22,15 @@ instrumentation:
 
 effect?:                     # Optional Effect-TS config
   auto_extract_metadata: boolean
+  operation_tracing?:        # Automatic operation tracing
+    enabled: boolean
+    span_naming?: {...}
+    operations: [...]
+  exporter_config?:          # OTLP/console exporter settings
+    type: 'otlp' | 'console' | 'none'
+    endpoint?: string
+    headers?: {...}
+    processor?: 'batch' | 'simple'
 ```
 
 ## Field Details
@@ -234,6 +243,135 @@ const operation = withAutoEnrichedSpan('app.operation')(
 - `effect.fiber.status` - Current fiber status
 - `effect.operation.root` / `effect.operation.nested` - Operation hierarchy
 - `effect.parent.span.id`, `effect.parent.span.name`, `effect.parent.trace.id` - Parent span info
+
+---
+
+### `effect.operation_tracing`
+
+**Type:** `object`
+**Required:** No
+**Default:** Disabled
+
+Automatic tracing of Effect operations (`Effect.all`, `Effect.forEach`, etc.) without manual `Effect.withSpan()` calls.
+
+> **Note:** Requires `@clayroach/effect` fork with OperationMeta support.
+
+#### Configuration Fields
+
+- **`enabled`** (boolean): Enable/disable operation tracing (default: `false`)
+- **`span_naming`** (object): Global span naming settings
+  - **`include_location`** (boolean): Include source location in span name (default: `true`)
+  - **`template`** (string): Span name template (default: `"effect.{op} ({filename}:{line})"`)
+- **`operations`** (array): Operations to trace
+
+#### Template Variables
+
+Available in `span_naming.template` and per-operation `span_name`:
+- `{op}` - Operation name (all, forEach, retry, etc.)
+- `{file}` - Full file path
+- `{filename}` - Just the filename (basename)
+- `{line}` - Line number
+- `{column}` - Column number
+
+#### Examples
+
+**Basic (trace all/forEach with defaults):**
+
+```yaml
+effect:
+  operation_tracing:
+    enabled: true
+    operations:
+      - name: all
+      - name: forEach
+```
+
+**Custom span naming:**
+
+```yaml
+effect:
+  operation_tracing:
+    enabled: true
+    span_naming:
+      include_location: true
+      template: "effect.{op} ({filename}:{line})"
+    operations:
+      - name: all
+        include_count: true   # Add item_count attribute
+        include_stack: true   # Add code.stacktrace attribute
+      - name: forEach
+        span_name: "batch.forEach ({filename}:{line})"  # Override template
+        include_count: true
+```
+
+**Span attributes created:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `effect.operation` | string | Operation name (all, forEach) |
+| `effect.item_count` | integer | Number of items (if `include_count: true`) |
+| `code.filepath` | string | Full source file path |
+| `code.lineno` | integer | Line number |
+| `code.column` | integer | Column number |
+| `code.stacktrace` | string | Stack trace (if `include_stack: true`) |
+
+---
+
+### `effect.exporter_config`
+
+**Type:** `object`
+**Required:** No
+**Default:** Uses environment variables or localhost:4318
+
+Configure how Effect traces are exported. This is used by `OperationTracingLive` and auto-instrumentation layers.
+
+#### Configuration Fields
+
+- **`type`** (string): Exporter type
+  - `'otlp'` - Export to OTLP endpoint (production)
+  - `'console'` - Log spans to console (development)
+  - `'none'` - Disable export
+- **`endpoint`** (string): OTLP endpoint URL (default: `OTEL_EXPORTER_OTLP_ENDPOINT` or `http://localhost:4318`)
+- **`headers`** (object): Custom headers for OTLP requests (e.g., API keys)
+- **`processor`** (string): Span processor type
+  - `'batch'` - Batch spans for export (default, production)
+  - `'simple'` - Export immediately (development)
+- **`batch`** (object): Batch processor settings
+  - **`scheduled_delay_millis`** (number): Max wait before export (default: 1000)
+  - **`max_export_batch_size`** (number): Max batch size (default: 100)
+
+#### Examples
+
+**OTLP to remote collector:**
+
+```yaml
+effect:
+  exporter_config:
+    type: otlp
+    endpoint: "https://trace.atrim.ai"
+    headers:
+      x-api-key: "your-api-key"
+    processor: batch
+```
+
+**Console output for development:**
+
+```yaml
+effect:
+  exporter_config:
+    type: console
+    processor: simple
+```
+
+**Local collector with fast export:**
+
+```yaml
+effect:
+  exporter_config:
+    type: otlp
+    endpoint: "http://localhost:4318"
+    processor: simple  # No batching delay
+```
 
 ---
 

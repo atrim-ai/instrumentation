@@ -80,6 +80,45 @@ const process = Effect.gen(function* () {
 
 Available: `annotateUser`, `annotateBatch`, `annotateDataSize`, `annotateLLM`, `annotateQuery`, `annotateHttpRequest`, `annotateError`, `annotatePriority`, `annotateCache`
 
+### Operation Tracing (Automatic)
+
+Automatically trace `Effect.all`, `Effect.forEach`, and other operations without manual `Effect.withSpan()` calls:
+
+```typescript
+import { Effect } from 'effect'
+import { withOperationTracing } from '@atrim/instrument-node/effect/auto'
+
+const program = Effect.gen(function* () {
+  // Automatically creates span "effect.all (index.ts:42)" with item_count=3
+  yield* Effect.all([fetchUser(), fetchOrders(), fetchPrefs()])
+
+  // Automatically creates span "effect.forEach (index.ts:45)"
+  yield* Effect.forEach(items, processItem)
+}).pipe(withOperationTracing)
+
+await Effect.runPromise(program)
+```
+
+**What you get:**
+- Span name with source location: `effect.all (index.ts:42)`
+- Attributes: `effect.operation`, `effect.item_count`, `code.filepath`, `code.lineno`
+- Zero code changes to existing Effect code
+
+**Configuration (optional):**
+
+```yaml
+effect:
+  operation_tracing:
+    enabled: true
+    operations:
+      - name: all
+        include_count: true
+      - name: forEach
+        include_count: true
+```
+
+> **Note:** Requires `@clayroach/effect` fork with OperationMeta support. See [examples/effect-op-tracing](../../examples/effect-op-tracing/) for a complete example.
+
 ### Effect Fiber Metadata Extraction
 
 To add Effect fiber metadata (fiber ID, status, parent span info) to your spans, you must **explicitly call** the enrichment functions:
