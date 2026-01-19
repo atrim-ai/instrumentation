@@ -37,7 +37,6 @@ import {
   Tracer as EffectTracer,
   GlobalValue
 } from 'effect'
-import * as TracerModule from 'effect/Tracer'
 import { Tracer as OtelTracer, Resource } from '@effect/opentelemetry'
 import * as OtelApi from '@opentelemetry/api'
 import {
@@ -69,13 +68,14 @@ export interface OperationMeta {
 }
 
 /**
- * Source location from Effect's native source capture
+ * Source location from Effect's build-time injection via @effect/unplugin
+ * Matches the SourceLocation interface from effect/SourceLocation
  */
 interface SourceLocation {
-  readonly file: string
+  readonly path: string
   readonly line: number
-  readonly column?: number
-  readonly functionName?: string
+  readonly column: number
+  readonly label?: string
 }
 
 /**
@@ -102,10 +102,11 @@ interface OperationConfig {
 // ============================================================================
 
 /**
- * Access Effect's native currentSourceLocation FiberRef
+ * Access Effect's currentSourceTrace FiberRef from the @clayroach/effect fork
+ * This FiberRef is set by @effect/unplugin during build-time transformation
  */
-const currentSourceLocation = GlobalValue.globalValue(
-  Symbol.for('effect/FiberRef/currentSourceLocation'),
+const currentSourceTrace = GlobalValue.globalValue(
+  Symbol.for('effect/FiberRef/currentSourceTrace'),
   () => FiberRef.unsafeMake<SourceLocation | undefined>(undefined)
 )
 
@@ -128,7 +129,8 @@ function getOperationMeta(
 }
 
 /**
- * Parse source location from a raw stack trace string
+ * Parse source location from a raw stack trace string (used for OperationMeta.capturedAt)
+ * Returns SourceLocation with path/line/column to match the interface
  */
 function parseSourceLocation(stack: string): SourceLocation | undefined {
   const lines = stack.split('\n')
@@ -146,9 +148,9 @@ function parseSourceLocation(stack: string): SourceLocation | undefined {
     const match = line.match(/at\s+(?:.*?\s+\()?(.+):(\d+):(\d+)\)?/)
     if (match && match[1] && match[2]) {
       return {
-        file: match[1],
+        path: match[1],
         line: parseInt(match[2], 10),
-        ...(match[3] ? { column: parseInt(match[3], 10) } : {})
+        column: match[3] ? parseInt(match[3], 10) : 0
       }
     }
   }
@@ -161,7 +163,7 @@ function parseSourceLocation(stack: string): SourceLocation | undefined {
  */
 function makeSourceKey(source: SourceLocation | undefined): string {
   if (!source) return 'unknown'
-  return `${source.file}:${source.line}`
+  return `${source.path}:${source.line}`
 }
 
 /**
@@ -169,8 +171,10 @@ function makeSourceKey(source: SourceLocation | undefined): string {
  */
 function formatLocation(source: SourceLocation | undefined): string {
   if (!source) return 'unknown'
-  const filename = source.file.split('/').pop() ?? source.file
-  return `${filename}:${source.line}`
+  const filename = source.path.split('/').pop() ?? source.path
+  return source.label
+    ? `${filename}:${source.line} (${source.label})`
+    : `${filename}:${source.line}`
 }
 
 // ============================================================================
@@ -275,11 +279,9 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
       span.setAttribute('effect.item_count', meta.count)
     }
     if (opConfig.includeStack && location) {
-      span.setAttribute('code.filepath', location.file)
+      span.setAttribute('code.filepath', location.path)
       span.setAttribute('code.lineno', location.line)
-      if (location.column !== undefined) {
-        span.setAttribute('code.column', location.column)
-      }
+      span.setAttribute('code.column', location.column)
     }
 
     logger.log(
@@ -339,8 +341,8 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
     // Check for span name override
     const nameOverride = FiberRefs.getOrDefault(fiberRefs, AutoTracingSpanName)
 
-    // Get source location
-    const sourceLocation = FiberRefs.getOrDefault(fiberRefs, currentSourceLocation) as
+    // Get source location from FiberRef (set by @effect/unplugin build-time transformation)
+    const sourceLocation = FiberRefs.getOrDefault(fiberRefs, currentSourceTrace) as
       | SourceLocation
       | undefined
     const sourceKey = makeSourceKey(sourceLocation)
@@ -396,10 +398,11 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
     span.setAttribute('effect.auto_traced', true)
     span.setAttribute('effect.fiber.id', fiberId)
     if (sourceLocation) {
-      span.setAttribute('code.filepath', sourceLocation.file)
+      span.setAttribute('code.filepath', sourceLocation.path)
       span.setAttribute('code.lineno', sourceLocation.line)
-      if (sourceLocation.column !== undefined) {
-        span.setAttribute('code.column', sourceLocation.column)
+      span.setAttribute('code.column', sourceLocation.column)
+      if (sourceLocation.label) {
+        span.setAttribute('code.function', sourceLocation.label)
       }
     }
     if (Option.isSome(parent)) {
@@ -492,28 +495,13 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
   ): OtelApi.Context {
     // ========================================================================
     // Parent context resolution priority:
-    // 1. Inherited OTel context from FiberRef (set by @effect/opentelemetry)
-    // 2. Effect's ParentSpan in Context (Effect's native span tracking)
-    // 3. Active OTel context (auto-bridging from OTel → Effect)
-    // 4. Parent fiber's tracked context
-    // 5. ROOT_CONTEXT (no parent)
+    // 1. Effect's ParentSpan in Context (Effect's native span tracking)
+    // 2. Active OTel context (auto-bridging from OTel → Effect)
+    // 3. Parent fiber's tracked context
+    // 4. ROOT_CONTEXT (no parent)
     // ========================================================================
 
-    // 1. Check inherited OTel context from FiberRef
-    const inheritedCtx = FiberRefs.getOrDefault(fiberRefs, TracerModule.currentOtelSpanContext) as
-      | OtelApi.Context
-      | undefined
-    if (inheritedCtx) {
-      const span = OtelApi.trace.getSpan(inheritedCtx)
-      if (span) {
-        logger.log(
-          `@atrim/unified-tracing: Using inherited OTel context from FiberRef - spanId=${span.spanContext().spanId}`
-        )
-      }
-      return inheritedCtx
-    }
-
-    // 2. Check Effect's ParentSpan in Context
+    // 1. Check Effect's ParentSpan in Context
     const maybeParentSpan = Context.getOption(context, EffectTracer.ParentSpan)
     if (Option.isSome(maybeParentSpan)) {
       const effectSpan = maybeParentSpan.value
@@ -530,7 +518,7 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
       )
     }
 
-    // 3. Auto-bridge: Check active OTel context (OTel → Effect bridging)
+    // 2. Auto-bridge: Check active OTel context (OTel → Effect bridging)
     // This allows spans created by non-Effect code (e.g., HTTP middleware) to be parents
     const activeContext = OtelApi.context.active()
     const activeSpan = OtelApi.trace.getSpan(activeContext)
@@ -541,7 +529,7 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
       return activeContext
     }
 
-    // 4. Check parent fiber's tracked context
+    // 3. Check parent fiber's tracked context
     if (Option.isSome(parent)) {
       const parentCtx = this.fiberContexts.get(parent.value)
       if (parentCtx) {
@@ -550,7 +538,7 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
       }
     }
 
-    // 5. No parent found
+    // 4. No parent found
     return OtelApi.ROOT_CONTEXT
   }
 
@@ -707,12 +695,9 @@ export const createUnifiedTracingLayer = (): Layer.Layer<never> => {
     Effect.patchRuntimeFlags(RuntimeFlagsPatch.enable(RuntimeFlags.OpSupervision))
   )
 
-  return Layer.mergeAll(
-    Layer.discard(tracerWithResource),
-    Layer.enableSourceCapture,
-    supervisorLayer,
-    opSupervisionLayer
-  )
+  // Note: Source location is now captured at build-time via @effect/unplugin
+  // No runtime source capture layer is needed
+  return Layer.mergeAll(Layer.discard(tracerWithResource), supervisorLayer, opSupervisionLayer)
 }
 
 /**
@@ -781,16 +766,12 @@ export const withAutoTracing = <A, E, R>(
   const supervisor = new UnifiedTracingSupervisor(autoConfig)
   const supervisorLayer = Supervisor.addSupervisor(supervisor)
 
-  // Enable OpSupervision and source capture
+  // Enable OpSupervision (source capture is now handled at build-time via @effect/unplugin)
   const opSupervisionLayer = Layer.effectDiscard(
     Effect.patchRuntimeFlags(RuntimeFlagsPatch.enable(RuntimeFlags.OpSupervision))
   )
 
-  const combinedLayer = Layer.mergeAll(
-    supervisorLayer,
-    Layer.enableSourceCapture,
-    opSupervisionLayer
-  )
+  const combinedLayer = Layer.mergeAll(supervisorLayer, opSupervisionLayer)
 
   // Wrap with root span if name provided
   const wrappedEffect = rootSpanName ? effect.pipe(Effect.withSpan(rootSpanName)) : effect
