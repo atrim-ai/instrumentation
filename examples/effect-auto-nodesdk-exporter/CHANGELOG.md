@@ -1,5 +1,12 @@
 # effect-auto-nodesdk-exporter-example
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [0f16e25]
+  - @atrim/instrument-node@0.7.0
+
 ## 0.1.2
 
 ### Patch Changes
