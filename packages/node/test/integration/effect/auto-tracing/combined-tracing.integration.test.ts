@@ -1,14 +1,12 @@
 /**
- * Integration tests for Combined HTTP + Fiber tracing
+ * Integration tests for Unified HTTP + Fiber + Operation tracing
  *
- * Tests the CombinedTracingLive layer which provides:
- * 1. HTTP request tracing via @effect/opentelemetry NodeSdk
+ * Tests the UnifiedTracingSupervisor which provides:
+ * 1. HTTP request tracing via @effect/opentelemetry
  * 2. Fiber-level tracing via Supervisor
+ * 3. Operation tracing (Effect.all, Effect.forEach, Effect.fork)
  *
- * IMPORTANT LIMITATION:
- * The Supervisor API only intercepts fiber CREATION events (onStart/onEnd).
- * It does NOT see operations within a single fiber.
- * This means fiber-level tracing ONLY works for explicitly forked fibers.
+ * KEY FEATURE: Fork spans are correctly set as parents of their resulting fiber spans.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
@@ -22,9 +20,9 @@ import { resourceFromAttributes } from '@opentelemetry/resources'
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions'
 import * as OtelApi from '@opentelemetry/api'
 import { Tracer as OtelTracer, Resource as OtelResource } from '@effect/opentelemetry'
-import { createAutoTracingSupervisor } from '../../../../src/integrations/effect/auto/supervisor.js'
+import { UnifiedTracingSupervisor } from '../../../../src/integrations/effect/auto/unified-tracing-supervisor.js'
 
-describe('Combined HTTP + Fiber Tracing', () => {
+describe('Unified HTTP + Fiber + Operation Tracing', () => {
   let exporter: InMemorySpanExporter
   let provider: BasicTracerProvider
 
@@ -51,7 +49,7 @@ describe('Combined HTTP + Fiber Tracing', () => {
     exporter.reset()
   })
 
-  describe('Supervisor Fiber Tracing', () => {
+  describe('UnifiedTracingSupervisor Fiber Tracing', () => {
     const autoConfig = {
       enabled: true,
       granularity: 'fiber' as const,
@@ -66,7 +64,7 @@ describe('Combined HTTP + Fiber Tracing', () => {
     }
 
     it('should trace forked fibers', async () => {
-      const supervisor = createAutoTracingSupervisor(autoConfig)
+      const supervisor = new UnifiedTracingSupervisor(autoConfig)
       const supervisorLayer = Supervisor.addSupervisor(supervisor)
 
       const program = Effect.gen(function* () {
@@ -88,6 +86,12 @@ describe('Combined HTTP + Fiber Tracing', () => {
       await provider.forceFlush()
 
       const spans = exporter.getFinishedSpans()
+      console.log(`DEBUG: Total spans: ${spans.length}`)
+      for (const s of spans) {
+        console.log(
+          `  - ${s.name}: auto_traced=${s.attributes['effect.auto_traced']}, attrs=${JSON.stringify(s.attributes)}`
+        )
+      }
       const fiberSpans = spans.filter((s) => s.attributes['effect.auto_traced'] === true)
 
       // Should have at least one fiber span (the forked fiber)
@@ -96,7 +100,7 @@ describe('Combined HTTP + Fiber Tracing', () => {
     })
 
     it('should NOT trace main fiber (supervisor limitation)', async () => {
-      const supervisor = createAutoTracingSupervisor(autoConfig)
+      const supervisor = new UnifiedTracingSupervisor(autoConfig)
       const supervisorLayer = Supervisor.addSupervisor(supervisor)
 
       // This program does NOT fork any fibers
@@ -120,7 +124,7 @@ describe('Combined HTTP + Fiber Tracing', () => {
     })
 
     it('should trace nested forked fibers with parent-child relationships', async () => {
-      const supervisor = createAutoTracingSupervisor(autoConfig)
+      const supervisor = new UnifiedTracingSupervisor(autoConfig)
       const supervisorLayer = Supervisor.addSupervisor(supervisor)
 
       const program = Effect.gen(function* () {
@@ -178,7 +182,7 @@ describe('Combined HTTP + Fiber Tracing', () => {
       // KEY: We must provide Effect's tracer layer (OtelTracer.layerGlobal) so that
       // Effect.withSpan() creates spans backed by the global OTel provider.
 
-      const supervisor = createAutoTracingSupervisor(autoConfig)
+      const supervisor = new UnifiedTracingSupervisor(autoConfig)
       const supervisorLayer = Supervisor.addSupervisor(supervisor)
 
       // Create Effect's tracer layer that uses the global OTel provider
@@ -284,7 +288,7 @@ describe('Combined HTTP + Fiber Tracing', () => {
       })
       const httpContext = OtelApi.trace.setSpan(OtelApi.context.active(), httpSpan)
 
-      const supervisor = createAutoTracingSupervisor(autoConfig)
+      const supervisor = new UnifiedTracingSupervisor(autoConfig)
       const supervisorLayer = Supervisor.addSupervisor(supervisor)
 
       // The problem: OTel's AsyncLocalStorage context is lost across Effect's async boundary

@@ -1,7 +1,7 @@
 /**
- * Integration test for Effect auto-tracing layer creation and functionality
+ * Integration test for Effect unified tracing layer creation and functionality
  *
- * Tests the AutoTracingLive and FullAutoTracingLive layers work correctly.
+ * Tests the UnifiedTracingLive layer works correctly.
  * For full OTLP export testing with spans visible on the Atrim platform,
  * run the examples directly:
  *   - examples/effect-auto-nodesdk-exporter (OTLP export)
@@ -11,19 +11,18 @@
 import { describe, it, expect } from 'vitest'
 import { Effect, pipe } from 'effect'
 import {
-  AutoTracingLive,
-  createAutoTracingLayer,
+  UnifiedTracingLive,
+  createUnifiedTracingLayer,
   withoutAutoTracing,
   setSpanName,
-  FullAutoTracingLive,
-  createFullAutoTracingLayer
+  withUnifiedTracing
 } from '../../../../src/integrations/effect/auto/index.js'
 
 describe('Effect Auto-Tracing Full Integration', () => {
   it('should create and run with custom auto-tracing layer', async () => {
     console.log('\n📊 Test: Custom auto-tracing layer with explicit config')
 
-    const AutoTracing = createAutoTracingLayer({
+    const AutoTracing = createUnifiedTracingLayer({
       config: {
         enabled: true,
         granularity: 'fiber',
@@ -53,7 +52,7 @@ describe('Effect Auto-Tracing Full Integration', () => {
   it('should run nested operations with auto-tracing', async () => {
     console.log('\n📊 Test: Nested auto-traced operations')
 
-    const AutoTracing = createAutoTracingLayer({
+    const AutoTracing = createUnifiedTracingLayer({
       config: {
         enabled: true,
         granularity: 'fiber',
@@ -96,7 +95,7 @@ describe('Effect Auto-Tracing Full Integration', () => {
   it('should respect withoutAutoTracing opt-out', async () => {
     console.log('\n📊 Test: withoutAutoTracing opt-out')
 
-    const AutoTracing = createAutoTracingLayer({
+    const AutoTracing = createUnifiedTracingLayer({
       config: {
         enabled: true,
         granularity: 'fiber',
@@ -134,7 +133,7 @@ describe('Effect Auto-Tracing Full Integration', () => {
   it('should use custom span name with setSpanName', async () => {
     console.log('\n📊 Test: setSpanName custom span name')
 
-    const AutoTracing = createAutoTracingLayer({
+    const AutoTracing = createUnifiedTracingLayer({
       config: {
         enabled: true,
         granularity: 'fiber',
@@ -169,7 +168,7 @@ describe('Effect Auto-Tracing Full Integration', () => {
   it('should handle concurrent auto-traced operations', async () => {
     console.log('\n📊 Test: Concurrent auto-traced operations')
 
-    const AutoTracing = createAutoTracingLayer({
+    const AutoTracing = createUnifiedTracingLayer({
       config: {
         enabled: true,
         granularity: 'fiber',
@@ -210,7 +209,7 @@ describe('Effect Auto-Tracing Full Integration', () => {
   it('should simulate service layer patterns', async () => {
     console.log('\n📊 Test: Service layer patterns (simulated)')
 
-    const AutoTracing = createAutoTracingLayer({
+    const AutoTracing = createUnifiedTracingLayer({
       config: {
         enabled: true,
         granularity: 'fiber',
@@ -276,25 +275,24 @@ describe('Effect Auto-Tracing Full Integration', () => {
   }, 30000)
 })
 
-describe('FullAutoTracingLive Integration', () => {
-  it('should create FullAutoTracingLive layer successfully', async () => {
-    console.log('\n📊 Test: FullAutoTracingLive layer creation')
+describe('UnifiedTracingLive Integration', () => {
+  it('should create UnifiedTracingLive layer successfully', async () => {
+    console.log('\n📊 Test: UnifiedTracingLive layer creation')
 
-    expect(FullAutoTracingLive).toBeDefined()
-    expect(createFullAutoTracingLayer).toBeDefined()
+    expect(UnifiedTracingLive).toBeDefined()
+    expect(createUnifiedTracingLayer).toBeDefined()
 
-    console.log('✅ FullAutoTracingLive layer exports verified')
+    console.log('✅ UnifiedTracingLive layer exports verified')
   })
 
   it('should export all API surface correctly', () => {
     console.log('\n📊 Test: API surface exports')
 
-    expect(AutoTracingLive).toBeDefined()
-    expect(createAutoTracingLayer).toBeDefined()
+    expect(UnifiedTracingLive).toBeDefined()
+    expect(createUnifiedTracingLayer).toBeDefined()
     expect(withoutAutoTracing).toBeDefined()
     expect(setSpanName).toBeDefined()
-    expect(FullAutoTracingLive).toBeDefined()
-    expect(createFullAutoTracingLayer).toBeDefined()
+    expect(withUnifiedTracing).toBeDefined()
 
     console.log('✅ All API exports available')
   })

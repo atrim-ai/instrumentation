@@ -5,9 +5,10 @@
  * using FULLY YAML-DRIVEN configuration. No code configuration needed!
  *
  * Key features:
- * - FullAutoTracingLive reads ALL config from instrumentation.yaml
+ * - UnifiedTracingLive reads ALL config from instrumentation.yaml
  * - Exporter type, endpoint, processor - all from YAML
- * - Auto-tracing rules, filters, naming - all from YAML
+ * - Automatic operation tracing (Effect.all, Effect.forEach, Effect.fork)
+ * - Correct fork span hierarchy
  * - Just provide the layer and run!
  *
  * Run with: pnpm start
@@ -15,7 +16,7 @@
 
 import { Effect, Console, pipe } from 'effect'
 import {
-  FullAutoTracingLive,
+  UnifiedTracingLive,
   withoutAutoTracing,
   setSpanName
 } from '@atrim/instrument-node/effect/auto'
@@ -199,9 +200,9 @@ const main = Effect.gen(function* () {
 // Run Application
 // ============================================================================
 
-// Just provide FullAutoTracingLive - everything else from YAML!
+// Just provide UnifiedTracingLive - everything else from YAML!
 // No NodeSdk.layer(), no exporter setup, no manual configuration
-Effect.runPromise(main.pipe(Effect.provide(FullAutoTracingLive)))
+Effect.runPromise(main.pipe(Effect.provide(UnifiedTracingLive)))
   .then(() => {
     console.log('\nApplication finished successfully.')
     process.exit(0)
