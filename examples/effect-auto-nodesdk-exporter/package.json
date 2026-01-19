@@ -14,7 +14,7 @@
     "@effect/platform": "^0.94.1",
     "@effect/platform-node": "^0.104.0",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.210.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
     "effect": "^3.19.14"
   },

@@ -69,12 +69,12 @@
     "@effect/platform": "^0.94.1",
     "effect": "^3.19.14",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-web": "^0.54.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
-    "@opentelemetry/instrumentation": "^0.208.0",
-    "@opentelemetry/resources": "^2.2.0",
+    "@opentelemetry/auto-instrumentations-web": "^0.55.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.210.0",
+    "@opentelemetry/instrumentation": "^0.210.0",
+    "@opentelemetry/resources": "^2.4.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
-    "@opentelemetry/sdk-trace-web": "^2.2.0",
+    "@opentelemetry/sdk-trace-web": "^2.4.0",
     "yaml": "^2.8.1"
   },
   "peerDependencies": {
@@ -88,7 +88,7 @@
   "devDependencies": {
     "@opentelemetry/context-zone": "^2.2.0",
     "@atrim/instrument-core": "workspace:*",
-    "@opentelemetry/semantic-conventions": "^1.38.0",
+    "@opentelemetry/semantic-conventions": "^1.39.0",
     "@types/node": "^25.0.3",
     "@vitest/coverage-v8": "^4.0.16",
     "jsdom": "^27.4.0",
