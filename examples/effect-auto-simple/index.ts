@@ -2,11 +2,17 @@
  * Minimal Effect-TS Auto-Tracing Example
  *
  * This shows the bare minimum code needed to enable auto-instrumentation.
- * Just import FullAutoTracingLive and provide it to your Effect!
+ * Just import UnifiedTracingLive and provide it to your Effect!
+ *
+ * UnifiedTracingLive provides:
+ * - Automatic fiber tracing
+ * - Operation tracing (Effect.all, Effect.forEach, Effect.fork)
+ * - Source location capture for meaningful span names
+ * - Correct fork span hierarchy
  */
 
 import { Effect, Console } from 'effect'
-import { FullAutoTracingLive } from '@atrim/instrument-node/effect/auto'
+import { UnifiedTracingLive } from '@atrim/instrument-node/effect/auto'
 
 // Your application code - no tracing boilerplate needed
 const fetchUser = (id: number) =>
@@ -23,5 +29,5 @@ const main = Effect.gen(function* () {
   yield* Effect.sleep('1 second')
 })
 
-// Run with auto-instrumentation - that's it!
-Effect.runPromise(main.pipe(Effect.provide(FullAutoTracingLive))).then(() => process.exit(0))
+// Run with unified tracing - that's it!
+Effect.runPromise(main.pipe(Effect.provide(UnifiedTracingLive))).then(() => process.exit(0))

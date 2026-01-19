@@ -2,13 +2,14 @@
  * Effect Operation Tracing Example
  *
  * Demonstrates automatic span creation for Effect operations (Effect.all, Effect.forEach)
- * using OpSupervision and OperationTracingSupervisor.
+ * using UnifiedTracingLive.
  *
  * This shows how operations are automatically traced without manual Effect.withSpan() calls.
+ * UnifiedTracingLive combines operation tracing with fiber tracing for complete visibility.
  */
 
 import { Effect, Console } from 'effect'
-import { withOperationTracing, SourceCaptureTracingLive } from '@atrim/instrument-node/effect/auto'
+import { withUnifiedTracing } from '@atrim/instrument-node/effect/auto'
 
 // Note: OTel exporter configuration is loaded from instrumentation.yaml
 // - For production: Configure Atrim platform endpoint
@@ -40,13 +41,12 @@ const program = Effect.gen(function* () {
   yield* Effect.sleep('2 seconds')
 })
 
-// Run with operation tracing enabled
-// withOperationTracing is the simplest API - handles all setup automatically
+// Run with unified tracing enabled
+// withUnifiedTracing provides operation + fiber + source capture tracing
 Effect.runPromise(
   program.pipe(
     Effect.withSpan('operation-tracing-example'), // Root span for all operations
-    Effect.provide(SourceCaptureTracingLive), // OTel setup from instrumentation.yaml
-    withOperationTracing // Operation tracing (one call does it all)
+    withUnifiedTracing // Unified tracing (operation + fiber + source capture)
   )
 )
   .then(() => {

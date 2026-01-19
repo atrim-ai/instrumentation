@@ -1,5 +1,5 @@
 /**
- * Tests for AutoTracingSupervisor
+ * Tests for UnifiedTracingSupervisor (via backward-compat aliases)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -7,31 +7,50 @@ import { Effect, Fiber, Layer, FiberRef } from 'effect'
 import * as OtelApi from '@opentelemetry/api'
 import type { AutoInstrumentationConfig } from '@atrim/instrument-core'
 import {
-  AutoTracingSupervisor,
-  createAutoTracingSupervisor,
-  createAutoTracingLayer,
+  UnifiedTracingSupervisor,
+  createUnifiedTracingLayer,
   withoutAutoTracing,
   setSpanName,
   AutoTracingEnabled,
   AutoTracingSpanName
-} from '../../../../src/integrations/effect/auto/supervisor.js'
+} from '../../../../src/integrations/effect/auto/index.js'
 
-// Mock the config loader
-vi.mock('../../../../src/integrations/effect/auto/config.js', () => ({
-  loadAutoTracingConfig: () =>
-    Effect.succeed({
-      enabled: true,
-      granularity: 'fiber' as const,
-      span_naming: {
-        default: 'effect.fiber.{fiber_id}',
-        infer_from_source: false,
-        rules: []
+// Backward compatibility aliases
+const AutoTracingSupervisor = UnifiedTracingSupervisor
+const createAutoTracingSupervisor = (config: AutoInstrumentationConfig) =>
+  new UnifiedTracingSupervisor(config)
+const createAutoTracingLayer = createUnifiedTracingLayer
+
+// Mock the config loader (inlined because vi.mock is hoisted)
+vi.mock('../../../../src/integrations/effect/auto/config.js', () => {
+  const { Effect } = require('effect')
+  const mockAutoConfig = {
+    enabled: true,
+    granularity: 'fiber' as const,
+    span_naming: {
+      default: 'effect.fiber.{fiber_id}',
+      infer_from_source: false,
+      rules: []
+    },
+    filter: { include: [], exclude: [] },
+    performance: { sampling_rate: 1.0, min_duration: '0ms', max_concurrent: 0 },
+    metadata: { fiber_info: true, source_location: true, parent_fiber: true }
+  }
+  return {
+    loadAutoTracingConfig: () => Effect.succeed(mockAutoConfig),
+    loadFullConfigSync: () => ({
+      version: '1.0',
+      effect: {
+        auto_instrumentation: mockAutoConfig
       },
-      filter: { include: [], exclude: [] },
-      performance: { sampling_rate: 1.0, min_duration: '0ms', max_concurrent: 0 },
-      metadata: { fiber_info: true, source_location: true, parent_fiber: true }
-    })
-}))
+      exporter: {
+        type: 'otlp' as const,
+        endpoint: 'http://localhost:4318/v1/traces'
+      }
+    }),
+    defaultAutoTracingConfig: mockAutoConfig
+  }
+})
 
 describe('AutoTracingSupervisor', () => {
   const baseConfig: AutoInstrumentationConfig = {

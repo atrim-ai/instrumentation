@@ -1,14 +1,16 @@
-# Effect-TS Auto-Tracing Guide
+# Effect-TS Unified Tracing Guide
 
-Automatically trace all Effect fibers without manual `Effect.withSpan()` calls using the Supervisor-based auto-instrumentation.
+Automatically trace all Effect operations, fibers, and fork hierarchies without manual `Effect.withSpan()` calls using the UnifiedTracingSupervisor.
 
 ## Overview
 
-The auto-tracing feature uses Effect's Supervisor API to intercept fiber creation and automatically create OpenTelemetry spans. This means:
+The unified tracing feature uses Effect's Supervisor API to intercept fiber and operation events, automatically creating OpenTelemetry spans. This means:
 
-- **Zero code changes** - Just provide `AutoTracingLive` layer once at app entry
-- **Comprehensive coverage** - Traces your code AND library code
+- **Zero code changes** - Just provide `UnifiedTracingLive` layer once at app entry
+- **Comprehensive coverage** - Traces operations (Effect.all, Effect.forEach, Effect.fork), fibers, and HTTP requests
+- **Correct fork hierarchy** - Fork spans are parents of their resulting fiber spans
 - **YAML-driven configuration** - All tracing behavior controlled via `instrumentation.yaml`
+- **Auto OTel context bridging** - Automatically bridges OTel context to Effect spans
 - **Works everywhere** - Bundled apps, all runtimes (Node.js, Bun, Deno)
 
 ## Quick Start
@@ -52,19 +54,28 @@ effect:
 
 ```typescript
 import { Effect } from 'effect'
-import { AutoTracingLive } from '@atrim/instrument-node/effect/auto'
+import { UnifiedTracingLive, withUnifiedTracing } from '@atrim/instrument-node/effect/auto'
 
 const program = Effect.gen(function* () {
   yield* doWork()      // Automatically traced!
   yield* fetchData()   // Automatically traced!
-  yield* saveResult()  // Automatically traced!
+  yield* Effect.all([  // Operation "effect.all" traced with item count
+    saveResult1(),
+    saveResult2()
+  ])
+  yield* Effect.fork(  // Fork span is parent of fiber span
+    backgroundTask()
+  )
 })
 
-// Provide the layer once at app entry
-Effect.runPromise(program.pipe(Effect.provide(AutoTracingLive)))
+// Option 1: Provide the layer
+Effect.runPromise(program.pipe(Effect.provide(UnifiedTracingLive)))
+
+// Option 2: Use the wrapper (simpler)
+Effect.runPromise(program.pipe(withUnifiedTracing))
 ```
 
-That's it! All Effect fibers are now automatically traced.
+That's it! All Effect operations and fibers are now automatically traced with correct parent-child relationships.
 
 ## How It Works
 
@@ -78,12 +89,18 @@ That's it! All Effect fibers are now automatically traced.
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              AutoTracingSupervisor                               │
+│              UnifiedTracingSupervisor                            │
 │                                                                  │
-│  onStart(fiber) ──► Create OTel span                            │
+│  onEffect(fiber, effect) ──► Create operation spans              │
+│                              (Effect.all, forEach, fork)         │
+│                                                                  │
+│  onStart(fiber) ──► Create fiber span                           │
+│                     (links to fork span if applicable)           │
+│                                                                  │
 │  onEnd(fiber)   ──► End span with status                        │
 │                                                                  │
 │  WeakMap<Fiber, Span> for fiber-to-span association             │
+│  Map<sourceKey, PendingFork> for fork span correlation          │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -91,18 +108,29 @@ That's it! All Effect fibers are now automatically traced.
 │                    OpenTelemetry Spans                           │
 │                                                                  │
 │  Exported to your collector via standard OTLP                    │
+│                                                                  │
+│  Trace hierarchy:                                                │
+│  http.server GET                                                 │
+│  ├── effect.fork (index.ts:15)                                  │
+│  │   └── effect.fiber (index.ts:15)  ← child of fork            │
+│  └── effect.all (index.ts:18) [count=3]                         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-The `AutoTracingSupervisor` intercepts Effect's fiber lifecycle:
+The `UnifiedTracingSupervisor` intercepts Effect's operation and fiber lifecycle:
 
-1. **`onStart`** - Called when a new fiber is created
-   - Infers span name from source code or config rules
-   - Checks filter patterns (include/exclude)
-   - Creates OpenTelemetry span
+1. **`onEffect`** - Called when Effect.all, Effect.forEach, or Effect.fork is executed
+   - Creates operation span with item count for Effect.all/forEach
+   - For Effect.fork, registers pending fork span for child correlation
+   - Captures source location for meaningful span names
+
+2. **`onStart`** - Called when a new fiber is created
+   - Checks if fiber is result of a pending fork operation
+   - If yes, links fiber span as child of fork span
+   - Creates fiber span with source location
    - Associates span with fiber via WeakMap
 
-2. **`onEnd`** - Called when fiber completes
+3. **`onEnd`** - Called when fiber completes
    - Retrieves associated span
    - Sets span status (OK or ERROR based on Exit)
    - Ends the span
@@ -282,26 +310,13 @@ const program = Effect.gen(function* () {
 ### Programmatic Configuration
 
 ```typescript
-import { createAutoTracingLayer } from '@atrim/instrument-node/effect/auto'
+import { createUnifiedTracingLayer } from '@atrim/instrument-node/effect/auto'
 
-const CustomAutoTracing = createAutoTracingLayer({
-  config: {
-    enabled: true,
-    granularity: 'fiber',
-    span_naming: {
-      default: 'myapp.{function}',
-      infer_from_source: true,
-      rules: [
-        { match: { file: 'src/api/.*' }, name: 'api.{function}' }
-      ]
-    },
-    filter: { include: [], exclude: ['^test\\.'] },
-    performance: { sampling_rate: 1.0, min_duration: '0ms', max_concurrent: 0 },
-    metadata: { fiber_info: true, source_location: true, parent_fiber: true }
-  }
-})
+// Configuration is loaded from instrumentation.yaml by default
+// Use createUnifiedTracingLayer() for custom programmatic config
+const CustomTracing = createUnifiedTracingLayer()
 
-const program = myApp.pipe(Effect.provide(CustomAutoTracing))
+const program = myApp.pipe(Effect.provide(CustomTracing))
 ```
 
 ## Integration with Manual Spans
@@ -393,7 +408,7 @@ Two example projects demonstrate different exporter configurations:
 | [effect-auto-nodesdk-exporter](../examples/effect-auto-nodesdk-exporter) | Production with OTLP export | Yes |
 | [effect-auto-effect-exporter](../examples/effect-auto-effect-exporter) | Development with console output | No |
 
-Both use `NodeSdk.layer()` from `@effect/opentelemetry` which sets up the global TracerProvider needed for AutoTracingSupervisor.
+Both use `UnifiedTracingLive` which sets up the global TracerProvider and UnifiedTracingSupervisor.
 
 ### Production Setup (OTLP Export)
 
@@ -419,13 +434,31 @@ pnpm start  # Spans logged to console - no collector needed!
 
 | Export | Type | Description |
 |--------|------|-------------|
-| `AutoTracingLive` | `Layer<never>` | Zero-config auto-tracing layer |
-| `createAutoTracingLayer` | `(options?) => Layer<never>` | Factory with custom config |
-| `AutoTracingSupervisor` | `class` | The underlying supervisor |
+| `UnifiedTracingLive` | `Layer<never>` | Recommended layer for Effect.provide() |
+| `withUnifiedTracing` | `<A,E,R>(effect) => Effect<A,E,R>` | Simple wrapper for pipe() |
+| `createUnifiedTracingLayer` | `() => Layer<never>` | Factory to create the layer |
+| `UnifiedTracingSupervisor` | `class` | The underlying supervisor |
 | `withoutAutoTracing` | `<A,E,R>(effect) => Effect<A,E,R>` | Disable tracing for an effect |
 | `setSpanName` | `(name) => <A,E,R>(effect) => Effect<A,E,R>` | Override span name |
+| `flushAndShutdown` | `() => Promise<void>` | Flush spans and shutdown provider |
+| `forceFlush` | `() => Promise<void>` | Force flush pending spans |
 | `AutoTracingEnabled` | `FiberRef<boolean>` | FiberRef for enable/disable |
 | `AutoTracingSpanName` | `FiberRef<Option<string>>` | FiberRef for name override |
+
+### Backward Compatibility Aliases
+
+These aliases are provided for gradual migration:
+
+| Alias | Maps To | Status |
+|-------|---------|--------|
+| `AutoTracingLive` | `UnifiedTracingLive` | Deprecated |
+| `FullAutoTracingLive` | `UnifiedTracingLive` | Deprecated |
+| `CombinedTracingLive` | `UnifiedTracingLive` | Deprecated |
+| `SourceCaptureTracingLive` | `UnifiedTracingLive` | Deprecated |
+| `OperationTracingLive` | `UnifiedTracingLive` | Deprecated |
+| `createAutoTracingLayer` | `createUnifiedTracingLayer` | Deprecated |
+| `withAutoTracing` | `withUnifiedTracing` | Deprecated |
+| `withOperationTracing` | `withUnifiedTracing` | Deprecated |
 
 ## Related Documentation
 

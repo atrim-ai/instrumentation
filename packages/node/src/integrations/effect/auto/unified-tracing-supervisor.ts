@@ -52,6 +52,7 @@ import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic
 import type { AutoInstrumentationConfig } from '@atrim/instrument-core'
 import { logger } from '@atrim/instrument-core'
 import { loadFullConfigSync } from './config.js'
+import { AutoTracingEnabled, AutoTracingSpanName } from './span-control.js'
 
 // ============================================================================
 // Types
@@ -318,11 +319,25 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
     const fiberId = fiber.id().id
     const fiberRefs = fiber.getFiberRefs()
 
-    // Check if auto-tracing is enabled
+    // ========================================================================
+    // Check span control FiberRefs
+    // ========================================================================
+
+    // Check if auto-tracing is enabled for this fiber (via FiberRef)
+    const enabled = FiberRefs.getOrDefault(fiberRefs, AutoTracingEnabled)
+    if (!enabled) {
+      logger.log(`@atrim/unified-tracing: Auto-tracing disabled for fiber ${fiberId}`)
+      return
+    }
+
+    // Check sampling rate from config
     const samplingRate = this.config.performance?.sampling_rate ?? 1.0
     if (samplingRate < 1.0 && Math.random() > samplingRate) {
       return
     }
+
+    // Check for span name override
+    const nameOverride = FiberRefs.getOrDefault(fiberRefs, AutoTracingSpanName)
 
     // Get source location
     const sourceLocation = FiberRefs.getOrDefault(fiberRefs, currentSourceLocation) as
@@ -364,10 +379,15 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
       )
     }
 
-    // Generate span name
-    const spanName = sourceLocation
-      ? `effect.fiber (${formatLocation(sourceLocation)})`
-      : `effect.fiber-${fiberId}`
+    // Generate span name - use override if set, otherwise infer from source
+    let spanName: string
+    if (Option.isSome(nameOverride)) {
+      spanName = nameOverride.value
+    } else if (sourceLocation) {
+      spanName = `effect.fiber (${formatLocation(sourceLocation)})`
+    } else {
+      spanName = `effect.fiber-${fiberId}`
+    }
 
     // Create fiber span
     const span = this.tracer.startSpan(spanName, { kind: OtelApi.SpanKind.INTERNAL }, parentContext)
@@ -470,18 +490,36 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
     context: Context.Context<unknown>,
     parent: Option.Option<Fiber.RuntimeFiber<unknown, unknown>>
   ): OtelApi.Context {
+    // ========================================================================
+    // Parent context resolution priority:
+    // 1. Inherited OTel context from FiberRef (set by @effect/opentelemetry)
+    // 2. Effect's ParentSpan in Context (Effect's native span tracking)
+    // 3. Active OTel context (auto-bridging from OTel → Effect)
+    // 4. Parent fiber's tracked context
+    // 5. ROOT_CONTEXT (no parent)
+    // ========================================================================
+
     // 1. Check inherited OTel context from FiberRef
     const inheritedCtx = FiberRefs.getOrDefault(fiberRefs, TracerModule.currentOtelSpanContext) as
       | OtelApi.Context
       | undefined
     if (inheritedCtx) {
+      const span = OtelApi.trace.getSpan(inheritedCtx)
+      if (span) {
+        logger.log(
+          `@atrim/unified-tracing: Using inherited OTel context from FiberRef - spanId=${span.spanContext().spanId}`
+        )
+      }
       return inheritedCtx
     }
 
-    // 2. Check Effect's ParentSpan
+    // 2. Check Effect's ParentSpan in Context
     const maybeParentSpan = Context.getOption(context, EffectTracer.ParentSpan)
     if (Option.isSome(maybeParentSpan)) {
       const effectSpan = maybeParentSpan.value
+      logger.log(
+        `@atrim/unified-tracing: Using Effect ParentSpan - traceId=${effectSpan.traceId.slice(0, 8)}..., spanId=${effectSpan.spanId.slice(0, 8)}...`
+      )
       return OtelApi.trace.setSpan(
         OtelApi.ROOT_CONTEXT,
         OtelApi.trace.wrapSpanContext({
@@ -492,14 +530,27 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
       )
     }
 
-    // 3. Check parent fiber's context
+    // 3. Auto-bridge: Check active OTel context (OTel → Effect bridging)
+    // This allows spans created by non-Effect code (e.g., HTTP middleware) to be parents
+    const activeContext = OtelApi.context.active()
+    const activeSpan = OtelApi.trace.getSpan(activeContext)
+    if (activeSpan && activeSpan.spanContext().traceFlags === OtelApi.TraceFlags.SAMPLED) {
+      logger.log(
+        `@atrim/unified-tracing: Auto-bridging from active OTel context - spanId=${activeSpan.spanContext().spanId}`
+      )
+      return activeContext
+    }
+
+    // 4. Check parent fiber's tracked context
     if (Option.isSome(parent)) {
       const parentCtx = this.fiberContexts.get(parent.value)
       if (parentCtx) {
+        logger.log(`@atrim/unified-tracing: Using parent fiber's context`)
         return parentCtx
       }
     }
 
+    // 5. No parent found
     return OtelApi.ROOT_CONTEXT
   }
 
@@ -666,8 +717,14 @@ export const createUnifiedTracingLayer = (): Layer.Layer<never> => {
 
 /**
  * Unified Tracing Layer - combines operation and fiber tracing with correct hierarchy
+ *
+ * NOTE: Uses Layer.suspend to defer provider setup until the layer is actually used.
+ * This prevents the global TracerProvider from being set at module import time,
+ * allowing tests to set up their own provider first.
  */
-export const UnifiedTracingLive: Layer.Layer<never> = createUnifiedTracingLayer()
+export const UnifiedTracingLive: Layer.Layer<never> = Layer.suspend(() =>
+  createUnifiedTracingLayer()
+)
 
 /**
  * Helper to enable OpSupervision runtime flag
@@ -692,6 +749,55 @@ export const withUnifiedTracing = <A, E, R>(
 ): Effect.Effect<A, E, Exclude<R, never>> =>
   effect.pipe(enableOpSupervision, Effect.provide(UnifiedTracingLive))
 
+/**
+ * Wrap an effect with auto-tracing using a custom config
+ *
+ * This is the legacy API for backward compatibility. It allows passing a custom
+ * config and optional root span name.
+ *
+ * @deprecated Use `withUnifiedTracing` with `UnifiedTracingLive` layer instead.
+ *
+ * @example
+ * ```typescript
+ * const result = await Effect.runPromise(withAutoTracing(program, config, 'my-root-span'))
+ * ```
+ */
+export const withAutoTracing = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  config?: AutoInstrumentationConfig,
+  rootSpanName?: string
+): Effect.Effect<A, E, R> => {
+  // Create a supervisor with the given config (or default)
+  const autoConfig = config ?? {
+    enabled: true,
+    granularity: 'fiber' as const,
+    span_naming: { default: 'effect.{function}', infer_from_source: true, rules: [] },
+    span_relationships: { type: 'parent-child' as const },
+    filter: { include: [], exclude: [] },
+    performance: { sampling_rate: 1.0, min_duration: '0ms', max_concurrent: 0 },
+    metadata: { fiber_info: true, source_location: true, parent_fiber: true }
+  }
+
+  const supervisor = new UnifiedTracingSupervisor(autoConfig)
+  const supervisorLayer = Supervisor.addSupervisor(supervisor)
+
+  // Enable OpSupervision and source capture
+  const opSupervisionLayer = Layer.effectDiscard(
+    Effect.patchRuntimeFlags(RuntimeFlagsPatch.enable(RuntimeFlags.OpSupervision))
+  )
+
+  const combinedLayer = Layer.mergeAll(
+    supervisorLayer,
+    Layer.enableSourceCapture,
+    opSupervisionLayer
+  )
+
+  // Wrap with root span if name provided
+  const wrappedEffect = rootSpanName ? effect.pipe(Effect.withSpan(rootSpanName)) : effect
+
+  return wrappedEffect.pipe(Effect.provide(combinedLayer))
+}
+
 // ============================================================================
 // Provider Shutdown
 // ============================================================================
@@ -714,3 +820,14 @@ export const forceFlush = async (): Promise<void> => {
     logger.log('@atrim/unified-tracing: Force flush complete')
   }
 }
+
+// ============================================================================
+// Re-export span control utilities
+// ============================================================================
+
+export {
+  withoutAutoTracing,
+  setSpanName,
+  AutoTracingEnabled,
+  AutoTracingSpanName
+} from './span-control.js'

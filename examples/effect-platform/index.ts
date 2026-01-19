@@ -1,12 +1,13 @@
 /**
  * Pure Effect-TS Example with @effect/platform HTTP Server
  *
- * This example demonstrates CombinedTracingLive:
+ * This example demonstrates UnifiedTracingLive:
  * - Pure Effect-TS without Express/Fastify
  * - @effect/platform/HttpServer for HTTP handling
  * - Automatic HTTP + fiber-level tracing (no manual Effect.withSpan() needed)
+ * - Operation tracing (Effect.all, Effect.forEach, Effect.fork)
  * - Zero-config instrumentation via YAML
- * - Parent-child relationships between HTTP and fiber spans
+ * - Correct parent-child relationships (fork spans are parents of fiber spans)
  *
  * To run this example:
  * 1. Make sure you have an OpenTelemetry collector running:
@@ -27,7 +28,7 @@ import * as HttpServer from '@effect/platform/HttpServer'
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse'
 import * as NodeHttp from '@effect/platform-node/NodeHttpServer'
 import { createServer } from 'node:http'
-import { CombinedTracingLive } from '@atrim/instrument-node/effect/auto'
+import { UnifiedTracingLive } from '@atrim/instrument-node/effect/auto'
 
 // ============================================================================
 // Domain Types
@@ -108,7 +109,7 @@ const healthHandler = Effect.gen(function* () {
 })
 
 // Build the router using pipe pattern
-// CombinedTracingLive automatically traces HTTP requests AND forked fibers!
+// UnifiedTracingLive automatically traces HTTP requests, operations, AND forked fibers!
 const router = HttpRouter.empty.pipe(
   // Health check first (simplest route)
   HttpRouter.get('/health', healthHandler),
@@ -183,7 +184,7 @@ const router = HttpRouter.empty.pipe(
 const HttpLive = HttpServer.serve(router).pipe(
   HttpServer.withLogAddress,
   Layer.provide(NodeHttp.layer(() => createServer(), { port: Number(process.env.PORT) || 3003 })),
-  Layer.provide(CombinedTracingLive) // Automatic HTTP + Fiber tracing!
+  Layer.provide(UnifiedTracingLive) // Automatic HTTP + Operation + Fiber tracing!
 )
 
 // ============================================================================
@@ -206,10 +207,11 @@ const program = Effect.gen(function* () {
   )
   yield* Console.log('')
   yield* Console.log('='.repeat(60))
-  yield* Console.log('💡 CombinedTracingLive provides:')
+  yield* Console.log('💡 UnifiedTracingLive provides:')
   yield* Console.log('   ✅ Automatic HTTP request tracing')
+  yield* Console.log('   ✅ Automatic operation tracing (Effect.all, forEach, fork)')
   yield* Console.log('   ✅ Automatic fiber-level tracing (forked fibers)')
-  yield* Console.log('   ✅ Parent-child span relationships')
+  yield* Console.log('   ✅ Correct fork span hierarchy (fork → fiber)')
   yield* Console.log('   ✅ Zero Effect.withSpan() calls needed!')
   yield* Console.log('')
   yield* Console.log('🔍 Look for these spans in your observability tool:')

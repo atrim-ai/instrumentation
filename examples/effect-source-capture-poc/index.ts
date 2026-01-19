@@ -1,25 +1,26 @@
 /**
- * POC: Native Source Capture in Effect Runtime
+ * Native Source Capture and Unified Tracing Example
  *
- * This example demonstrates the POC implementation for issue #145:
- * https://github.com/atrim-ai/instrumentation/issues/145
+ * This example demonstrates @atrim/instrumentation's Unified Tracing:
  *
- * KEY FEATURE: Using Effect's native source capture, forked fibers automatically
- * get meaningful span names based on their call site - NO wrapper functions needed!
+ * KEY FEATURES:
+ * - Automatic span names based on source location - NO wrapper functions needed!
+ * - Correct fork span hierarchy (fork spans are parents of forked fiber spans)
+ * - Operation tracing (Effect.all, Effect.forEach) with item counts
+ * - Auto OTel context bridging
  *
- * Before (with tracedFork):
- *   yield* tracedFork(sendEmail())  // Required manual wrapper
- *
- * After (with native source capture):
- *   yield* Effect.fork(sendEmail())  // Just use standard Effect.fork()!
+ * Just use standard Effect.fork() and get meaningful spans:
+ *   yield* Effect.fork(sendEmail())  // Span: "effect.fork (index.ts:XX)"
+ *                                    //   └── "effect.fiber (index.ts:XX)"
  *
  * Expected span names:
- *   - "effect.sendEmail (index.ts:XX)" instead of "effect.anonymous"
- *   - "effect.processOrder (index.ts:XX)" instead of "effect.fiber-123"
+ *   - "effect.fork (index.ts:XX)" with child fiber spans
+ *   - "effect.all" with item counts
+ *   - "effect.fiber (index.ts:XX)" for fiber spans
  */
 
 import { Effect, Console, Fiber } from 'effect'
-import { SourceCaptureTracingLive, flushAndShutdown } from '@atrim/instrument-node/effect/auto'
+import { UnifiedTracingLive, flushAndShutdown } from '@atrim/instrument-node/effect/auto'
 
 // ============================================================================
 // Application Code - Notice: NO tracing boilerplate or special wrappers!
@@ -120,17 +121,17 @@ const main = Effect.gen(function* () {
 })
 
 // ============================================================================
-// Run with SourceCaptureTracingLive - enables native source capture!
+// Run with UnifiedTracingLive - the recommended layer for Effect tracing
 // ============================================================================
 
 console.log('')
-console.log('Starting POC with SourceCaptureTracingLive...')
-console.log('(This layer enables Effect.fork() source capture + supervisor)')
+console.log('Starting with UnifiedTracingLive...')
+console.log('(This layer provides source capture + operation tracing + fiber tracing)')
 console.log('')
 
-// Run with SourceCaptureTracingLive
-// Effect.withSpan() creates a root span, forked fibers should link to it
-Effect.runPromise(main.pipe(Effect.withSpan('poc.main'), Effect.provide(SourceCaptureTracingLive)))
+// Run with UnifiedTracingLive
+// Effect.withSpan() creates a root span, forked fibers will be children of fork spans
+Effect.runPromise(main.pipe(Effect.withSpan('unified.main'), Effect.provide(UnifiedTracingLive)))
   .then(async () => {
     console.log('')
     console.log('POC completed successfully!')
