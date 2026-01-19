@@ -1,6 +1,6 @@
 # @atrim/instrument-node
 
-## 0.6.0
+## 0.8.0
 
 ### Minor Changes
 
@@ -41,10 +41,6 @@
     yield* Effect.forEach(items, processItem)
   }).pipe(Effect.provide(OpSupervisionLive))
   ```
-
-## 0.8.0
-
-### Minor Changes
 
 - e12da4b: Add YAML-driven operation tracing for Effect.all, Effect.forEach, etc.
 

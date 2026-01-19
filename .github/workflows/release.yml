@@ -45,35 +45,21 @@ jobs:
       - name: Build packages
         run: pnpm build
 
-      - name: Check for changesets
-        id: check
-        run: |
-          if [ -n "$(ls -A .changeset/*.md 2>/dev/null | grep -v README.md)" ]; then
-            echo "has_changesets=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_changesets=false" >> $GITHUB_OUTPUT
-          fi
-
-      # If there are changesets, create/update the version PR
-      - name: Create Release Pull Request
-        if: steps.check.outputs.has_changesets == 'true'
+      # Creates version PR if changesets exist, otherwise publishes and creates GitHub releases
+      - name: Create Release Pull Request or Publish
+        id: changesets
         uses: changesets/action@v1
         with:
           version: pnpm version-packages
+          publish: pnpm release
           commit: "chore: version packages"
           title: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.CHANGESET_TOKEN }}
-
-      # If no changesets (version PR was just merged), publish
-      - name: Publish to npm
-        if: steps.check.outputs.has_changesets == 'false'
-        run: pnpm release
-        env:
           NPM_CONFIG_PROVENANCE: true
 
       - name: Send publish notification
-        if: steps.check.outputs.has_changesets == 'false' && success()
+        if: steps.changesets.outputs.published == 'true'
         uses: ./.github/actions/discord-notify
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -83,6 +69,8 @@ jobs:
           branch: ${{ github.ref_name }}
           error-details: |
             🎉 **Packages published to npm with provenance!**
+
+            **Published:** ${{ steps.changesets.outputs.publishedPackages }}
 
       - name: Send failure notification
         if: failure()
