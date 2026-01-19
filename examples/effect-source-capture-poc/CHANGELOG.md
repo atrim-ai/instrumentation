@@ -1,5 +1,12 @@
 # effect-source-capture-poc
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [0f16e25]
+  - @atrim/instrument-node@0.9.0
+
 ## 0.0.3
 
 ### Patch Changes
