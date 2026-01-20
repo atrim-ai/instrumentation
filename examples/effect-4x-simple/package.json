@@ -1,0 +1,24 @@
+{
+  "name": "effect-4x-simple-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Effect 4.x with build-time span instrumentation via @clayroach/effect-unplugin",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "dev:otlp": "OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4319 ATRIM_API_KEY=atrim_internal_tenant_000000000002 tsx src/index.ts",
+    "build": "tsx build.ts",
+    "start": "node dist/index.js",
+    "start:otlp": "OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4319 ATRIM_API_KEY=atrim_internal_tenant_000000000002 node dist/index.js"
+  },
+  "dependencies": {
+    "@atrim/instrument-node": "workspace:*",
+    "effect": "npm:@clayroach/effect@4.0.0-source-tracing.5"
+  },
+  "devDependencies": {
+    "@clayroach/effect-unplugin": "4.0.0-source-tracing.10",
+    "esbuild": "^0.24.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.7.2"
+  }
+}

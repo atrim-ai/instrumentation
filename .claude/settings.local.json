@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ATRIM_DEBUG=1 node dist/index.js:*)",
+      "Bash(git reset:*)"
+    ]
+  }
+}

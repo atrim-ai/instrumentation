@@ -44,7 +44,7 @@
   },
   "pnpm": {
     "overrides": {
-      "effect": "npm:@clayroach/effect@4.0.0-source-tracing.3"
+      "effect": "npm:@clayroach/effect@4.0.0-source-tracing.5"
     },
     "peerDependencyRules": {
       "ignoreMissing": [
