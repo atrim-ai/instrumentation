@@ -281,8 +281,8 @@ importers:
         version: '@clayroach/effect@3.19.14-source-trace.3'
     devDependencies:
       '@clayroach/unplugin':
-        specifier: 0.1.0-source-trace.3
-        version: 0.1.0-source-trace.3(@clayroach/effect@3.19.14-source-trace.3)
+        specifier: 0.1.0-source-trace.5
+        version: 0.1.0-source-trace.5(@clayroach/effect@3.19.14-source-trace.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -878,6 +878,11 @@ packages:
     resolution: {integrity: sha512-SEoSrrczozO0Tr874KAkqwX700bVEsz0ivsURgcavlAi8zxCEuuqWHGeMpHaZBvnZkYxyfR03hWqqx+T7LeUUg==}
     peerDependencies:
       '@clayroach/effect': ^3.19.14-source-trace.3
+
+  '@clayroach/unplugin@0.1.0-source-trace.5':
+    resolution: {integrity: sha512-s2LSl/tHo3DkYOK5FfHItLWs/oGyy521e77WFq9gzp2grKF+ChLi1yNUYBlceIx/zWOne8Sh8uaFuiUY7ccv1A==}
+    peerDependencies:
+      effect: ^3.19.14
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -4817,6 +4822,17 @@ snapshots:
       '@babel/traverse': 7.28.5
       '@babel/types': 7.28.5
       '@clayroach/effect': 3.19.14-source-trace.3
+      unplugin: 2.3.11
+    transitivePeerDependencies:
+      - supports-color
+
+  '@clayroach/unplugin@0.1.0-source-trace.5(@clayroach/effect@3.19.14-source-trace.3)':
+    dependencies:
+      '@babel/generator': 7.28.5
+      '@babel/parser': 7.28.5
+      '@babel/traverse': 7.28.5
+      '@babel/types': 7.28.5
+      effect: '@clayroach/effect@3.19.14-source-trace.3'
       unplugin: 2.3.11
     transitivePeerDependencies:
       - supports-color
