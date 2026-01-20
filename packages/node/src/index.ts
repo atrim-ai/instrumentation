@@ -22,20 +22,8 @@ export type { OtlpExporterOptions } from './core/exporter-factory.js'
 export { createOtlpExporter, getOtlpEndpoint } from './core/exporter-factory.js'
 
 // Service detection utilities
-export type { ServiceInfo } from './core/service-detector.js'
-// Promise API
-export {
-  detectServiceInfoAsync as detectServiceInfo,
-  getServiceNameAsync as getServiceName,
-  getServiceVersionAsync as getServiceVersion
-} from './core/service-detector.js'
-// Effect API
-export {
-  detectServiceInfo as detectServiceInfoEffect,
-  getServiceName as getServiceNameEffect,
-  getServiceVersion as getServiceVersionEffect,
-  getServiceInfoWithFallback
-} from './core/service-detector.js'
+// NOTE: Service detection is temporarily disabled in Effect 4.x migration
+// Use environment variables OTEL_SERVICE_NAME and npm_package_version instead
 
 // Configuration types (re-exported from core)
 export type { InstrumentationConfig, PatternConfig } from '@atrim/instrument-core'

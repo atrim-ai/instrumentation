@@ -1,19 +1,39 @@
 /**
- * Effect-TS integration for @atrim/instrumentation
+ * Effect 4.x integration for @atrim/instrumentation
  *
- * Optional Effect-TS integration providing automatic metadata extraction
- * from Effect fibers and spans.
+ * For Effect 4.x, automatic tracing is handled differently:
  *
- * Only use this if you're using Effect-TS in your application.
- * For standard OpenTelemetry usage, import from '@atrim/instrumentation' instead.
+ * BUILD TIME:
+ * - Use @clayroach/effect-unplugin to add withSpan() calls
+ * - Source locations tracked via CurrentStackFrame service
+ *
+ * RUNTIME:
+ * - Use Effect4TracingLive layer for OTLP export
+ *
+ * @example
+ * ```typescript
+ * import { Effect4TracingLive } from '@atrim/instrument-node/effect'
+ *
+ * const program = Effect.gen(function* () {
+ *   yield* myEffect()
+ * }).pipe(Effect.provide(Effect4TracingLive))
+ * ```
  *
  * @packageDocumentation
  */
 
-// Effect-specific exports
-export { EffectInstrumentationLive, createEffectInstrumentation } from './effect-tracer.js'
+// Effect 4.x tracing layer (auto module re-export)
+export {
+  Effect4TracingLive,
+  createEffect4TracingLayer,
+  withEffect4Tracing,
+  // Legacy aliases
+  UnifiedTracingLive,
+  createUnifiedTracingLayer,
+  withUnifiedTracing
+} from './auto/index.js'
 
-// Effect-specific span helpers
+// Effect-specific span helpers (these work with any Effect version)
 export {
   annotateUser,
   annotateDataSize,
@@ -25,19 +45,3 @@ export {
   annotatePriority,
   annotateCache
 } from './effect-helpers.js'
-
-// Effect metadata extraction
-export { extractEffectMetadata } from './metadata-extractor.js'
-export type { EffectMetadata } from './metadata-extractor.js'
-
-// Auto-enrichment utilities
-export { autoEnrichSpan, withAutoEnrichedSpan } from './auto-enrichment.js'
-
-// FiberSet isolation helpers (automatic span isolation + virtual parent tracking)
-export {
-  runIsolated,
-  runWithSpan,
-  annotateSpawnedTasks,
-  FiberSet,
-  type IsolationOptions
-} from './fiberset.js'

@@ -20,7 +20,8 @@ export { createOtlpExporter, getOtlpEndpoint } from './core/exporter-factory.js'
 
 // Configuration
 export type { InstrumentationConfig, PatternConfig } from '@atrim/instrument-core'
-export { loadConfig, loadConfigFromInline, WebConfigLoaderLive } from './services/config-loader.js'
+// NOTE: Config loader temporarily disabled for Effect 4.x migration
+// export { loadConfig, loadConfigFromInline, WebConfigLoaderLive } from './services/config-loader.js'
 
 // Pattern matching (re-exported from core)
 export {

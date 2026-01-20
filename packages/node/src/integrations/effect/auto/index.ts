@@ -1,204 +1,91 @@
 /**
- * Unified Tracing for Effect-TS
+ * Effect 4.x Auto-Tracing
  *
- * Provides automatic tracing of all Effect operations, fibers, and fork hierarchies.
- * Configuration-driven via instrumentation.yaml.
+ * In Effect 4.x, automatic tracing works differently than Effect 3.x:
  *
- * RECOMMENDED API:
- * - `UnifiedTracingLive` - Layer for Effect.provide()
- * - `withUnifiedTracing` - Simple wrapper for pipe()
+ * BUILD TIME (via @clayroach/effect-unplugin):
+ * - Effect.gen, Effect.fork, Effect.all, Effect.forEach are wrapped with withSpan()
+ * - Source locations are tracked via CurrentStackFrame service
+ *
+ * RUNTIME (via this module):
+ * - Spans are exported to OTLP collector
+ * - No Supervisor needed - unplugin handles span creation
  *
  * @example
  * ```typescript
- * import { withUnifiedTracing, withoutAutoTracing, setSpanName } from '@atrim/instrument-node/effect/auto'
+ * // vite.config.ts - Enable build-time instrumentation
+ * import effectPlugin from "@clayroach/effect-unplugin/vite"
+ *
+ * export default defineConfig({
+ *   plugins: [effectPlugin({
+ *     sourceTrace: true,
+ *     spans: { enabled: true },
+ *     annotateEffects: true
+ *   })]
+ * })
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // app.ts - Use the tracing layer
+ * import { Effect4TracingLive } from '@atrim/instrument-node/effect/auto'
  *
  * const program = Effect.gen(function* () {
- *   // Automatically traced - operations, fibers, and fork hierarchy
+ *   // Spans automatically created by unplugin
  *   yield* Effect.all([doA(), doB()])
  *   yield* Effect.fork(backgroundTask())
+ * }).pipe(Effect.provide(Effect4TracingLive))
  *
- *   // Opt-out for internal operations
- *   yield* withoutAutoTracing(internalWork())
- *
- *   // Custom span name override
- *   yield* setSpanName('custom.operation')(criticalWork())
- * }).pipe(withUnifiedTracing)
+ * await Effect.runPromise(program)
  * ```
  *
  * @packageDocumentation
  */
 
 // ============================================================================
-// Unified Tracing (RECOMMENDED)
-// Combines operation + fiber tracing with correct fork span hierarchy
+// Effect 4.x Tracing (RECOMMENDED)
 // ============================================================================
 
-/**
- * Unified Tracing - The recommended API for Effect tracing
- *
- * UnifiedTracingLive provides:
- * - Automatic fiber-level tracing
- * - Operation tracing (Effect.all, Effect.forEach, Effect.fork)
- * - Correct fork span hierarchy (fork spans are parents of fiber spans)
- * - Source location capture for meaningful span names
- * - Auto OTel context bridging
- *
- * @example
- * ```typescript
- * import { UnifiedTracingLive, withUnifiedTracing } from '@atrim/instrument-node/effect/auto'
- *
- * // Option 1: Using the layer
- * const program = myEffect.pipe(Effect.provide(UnifiedTracingLive))
- *
- * // Option 2: Using the wrapper (simpler)
- * const program = myEffect.pipe(withUnifiedTracing)
- * ```
- *
- * Resulting trace hierarchy:
- * ```
- * http.server GET
- * ├── effect.fork (index.ts:15)
- * │   └── effect.fiber (index.ts:15)  ← child of fork span
- * └── effect.all (index.ts:18)
- *     ├── effect.fiber (task1)
- *     └── effect.fiber (task2)
- * ```
- */
 export {
-  // Simplest API - wraps effect with unified tracing
-  withUnifiedTracing,
-  // Layer for Effect.provide()
-  UnifiedTracingLive,
-  createUnifiedTracingLayer,
-  // Supervisor class (for advanced use)
-  UnifiedTracingSupervisor,
-  // Provider shutdown (call before exit to ensure spans are exported)
-  flushAndShutdown,
-  forceFlush,
-  // Helper to enable OpSupervision manually
-  enableOpSupervision,
-  // Span control utilities
-  withoutAutoTracing,
-  setSpanName,
-  // FiberRefs (for advanced use)
-  AutoTracingEnabled,
-  AutoTracingSpanName
-} from './unified-tracing-supervisor.js'
-
-// Re-export OperationMeta type for advanced users
-export type { OperationMeta } from './unified-tracing-supervisor.js'
+  // Main layer - provides OTLP export for spans created by unplugin
+  Effect4TracingLive,
+  // Factory for custom configuration
+  createEffect4TracingLayer,
+  // Wrapper for convenience
+  withEffect4Tracing
+} from './effect4-tracing.js'
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-export {
-  AutoTracingConfig,
-  AutoTracingConfigLive,
-  AutoTracingConfigLayer,
-  loadAutoTracingConfig,
-  loadAutoTracingConfigSync,
-  loadFullConfigSync,
-  defaultAutoTracingConfig
-} from './config.js'
-export type { AutoInstrumentationConfig } from './config.js'
+export { loadFullConfigSync } from './config.js'
 
 // ============================================================================
-// Naming utilities (for advanced use)
+// Naming utilities
 // ============================================================================
 
 export { inferSpanName, sanitizeSpanName } from './naming.js'
 export type { SourceInfo, TemplateVariables } from './naming.js'
 
 // ============================================================================
-// Legacy utilities (maintained for backward compatibility)
+// Legacy aliases for migration
 // ============================================================================
 
-/**
- * @deprecated Use Effect.fork() with UnifiedTracingLive instead.
- * The UnifiedTracingSupervisor traces Effect.fork automatically.
- */
-export {
-  tracedFork,
-  tracedForkDaemon,
-  CapturedSourceLocation,
-  captureCallSite
-} from './traced-fork.js'
+// These aliases help migrate from Effect 3.x naming to Effect 4.x
+// The actual behavior is the same - just OTLP export
 
 /**
- * @deprecated Fork patching is no longer needed with UnifiedTracingLive.
- * The UnifiedTracingSupervisor captures source locations natively.
+ * @deprecated Use Effect4TracingLive instead
  */
-export { patchEffectFork, unpatchEffectFork, isEffectForkPatched } from './patch-fork.js'
-
-// ============================================================================
-// Backward compatibility aliases
-// ============================================================================
-
-// For gradual migration, provide aliases to the old names
-// These should be removed in a future major version
+export { Effect4TracingLive as UnifiedTracingLive } from './effect4-tracing.js'
 
 /**
- * @deprecated Use UnifiedTracingLive instead
+ * @deprecated Use createEffect4TracingLayer instead
  */
-export { UnifiedTracingLive as FullAutoTracingLive } from './unified-tracing-supervisor.js'
+export { createEffect4TracingLayer as createUnifiedTracingLayer } from './effect4-tracing.js'
 
 /**
- * @deprecated Use createUnifiedTracingLayer instead
+ * @deprecated Use withEffect4Tracing instead
  */
-export { createUnifiedTracingLayer as createFullAutoTracingLayer } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use UnifiedTracingLive instead
- */
-export { UnifiedTracingLive as AutoTracingLive } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use createUnifiedTracingLayer instead
- */
-export { createUnifiedTracingLayer as createAutoTracingLayer } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use UnifiedTracingLive instead
- */
-export { UnifiedTracingLive as SourceCaptureTracingLive } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use UnifiedTracingLive instead
- */
-export { UnifiedTracingLive as CombinedTracingLive } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use UnifiedTracingLive instead
- */
-export { UnifiedTracingLive as OperationTracingLive } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use withUnifiedTracing instead
- */
-export { withUnifiedTracing as withOperationTracing } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use withUnifiedTracing instead
- *
- * Note: This version accepts a config and optional rootSpanName for backward compatibility
- * with tests that need custom configs.
- */
-export { withAutoTracing } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use UnifiedTracingSupervisor instead
- */
-export { UnifiedTracingSupervisor as AutoTracingSupervisor } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use UnifiedTracingSupervisor instead
- */
-export { UnifiedTracingSupervisor as SourceCaptureSupervisor } from './unified-tracing-supervisor.js'
-
-/**
- * @deprecated Use new UnifiedTracingSupervisor(config) instead
- */
-export const createAutoTracingSupervisor = (
-  config: import('./config.js').AutoInstrumentationConfig
-) => new (require('./unified-tracing-supervisor.js').UnifiedTracingSupervisor)(config)
+export { withEffect4Tracing as withUnifiedTracing } from './effect4-tracing.js'

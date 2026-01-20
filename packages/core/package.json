@@ -11,6 +11,16 @@
       "types": "./target/dist/index.d.ts",
       "import": "./target/dist/index.js",
       "require": "./target/dist/index.cjs"
+    },
+    "./instrumentation-schema": {
+      "types": "./target/dist/instrumentation-schema.d.ts",
+      "import": "./target/dist/instrumentation-schema.js",
+      "require": "./target/dist/instrumentation-schema.cjs"
+    },
+    "./logger": {
+      "types": "./target/dist/logger.d.ts",
+      "import": "./target/dist/logger.js",
+      "require": "./target/dist/logger.cjs"
     }
   },
   "main": "./target/dist/index.cjs",

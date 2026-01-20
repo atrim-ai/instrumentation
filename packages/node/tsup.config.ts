@@ -61,6 +61,7 @@ export default defineConfig([
     noExternal: ['@atrim/instrument-core']
   },
   // Effect auto-tracing integration
+  // Note: For Effect 4.x, we don't bundle core to avoid pulling in @effect/platform
   {
     entry: {
       'integrations/effect/auto/index': 'src/integrations/effect/auto/index.ts'
@@ -75,7 +76,6 @@ export default defineConfig([
     target: 'es2020',
     outDir: 'target/dist',
     tsconfig: 'tsconfig.build.json',
-    external: externalPackages,
-    noExternal: ['@atrim/instrument-core']
+    external: [...externalPackages, '@atrim/instrument-core']
   }
 ])

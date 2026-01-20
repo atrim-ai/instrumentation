@@ -2,7 +2,9 @@ import { defineConfig } from 'tsup'
 
 export default defineConfig({
   entry: {
-    index: 'src/index.ts'
+    index: 'src/index.ts',
+    'instrumentation-schema': 'src/instrumentation-schema.ts',
+    logger: 'src/logger.ts'
   },
   format: ['esm', 'cjs'],
   dts: true,

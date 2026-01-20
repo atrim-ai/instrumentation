@@ -13,7 +13,11 @@ import type { RequestOptions, IncomingMessage } from 'node:http'
 import { PatternSpanProcessor } from './span-processor.js'
 import { createOtlpExporter, type OtlpExporterOptions } from './exporter-factory.js'
 import { SafeSpanExporter } from './safe-exporter.js'
-import { detectServiceInfoAsync } from './service-detector.js'
+// Service detection helper (simplified for Effect 4.x)
+const detectServiceInfo = () => ({
+  name: process.env.OTEL_SERVICE_NAME || process.env.npm_package_name || 'unknown-service',
+  version: process.env.npm_package_version || '0.0.0'
+})
 import {
   type InstrumentationConfig,
   type PatternConfig,
@@ -465,7 +469,7 @@ async function performInitialization(options: SdkInitializationOptions): Promise
   }
 
   // 3. Detect service info
-  const serviceInfo = await detectServiceInfoAsync()
+  const serviceInfo = detectServiceInfo()
   const serviceName = options.serviceName || serviceInfo.name
   const serviceVersion = options.serviceVersion || serviceInfo.version
 

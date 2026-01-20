@@ -9,8 +9,9 @@
  */
 
 // Configuration loading (Effect Platform-based services)
-export { ConfigLoader, ConfigLoaderLive } from './services/config-loader.js'
-export type { ConfigLoaderService } from './services/config-loader.js'
+// NOTE: Temporarily disabled for Effect 4.x migration
+// export { ConfigLoader, ConfigLoaderLive } from './services/config-loader.js'
+// export type { ConfigLoaderService } from './services/config-loader.js'
 
 // Pattern matching
 export {

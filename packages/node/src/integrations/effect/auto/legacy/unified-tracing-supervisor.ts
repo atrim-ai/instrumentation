@@ -198,6 +198,10 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
   >()
   private readonly fiberStartTimes = new WeakMap<Fiber.RuntimeFiber<unknown, unknown>, bigint>()
 
+  // ========== Deferred source trace tracking ==========
+  // Fibers that were created without source location info and need updating on first resume
+  private readonly fibersNeedingSourceUpdate = new WeakSet<Fiber.RuntimeFiber<unknown, unknown>>()
+
   // ========== Operation tracking ==========
   private readonly processedEffects = new WeakSet<object>()
   private readonly configuredOps: Map<string, OperationConfig>
@@ -419,6 +423,60 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
     this.fiberContexts.set(fiber as Fiber.RuntimeFiber<unknown, unknown>, newContext)
     this.fiberStartTimes.set(fiber as Fiber.RuntimeFiber<unknown, unknown>, process.hrtime.bigint())
     this.activeFiberCount++
+
+    // Mark fiber for deferred source update if no source location was available at start
+    // The sourceTrace FiberRef is set per-yield, so it won't be available at fiber creation
+    if (!sourceLocation && !Option.isSome(nameOverride)) {
+      this.fibersNeedingSourceUpdate.add(fiber as Fiber.RuntimeFiber<unknown, unknown>)
+      logger.log(`@atrim/unified-tracing: Marked fiber ${fiberId} for deferred source update`)
+    }
+  }
+
+  // ==========================================================================
+  // onResume - Deferred span naming (source trace becomes available after first yield)
+  // ==========================================================================
+
+  override onResume<A, E>(fiber: Fiber.RuntimeFiber<A, E>): void {
+    // Only process fibers that were marked for deferred source update
+    if (!this.fibersNeedingSourceUpdate.has(fiber as Fiber.RuntimeFiber<unknown, unknown>)) {
+      return
+    }
+
+    const span = this.fiberSpans.get(fiber as Fiber.RuntimeFiber<unknown, unknown>)
+    if (!span) {
+      // No span tracked for this fiber, clean up and return
+      this.fibersNeedingSourceUpdate.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
+      return
+    }
+
+    const fiberRefs = fiber.getFiberRefs()
+    const sourceLocation = FiberRefs.getOrDefault(fiberRefs, currentSourceTrace) as
+      | SourceLocation
+      | undefined
+
+    if (sourceLocation) {
+      const fiberId = fiber.id().id
+      const location = formatLocation(sourceLocation)
+      const newSpanName = `effect.fiber (${location})`
+
+      // Update span name and add source attributes
+      span.updateName(newSpanName)
+      span.setAttribute('code.filepath', sourceLocation.path)
+      span.setAttribute('code.lineno', sourceLocation.line)
+      span.setAttribute('code.column', sourceLocation.column)
+      if (sourceLocation.label) {
+        span.setAttribute('code.function', sourceLocation.label)
+      }
+
+      logger.log(
+        `@atrim/unified-tracing: Updated fiber ${fiberId} span name to "${newSpanName}" (deferred)`
+      )
+
+      // Remove from tracking set - no need to check again
+      this.fibersNeedingSourceUpdate.delete(fiber as Fiber.RuntimeFiber<unknown, unknown>)
+    }
+    // If sourceLocation is still undefined, keep the fiber in the set
+    // It will be checked again on next resume (rare edge case)
   }
 
   // ==========================================================================
@@ -466,6 +524,7 @@ export class UnifiedTracingSupervisor extends Supervisor.AbstractSupervisor<void
     this.fiberSpans.delete(fiber)
     this.fiberContexts.delete(fiber)
     this.fiberStartTimes.delete(fiber)
+    this.fibersNeedingSourceUpdate.delete(fiber) // Defensive cleanup
     this.activeFiberCount--
   }
 
