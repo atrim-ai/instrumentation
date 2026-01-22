@@ -44,7 +44,7 @@
   },
   "pnpm": {
     "overrides": {
-      "effect": "npm:@clayroach/effect@3.19.14-source-capture.8",
+      "effect": "npm:@clayroach/effect@3.19.14-source-trace.3",
       "@effect/platform": "^0.93.6",
       "@effect/platform-node": "^0.103.0",
       "@effect/opentelemetry": "^0.59.1"

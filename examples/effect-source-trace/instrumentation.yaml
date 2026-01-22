@@ -1,0 +1,21 @@
+version: "1.0"
+
+instrumentation:
+  enabled: true
+  description: "Effect source trace example configuration"
+
+  instrument_patterns:
+    - pattern: ".*"
+      enabled: true
+      description: "Instrument all spans"
+
+  ignore_patterns: []
+
+effect:
+  auto_extract_metadata: true
+  exporter_config:
+    type: otlp
+    endpoint: "http://localhost:4319"
+    processor: simple
+    headers:
+      x-api-key: "atrim_internal_tenant_000000000002"
