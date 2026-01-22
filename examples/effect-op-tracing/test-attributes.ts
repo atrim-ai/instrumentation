@@ -10,7 +10,7 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 // Setup provider
 const provider = new NodeTracerProvider()
 const exporter = new OTLPTraceExporter({
-  url: 'http://localhost:4319/v1/traces',
+  url: 'https://traefik.atrim.io/v1/traces',
   headers: {
     'x-api-key': 'atrim_internal_tenant_000000000002'
   }

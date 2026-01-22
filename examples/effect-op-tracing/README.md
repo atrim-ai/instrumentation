@@ -37,7 +37,7 @@ effect:
   exporter_config:
     # Local Atrim backend (default)
     type: otlp
-    endpoint: "http://localhost:4319"
+    endpoint: "https://traefik.atrim.io"
     processor: simple
     headers:
       x-api-key: "atrim_internal_tenant_000000000002"
@@ -48,7 +48,7 @@ effect:
 ```
 
 **To switch exporters:**
-- For **local Atrim backend**: Use `endpoint: "http://localhost:4319"` (current default)
+- For **local Atrim backend**: Use `endpoint: "https://traefik.atrim.io"` (current default)
 - For **console output**: Comment out OTLP, uncomment console section
 - For **Atrim cloud**: Change endpoint to `https://trace.atrim.ai` and set your API key
 
@@ -62,7 +62,7 @@ pnpm install
 pnpm start
 
 # View traces in Atrim UI
-# Check http://localhost:4319 or your Atrim UI for service "effect-service"
+# Check https://traefik.atrim.io or your Atrim UI for service "effect-service"
 ```
 
 ## Expected Output

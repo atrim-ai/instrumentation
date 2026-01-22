@@ -47,7 +47,7 @@ effect:
   exporter_config:
     # Export to local Atrim backend (default)
     type: otlp
-    endpoint: "http://localhost:4319"
+    endpoint: "https://traefik.atrim.io"
     processor: simple
     headers:
       x-api-key: "atrim_internal_tenant_000000000002"

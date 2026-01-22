@@ -49,7 +49,7 @@ effect:
   # OTLP exporter to local Atrim backend
   exporter_config:
     type: otlp
-    endpoint: "http://localhost:4319"
+    endpoint: "https://traefik.atrim.io"
     processor: simple
     headers:
       x-api-key: "atrim_internal_tenant_000000000002"

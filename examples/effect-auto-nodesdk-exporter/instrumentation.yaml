@@ -81,7 +81,7 @@ effect:
   # Exporter configuration (YAML-driven - no code setup needed!)
   exporter_config:
     type: otlp                    # Use OTLP exporter for production
-    endpoint: "http://localhost:4319"  # Atrim backend OTLP HTTP endpoint
+    endpoint: "https://traefik.atrim.io"  # Atrim backend OTLP HTTP endpoint
     processor: batch              # Batch spans for better performance
     batch:
       scheduled_delay_millis: 500
