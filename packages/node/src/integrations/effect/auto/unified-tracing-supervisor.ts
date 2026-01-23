@@ -26,7 +26,6 @@ import {
   Supervisor,
   Effect,
   Layer,
-  FiberRef,
   FiberRefs,
   Context,
   Option,
@@ -35,7 +34,7 @@ import {
   RuntimeFlags,
   RuntimeFlagsPatch,
   Tracer as EffectTracer,
-  GlobalValue
+  References
 } from 'effect'
 import * as TracerModule from 'effect/Tracer'
 import { Tracer as OtelTracer, Resource } from '@effect/opentelemetry'
@@ -69,14 +68,9 @@ export interface OperationMeta {
 }
 
 /**
- * Source location from Effect's native source capture
+ * Re-export SourceLocation type from Effect's References module
  */
-interface SourceLocation {
-  readonly file: string
-  readonly line: number
-  readonly column?: number
-  readonly functionName?: string
-}
+type SourceLocation = References.SourceLocation
 
 /**
  * Pending fork span waiting for its child fiber
@@ -97,17 +91,6 @@ interface OperationConfig {
   readonly includeStack?: boolean
 }
 
-// ============================================================================
-// FiberRefs
-// ============================================================================
-
-/**
- * Access Effect's native currentSourceLocation FiberRef
- */
-const currentSourceLocation = GlobalValue.globalValue(
-  Symbol.for('effect/FiberRef/currentSourceLocation'),
-  () => FiberRef.unsafeMake<SourceLocation | undefined>(undefined)
-)
 
 // ============================================================================
 // Helpers
@@ -128,32 +111,10 @@ function getOperationMeta(
 }
 
 /**
- * Parse source location from a raw stack trace string
+ * Get source location from fiber refs using Effect's native CurrentSourceLocation
  */
-function parseSourceLocation(stack: string): SourceLocation | undefined {
-  const lines = stack.split('\n')
-
-  for (const line of lines.slice(1)) {
-    if (
-      line.includes('node_modules') ||
-      line.includes('/effect/') ||
-      line.includes('fiberRuntime.ts') ||
-      line.includes('core.ts')
-    ) {
-      continue
-    }
-
-    const match = line.match(/at\s+(?:.*?\s+\()?(.+):(\d+):(\d+)\)?/)
-    if (match && match[1] && match[2]) {
-      return {
-        file: match[1],
-        line: parseInt(match[2], 10),
-        ...(match[3] ? { column: parseInt(match[3], 10) } : {})
-      }
-    }
-  }
-
-  return undefined
+function getSourceLocation(fiberRefs: FiberRefs.FiberRefs): SourceLocation | undefined {
+  return FiberRefs.getOrDefault(fiberRefs, References.CurrentSourceLocation)
 }
 
 /**
