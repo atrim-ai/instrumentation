@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "effect": "^3.19.14",
-    "@effect/platform": "^0.94.1",
+    "@effect/platform": "^0.94.2",
     "yaml": "^2.3.0",
     "zod": "^3.22.0"
   },
