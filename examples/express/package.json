@@ -11,16 +11,16 @@
   "dependencies": {
     "@atrim/instrument-node": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.67.3",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
-    "@opentelemetry/sdk-node": "^0.208.0",
-    "@opentelemetry/sdk-trace-base": "^2.2.0",
-    "@opentelemetry/sdk-trace-node": "^2.2.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.71.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
+    "@opentelemetry/sdk-node": "^0.213.0",
+    "@opentelemetry/sdk-trace-base": "^2.6.0",
+    "@opentelemetry/sdk-trace-node": "^2.6.0",
     "express": "^5.2.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "tsx": "^4.7.0",
-    "typescript": "^5.7.2"
+    "typescript": "^6.0.2"
   }
 }
