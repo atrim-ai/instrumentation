@@ -61,15 +61,15 @@
     "clean": "rm -rf target"
   },
   "dependencies": {
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/core": "^2.2.0",
-    "@opentelemetry/otlp-exporter-base": "^0.208.0",
-    "@opentelemetry/otlp-transformer": "^0.208.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/core": "^2.6.1",
+    "@opentelemetry/otlp-exporter-base": "^0.214.0",
+    "@opentelemetry/otlp-transformer": "^0.214.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0"
   },
   "devDependencies": {
-    "@opentelemetry/resources": "^2.2.0",
-    "@opentelemetry/semantic-conventions": "^1.38.0",
+    "@opentelemetry/resources": "^2.6.1",
+    "@opentelemetry/semantic-conventions": "^1.40.0",
     "@types/node": "^25.0.3",
     "@types/ws": "^8.5.13",
     "@vitest/coverage-v8": "^4.0.16",
