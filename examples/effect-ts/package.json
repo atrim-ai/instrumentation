@@ -10,20 +10,20 @@
   },
   "dependencies": {
     "@atrim/instrument-node": "workspace:*",
-    "@effect/opentelemetry": "^0.60.0",
-    "@effect/platform": "^0.94.1",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
-    "@opentelemetry/sdk-node": "^0.208.0",
-    "@opentelemetry/sdk-trace-node": "^2.2.0",
+    "@effect/opentelemetry": "^0.63.0",
+    "@effect/platform": "^0.96.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
+    "@opentelemetry/sdk-node": "^0.214.0",
+    "@opentelemetry/sdk-trace-node": "^2.6.1",
     "effect": "^3.19.14",
     "express": "^5.2.1",
-    "yaml": "^2.3.0",
-    "zod": "^4.3.5"
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "tsx": "^4.7.0",
-    "typescript": "^5.7.2"
+    "typescript": "^6.0.2"
   }
 }
