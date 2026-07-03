@@ -7,6 +7,7 @@
 import { NodeSDK, NodeSDKConfiguration } from '@opentelemetry/sdk-node'
 import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
+import { FastifyInstrumentation } from '@opentelemetry/instrumentation-fastify'
 import type { Instrumentation } from '@opentelemetry/instrumentation'
 import { trace } from '@opentelemetry/api'
 import type { RequestOptions, IncomingMessage } from 'node:http'
@@ -521,7 +522,6 @@ async function performInitialization(options: SdkInitializationOptions): Promise
 
         // Enable web framework instrumentations
         '@opentelemetry/instrumentation-express': { enabled: true },
-        '@opentelemetry/instrumentation-fastify': { enabled: true },
         '@opentelemetry/instrumentation-koa': { enabled: true },
 
         // Disable noisy instrumentations by default
@@ -529,6 +529,10 @@ async function performInitialization(options: SdkInitializationOptions): Promise
         '@opentelemetry/instrumentation-dns': { enabled: false }
       })
     )
+
+    // Fastify was removed from auto-instrumentations-node's bundle (>=0.75), so
+    // register it explicitly to preserve out-of-the-box Fastify support.
+    instrumentations.push(new FastifyInstrumentation())
 
     logger.log(`Auto-instrumentation: ${instrumentations.length} instrumentations enabled`)
   }
