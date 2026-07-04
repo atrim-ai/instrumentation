@@ -1,6 +1,6 @@
 {
   "name": "effect-auto-nodesdk-exporter-example",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Effect-TS auto-tracing example using NodeSdk-based OTel export",
   "type": "module",
   "private": true,

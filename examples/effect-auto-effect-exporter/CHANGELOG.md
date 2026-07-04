@@ -1,5 +1,12 @@
 # effect-auto-console-example
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [c5c4115]
+  - @atrim/instrument-node@0.10.0
+
 ## 0.1.3
 
 ### Patch Changes
