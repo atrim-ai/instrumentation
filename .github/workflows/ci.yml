@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [20, 22]
+        node-version: [20, 22, 24]
 
     steps:
       - name: Checkout code
@@ -64,12 +64,16 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  # Integration tests - only on Node 20
+  # Integration tests - on the supported floor (20) and atrim's runtime (24)
   integration:
-    name: Integration Tests
+    name: Integration Tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 24]
 
     steps:
       - name: Checkout code
@@ -80,10 +84,10 @@ jobs:
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: ${{ github.actor != 'dependabot[bot]' && 'pnpm' || '' }}
 
       - name: Setup Bun
