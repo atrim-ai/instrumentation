@@ -1,5 +1,12 @@
 # @atrim/instrumentation-example-effect-ts
 
+## 0.5.7
+
+### Patch Changes
+
+- Updated dependencies [c5c4115]
+  - @atrim/instrument-node@0.10.0
+
 ## 0.5.6
 
 ### Patch Changes
