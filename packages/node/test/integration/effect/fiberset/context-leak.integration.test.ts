@@ -7,7 +7,7 @@
  * Related: https://github.com/Effect-TS/effect/pull/5433/files
  */
 
-import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { spawn } from 'child_process'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -170,16 +170,16 @@ describe('FiberSet.run Context Leakage', () => {
     })
   }
 
-  beforeEach(async () => {
-    // Start isolated collector container using helper
+  beforeAll(async () => {
+    // Start isolated collector container using helper (once for all tests)
     collector = await startCollectorContainer()
     collectorUrl = `http://localhost:${collector.httpPort}`
 
-    // Install error suppressors for this test
+    // Install error suppressors
     suppressShutdownErrors()
   })
 
-  afterEach(async () => {
+  afterAll(async () => {
     // Wait for BatchSpanProcessor to export (default schedule delay is 5000ms)
     // We've configured OTEL_BSP_SCHEDULE_DELAY=500 in package.json for tests
     // Add extra time to ensure all exports complete
