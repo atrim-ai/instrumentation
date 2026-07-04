@@ -21,8 +21,24 @@ jobs:
       id-token: write  # Required for npm OIDC trusted publishing
 
     steps:
+      # Mint a short-lived installation token from the release GitHub App.
+      # Using an App token (instead of a personal PAT) means releases aren't
+      # tied to one person's account and don't silently break when a PAT
+      # expires. It also lets the pushed "version packages" PR trigger CI,
+      # which the default GITHUB_TOKEN cannot do.
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          # Persist the App token so the branch/PR push in the changesets
+          # step is authenticated as the App.
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -55,7 +71,7 @@ jobs:
           commit: "chore: version packages"
           title: "chore: version packages"
         env:
-          GITHUB_TOKEN: ${{ secrets.CHANGESET_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           NPM_CONFIG_PROVENANCE: true
 
       - name: Send publish notification
