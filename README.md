@@ -1,5 +1,12 @@
 # @atrim/instrumentation
 
+> [!IMPORTANT]
+> **Superseded — `@atrim/instrument-node` is no longer maintained.** To send telemetry from an
+> Effect app to Atrim, use `@effect/opentelemetry`'s OTLP layer, as described in the
+> [Atrim docs: Connect your app → Per-language setup → Effect](https://atrim.ai/docs/connect/#per-language-setup).
+> For any other Node.js app, use standard OpenTelemetry auto-instrumentation (the Node.js tab on
+> the same page).
+
 Universal OpenTelemetry instrumentation packages for Node.js and the browser.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
